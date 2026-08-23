@@ -10,7 +10,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.heather.hardlands.common.command.HardlandsCommand;
 import org.heather.hardlands.common.inventory.InventoryListener;
-import org.heather.hardlands.common.inventory.InventoryRegistry;
 import org.heather.hardlands.common.player.PlayerListener;
 import org.heather.hardlands.core.ThreadScheduler;
 import org.heather.hardlands.module.PresetRepository;
@@ -42,8 +41,6 @@ public final class Hardlands extends JavaPlugin {
 
         this.worldManager = new WorldManager();
 
-        InventoryRegistry.initialize();
-
         this.registerListeners(new PlayerListener(), new InventoryListener());
 
         this.registerCommands(new HardlandsCommand());
@@ -57,19 +54,6 @@ public final class Hardlands extends JavaPlugin {
             |_|  |_/_/    \\_\\_|  \\_\\_____/|______/_/    \\_\\_| \\_|_____/|_____/
             """);
         super.getLogger().info("Initialized.");
-    }
-
-    private void registerListeners(Listener... listeners) {
-        for (Listener listener : listeners) {
-            Bukkit.getPluginManager().registerEvents(listener, this);
-        }
-    }
-
-    private void registerCommands(BaseCommand... commands) {
-        PaperCommandManager commandManager = new PaperCommandManager(this);
-        for (BaseCommand command : commands) {
-            commandManager.registerCommand(command);
-        }
     }
 
     @Override
@@ -107,9 +91,22 @@ public final class Hardlands extends JavaPlugin {
 
     public WorldManager getWorldManagerOrThrow() {
         if (this.worldManager == null) {
-            throw new IllegalStateException("WorldManager is null");
+            throw new IllegalStateException("WorldManager has not been initialized.");
         }
 
-        return this.worldManager;
+        return worldManager;
+    }
+
+    private void registerListeners(Listener... listeners) {
+        for (Listener listener : listeners) {
+            Bukkit.getPluginManager().registerEvents(listener, this);
+        }
+    }
+
+    private void registerCommands(BaseCommand... commands) {
+        PaperCommandManager commandManager = new PaperCommandManager(this);
+        for (BaseCommand command : commands) {
+            commandManager.registerCommand(command);
+        }
     }
 }

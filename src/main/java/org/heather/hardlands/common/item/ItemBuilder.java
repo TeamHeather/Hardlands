@@ -1,5 +1,6 @@
 package org.heather.hardlands.common.item;
 
+import com.destroystokyo.paper.profile.PlayerProfile;
 import io.papermc.paper.datacomponent.DataComponentType;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.ItemLore;
@@ -98,6 +99,17 @@ public final class ItemBuilder {
 
     public ItemBuilder glint(boolean glint) {
         this.item.setData(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, glint);
+        return this;
+    }
+
+    public ItemBuilder profile(PlayerProfile profile) {
+        if (!(this.item.getItemMeta() instanceof SkullMeta skullMeta)) {
+            throw new IllegalStateException("Player profiles can only be applied to player heads");
+        }
+
+        skullMeta.setPlayerProfile(profile);
+        this.item.setItemMeta(skullMeta);
+
         return this;
     }
 

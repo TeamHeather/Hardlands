@@ -1,5 +1,7 @@
 package org.heather.hardlands.common.inventory;
 
+import java.util.Optional;
+
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -17,65 +19,56 @@ public final class InventoryListener implements Listener {
     private void onInventoryClick(InventoryClickEvent event) {
         Inventory topInventory = event.getView().getTopInventory();
 
-        if (!InventoryRegistry.isRegistered(topInventory)
-                || !(event.getWhoClicked() instanceof Player player)) {
-            return;
+        if (!(topInventory.getHolder() instanceof HardlandsInventoryHolder holder)
+                || !(event.getWhoClicked() instanceof Player player)
+                || !prepareClick(event, topInventory)) return;
+
+        Optional<Boolean> succeeded = holder.getHandler().handleClick(event, player);
+
+        if (succeeded.isEmpty()) {
+            succeeded = InventoryItem.findByStack(event.getCurrentItem())
+                    .map(item -> item.onClick(event));
         }
 
-        boolean clickedTop = event.getClickedInventory() == topInventory;
-
-        if (!clickedTop && !affectsTopInventory(event.getAction())) {
-            return;
-        }
-
-        event.setCancelled(true);
-
-        if (!clickedTop) {
-            return;
-        }
-
-        InventoryItem.findByItem(event.getCurrentItem())
-                .ifPresent(item -> {
-                    boolean handled = item.handleClick(event);
-
-                    player.playSound(
-                            player,
-                            handled ? Sound.UI_BUTTON_CLICK : Sound.BLOCK_NOTE_BLOCK_BASS,
-                            0.5F,
-                            handled ? 1.5F : 0.5F);
-                });
+        succeeded.ifPresent(result -> playFeedback(player, result));
     }
 
     @EventHandler
     private void onInventoryDrag(InventoryDragEvent event) {
-        Inventory topInventory = event.getView().getTopInventory();
+        Inventory inventory = event.getView().getTopInventory();
 
-        if (!InventoryRegistry.isRegistered(topInventory)) {
-            return;
-        }
+        if (!(inventory.getHolder() instanceof HardlandsInventoryHolder)) return;
 
-        boolean affectsTopInventory = event.getRawSlots().stream()
-                .anyMatch(slot -> slot < topInventory.getSize());
-
-        if (affectsTopInventory) {
+        if (event.getRawSlots().stream().anyMatch(slot -> slot < inventory.getSize())) {
             event.setCancelled(true);
         }
     }
 
     @EventHandler
     private void onInventoryClose(InventoryCloseEvent event) {
-        if (!(event.getPlayer() instanceof Player player)) {
-            return;
-        }
-
         Inventory inventory = event.getView().getTopInventory();
 
-        InventoryRegistry.findDefinition(inventory)
-                .ifPresent(definition -> definition.handleClose(inventory, player));
+        if (!(inventory.getHolder() instanceof HardlandsInventoryHolder holder)) return;
+        if (!(event.getPlayer() instanceof Player player)) return;
+
+        holder.getHandler().onClose(inventory, player);
     }
 
-    private static boolean affectsTopInventory(InventoryAction action) {
-        return action == InventoryAction.MOVE_TO_OTHER_INVENTORY
-                || action == InventoryAction.COLLECT_TO_CURSOR;
+    private static boolean prepareClick(InventoryClickEvent event, Inventory topInventory) {
+        boolean topClick = event.getClickedInventory() == topInventory;
+        boolean affectsTop = event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY
+                || event.getAction() == InventoryAction.COLLECT_TO_CURSOR;
+
+        if (!topClick && !affectsTop) return false;
+
+        event.setCancelled(true);
+        return topClick;
+    }
+
+    private static void playFeedback(Player player, boolean succeeded) {
+        player.playSound(player,
+                succeeded ? Sound.UI_BUTTON_CLICK : Sound.BLOCK_NOTE_BLOCK_BIT,
+                0.5F,
+                succeeded ? 1.5F : 0.5F);
     }
 }

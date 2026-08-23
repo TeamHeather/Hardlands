@@ -16,7 +16,7 @@ public class BonanzaScenario extends BonanzaScenarioConfiguration {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     private void onBlockDropItem(BlockDropItemEvent event) {
-        if (!BlockUtils.isOre(event.getBlock().getType())) return;
+        if (!BlockUtils.isOre(event.getBlockState().getType())) return;
 
         float multiplier = super.dropMultiplier.getValue();
 

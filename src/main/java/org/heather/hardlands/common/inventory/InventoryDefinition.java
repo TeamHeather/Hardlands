@@ -2,204 +2,231 @@ package org.heather.hardlands.common.inventory;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.function.Supplier;
 
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.heather.hardlands.common.inventory.handler.InventoryHandler;
+import org.heather.hardlands.common.inventory.handler.PresetInventoryHandler;
+import org.heather.hardlands.common.inventory.handler.ScenarioInventoryHandler;
 import org.heather.hardlands.common.item.InventoryItem;
 import org.heather.hardlands.common.item.ItemBuilder;
-import org.jspecify.annotations.NonNull;
 
 public enum InventoryDefinition {
 
-    MAIN("Hardlands", Outline.RED, new Layout("""
-                -------
-                -SPGFW-
-                ---T---
-                -------
-                """, Map.of(
+    MAIN("Hardlands", Material.RED_STAINED_GLASS_PANE, """
+            -------
+            -SPGFW-
+            ---T---
+            -------
+            """, Map.of(
             'S', InventoryItem.SCENARIOS,
             'P', InventoryItem.PLAYERS,
             'G', InventoryItem.GENERAL,
             'F', InventoryItem.PHASES,
             'W', InventoryItem.WORLD,
-            'T', InventoryItem.PRESETS))),
+            'T', InventoryItem.PRESETS)),
 
-    SCENARIOS("Escenarios", Outline.PINK),
-    PLAYERS("Jugadores", Outline.YELLOW),
-    GENERAL("General", Outline.ORANGE),
-    PHASES("Fases", Outline.LIME),
-    WORLD("Mundo", Outline.LIGHT_BLUE),
-    PRESETS("Plantillas", Outline.PURPLE);
+    SCENARIOS("Escenarios", Material.PINK_STAINED_GLASS_PANE, ScenarioInventoryHandler::new),
 
-    private static final int ROW_SIZE = 9;
-    private static final int CONTENT_WIDTH = ROW_SIZE - 2;
+    PLAYERS("Jugadores", Material.YELLOW_STAINED_GLASS_PANE),
+    GENERAL("General", Material.PURPLE_STAINED_GLASS_PANE),
+    PHASES("Fases", Material.LIME_STAINED_GLASS_PANE),
+    WORLD("Mundo", Material.LIGHT_BLUE_STAINED_GLASS_PANE),
+
+    PRESETS("Plantillas", Material.PURPLE_STAINED_GLASS_PANE, PresetInventoryHandler::new);
+
+    public static final int MAX_SIZE = 54;
+
+    private static final int COLUMNS = 9;
+    private static final int CONTENT_COLUMNS = COLUMNS - 2;
+    private static final int MAX_CONTENT_ROWS = 4;
+
+    private static final String EMPTY_LAYOUT = """
+            -------
+            -------
+            -------
+            -------
+            """;
 
     private final String title;
     private final ItemStack outline;
-    private final Layout layout;
-    private final InventoryHandler handler;
-
-    InventoryDefinition(String title, Outline outline, Layout layout, InventoryHandler handler) {
-        this.title = title;
-        this.outline = outline.buildItem();
-        this.layout = layout;
-        this.handler = handler;
-    }
-
-    InventoryDefinition(String title, Outline outline, Layout layout) {
-        this(title, outline, layout, InventoryHandler.EMPTY);
-    }
-
-    InventoryDefinition(String title, Outline outline) {
-        this(title, outline, Layout.BLANK);
-    }
+    private final List<String> layout;
+    private final Map<Character, InventoryItem> items;
+    private final Supplier<InventoryHandler> handlerFactory;
 
     public void openInventory(Player player) {
-        Inventory inventory = InventoryRegistry.getInventory(this);
+        InventoryHandler handler = this.handlerFactory.get();
 
-        this.renderFooter(inventory);
-
-        player.openInventory(inventory);
-        this.handler.onOpen(inventory, player);
+        this.openInventory(
+                player,
+                handler,
+                (this.layout.size() + 2) * COLUMNS,
+                Component.text(this.title),
+                true);
     }
 
-    public void handleClose(Inventory inventory, Player player) {
-        this.handler.onClose(inventory, player);
+    public void openInventory(
+            Player player,
+            InventoryHandler handler,
+            int size,
+            Component title
+    ) {
+        this.openInventory(player, handler, size, title, false);
     }
 
-    Inventory createInventory() {
-        DefinitionHolder holder = new DefinitionHolder(this);
-        Inventory inventory = Bukkit.createInventory(holder, this.layout.getSize(), Component.text(this.title));
-
-        holder.setInventory(inventory);
-
-        this.renderFrame(inventory);
-        this.layout.render(inventory);
-        this.handler.onCreate(inventory);
-
-        return inventory;
-    }
-
-    private void renderFrame(Inventory inventory) {
+    public void renderFrame(Inventory inventory) {
         int bottomRow = getBottomRow(inventory);
 
-        for (int column = 1; column <= ROW_SIZE; column++) {
+        for (int column = 1; column <= COLUMNS; column++) {
             inventory.setItem(slot(1, column), this.outline);
             inventory.setItem(slot(bottomRow, column), this.outline);
         }
 
         for (int row = 2; row < bottomRow; row++) {
             inventory.setItem(slot(row, 1), this.outline);
-            inventory.setItem(slot(row, ROW_SIZE), this.outline);
+            inventory.setItem(slot(row, COLUMNS), this.outline);
+        }
+    }
+
+    public static int getContentCapacity(Inventory inventory) {
+        return Math.max(0, getBottomRow(inventory) - 2) * CONTENT_COLUMNS;
+    }
+
+    public static int getContentIndex(Inventory inventory, int slot) {
+        if (slot < 0 || slot >= inventory.getSize()) return -1;
+
+        int row = slot / COLUMNS + 1;
+        int column = slot % COLUMNS + 1;
+
+        if (row < 2 || row >= getBottomRow(inventory)) return -1;
+        if (column < 2 || column >= COLUMNS) return -1;
+
+        return (row - 2) * CONTENT_COLUMNS + column - 2;
+    }
+
+    public static int contentSlot(int index) {
+        return slot(
+                index / CONTENT_COLUMNS + 2,
+                index % CONTENT_COLUMNS + 2);
+    }
+
+    public static int getSizeForContent(int contentCount) {
+        int rows = Math.clamp(
+                (contentCount + CONTENT_COLUMNS - 1) / CONTENT_COLUMNS,
+                1,
+                MAX_CONTENT_ROWS);
+
+        return (rows + 2) * COLUMNS;
+    }
+
+    public static int getBottomRow(Inventory inventory) {
+        return inventory.getSize() / COLUMNS;
+    }
+
+    public static int slot(int row, int column) {
+        return (row - 1) * COLUMNS + column - 1;
+    }
+
+    private InventoryDefinition(
+            String title,
+            Material outline,
+            String layout,
+            Map<Character, InventoryItem> items,
+            Supplier<InventoryHandler> handlerFactory
+    ) {
+        this.title = title;
+        this.outline = new ItemBuilder(outline).name("").build();
+        this.layout = layout.strip().lines().toList();
+        this.items = items;
+        this.handlerFactory = handlerFactory;
+    }
+
+    private InventoryDefinition(
+            String title,
+            Material outline,
+            String layout,
+            Map<Character, InventoryItem> items
+    ) {
+        this(title, outline, layout, items, () -> InventoryHandler.EMPTY);
+    }
+
+    private InventoryDefinition(
+            String title,
+            Material outline,
+            Supplier<InventoryHandler> handlerFactory
+    ) {
+        this(title, outline, EMPTY_LAYOUT, Map.of(), handlerFactory);
+    }
+
+    private InventoryDefinition(String title, Material outline) {
+        this(title, outline, EMPTY_LAYOUT, Map.of());
+    }
+
+    private void openInventory(
+            Player player,
+            InventoryHandler handler,
+            int size,
+            Component title,
+            boolean renderLayout
+    ) {
+        Inventory inventory = this.createInventory(handler, size, title, renderLayout);
+
+        player.openInventory(inventory);
+        handler.onOpen(inventory, player);
+    }
+
+    private Inventory createInventory(
+            InventoryHandler handler,
+            int size,
+            Component title,
+            boolean renderLayout
+    ) {
+        HardlandsInventoryHolder holder = new HardlandsInventoryHolder(handler);
+        Inventory inventory = Bukkit.createInventory(holder, size, title);
+
+        holder.setInventory(inventory);
+
+        this.renderFrame(inventory);
+        if (renderLayout) this.renderLayout(inventory);
+        this.renderFooter(inventory);
+
+        handler.render(inventory);
+
+        return inventory;
+    }
+
+    private void renderLayout(Inventory inventory) {
+        for (int row = 0; row < this.layout.size(); row++) {
+            String line = this.layout.get(row);
+
+            for (int column = 0; column < CONTENT_COLUMNS; column++) {
+                char symbol = line.charAt(column);
+
+                if (symbol == '-') continue;
+
+                InventoryItem item = this.items.get(symbol);
+
+                if (item == null) {
+                    throw new IllegalStateException(
+                            "No InventoryItem defined for layout symbol '%s'."
+                                    .formatted(symbol));
+                }
+
+                inventory.setItem(slot(row + 2, column + 2), item.build());
+            }
         }
     }
 
     private void renderFooter(Inventory inventory) {
-        int bottomRow = getBottomRow(inventory);
+        int row = getBottomRow(inventory);
 
-        inventory.setItem(slot(bottomRow, 4), InventoryItem.PREVIOUS.buildItem());
-        inventory.setItem(slot(bottomRow, 5), InventoryItem.PREPARATION.buildItem());
-        inventory.setItem(slot(bottomRow, 6), InventoryItem.NEXT.buildItem());
-    }
-
-    //
-    public static Optional<InventoryDefinition> findDefinition(Inventory inventory) {
-        return inventory.getHolder() instanceof DefinitionHolder holder
-                ? Optional.of(holder.definition)
-                : Optional.empty();
-    }
-
-    private static int getBottomRow(Inventory inventory) {
-        return inventory.getSize() / ROW_SIZE;
-    }
-
-    private static int slot(int row, int column) {
-        return (row - 1) * ROW_SIZE + column - 1;
-    }
-
-    private static final class DefinitionHolder implements InventoryHolder {
-
-        private final InventoryDefinition definition;
-        private Inventory inventory;
-
-        private DefinitionHolder(InventoryDefinition definition) {
-            this.definition = definition;
-        }
-
-        @Override
-        public @NonNull Inventory getInventory() {
-            return this.inventory;
-        }
-
-        private void setInventory(Inventory inventory) {
-            this.inventory = inventory;
-        }
-    }
-
-    private record Outline(Material material) {
-
-        private static final Outline RED = new Outline(Material.RED_STAINED_GLASS_PANE);
-        private static final Outline PINK = new Outline(Material.PINK_STAINED_GLASS_PANE);
-        private static final Outline YELLOW = new Outline(Material.YELLOW_STAINED_GLASS_PANE);
-        private static final Outline ORANGE = new Outline(Material.ORANGE_STAINED_GLASS_PANE);
-        private static final Outline LIME = new Outline(Material.LIME_STAINED_GLASS_PANE);
-        private static final Outline LIGHT_BLUE = new Outline(Material.LIGHT_BLUE_STAINED_GLASS_PANE);
-        private static final Outline PURPLE = new Outline(Material.PURPLE_STAINED_GLASS_PANE);
-
-        private ItemStack buildItem() {
-            return new ItemBuilder(this.material)
-                    .name("")
-                    .build();
-        }
-    }
-
-    private record Layout(
-            List<String> rows,
-            Map<Character, InventoryItem> items) {
-
-        private static final Layout BLANK = new Layout("""
-                -------
-                -------
-                -------
-                -------
-                """, Map.of());
-
-        private Layout(String layout, Map<Character, InventoryItem> items) {
-            this(layout.strip().lines().toList(), items);
-        }
-
-        private void render(Inventory inventory) {
-            for (int row = 0; row < this.rows.size(); row++) {
-                String line = this.rows.get(row);
-
-                for (int column = 0; column < CONTENT_WIDTH; column++) {
-                    char symbol = line.charAt(column);
-
-                    if (symbol == '-') {
-                        continue;
-                    }
-
-                    InventoryItem item = this.items.get(symbol);
-
-                    if (item == null) {
-                        throw new IllegalStateException(
-                                "No InventoryItem defined for layout symbol '%s'.".formatted(symbol));
-                    }
-
-                    inventory.setItem(slot(row + 2, column + 2), item.buildItem());
-                }
-            }
-        }
-
-        private int getSize() {
-            return (this.rows.size() + 2) * ROW_SIZE;
-        }
+        inventory.setItem(slot(row, 4), InventoryItem.PREVIOUS.build());
+        inventory.setItem(slot(row, 5), InventoryItem.PREPARATION.build());
+        inventory.setItem(slot(row, 6), InventoryItem.NEXT.build());
     }
 }
