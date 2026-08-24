@@ -23,7 +23,7 @@ public final class InventoryListener implements Listener {
                 || !(event.getWhoClicked() instanceof Player player)
                 || !prepareClick(event, topInventory)) return;
 
-        Optional<Boolean> succeeded = holder.getHandler().handleClick(event, player);
+        Optional<Boolean> succeeded = holder.getHandler().onClick(event, player);
 
         if (succeeded.isEmpty()) {
             succeeded = InventoryItem.findByStack(event.getCurrentItem())

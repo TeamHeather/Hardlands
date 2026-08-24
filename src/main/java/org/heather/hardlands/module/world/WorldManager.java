@@ -29,19 +29,17 @@ public final class WorldManager extends WorldManagerConfiguration {
 
     public void configure() {
         this.forEachEnabledWorld((world, centerX, centerZ, survivalSize) -> {
-            WorldBorder worldBorder = world.getWorldBorder();
-            worldBorder.setCenter(centerX, centerZ);
-            worldBorder.setSize(survivalSize);
+            WorldBorder border = world.getWorldBorder();
+
+            border.setCenter(centerX, centerZ);
+            border.setSize(survivalSize);
         });
     }
 
     public void pregenerate() {
         this.forEachEnabledWorld((world, centerX, centerZ, survivalSize) ->
-                this.pregenerationManager.reviewAndAccept(new PregenerationRequest(
-                        world.getName(),
-                        centerX,
-                        centerZ,
-                        survivalSize)));
+                this.pregenerationManager.reviewAndAccept(
+                        new PregenerationRequest(world.getName(), centerX, centerZ, survivalSize)));
     }
 
     public void shrinkForMeetup() {
@@ -56,55 +54,58 @@ public final class WorldManager extends WorldManagerConfiguration {
         return this.pregenerationManager;
     }
 
-    // Utility methods
-    private double scaleForDimension(World world, double value) {
-        return world.getEnvironment() == World.Environment.NETHER ? value * (1.0 / 8.0) : value;
+    @Override
+    public boolean isConfigurationValid() {
+        if (!super.isConfigurationValid()) return false;
+
+        int survival = super.survivalSize.getValue();
+        int meetup = super.meetupSize.getValue();
+        int deathmatch = super.deathmatchSize.getValue();
+
+        return survival >= meetup && meetup >= deathmatch;
     }
 
-    private void shrinkWorldBorders(Option<Integer> targetSizeOption, Option<Integer> shrinkDurationMinutesOption) {
-        int targetSize = targetSizeOption.getValue();
-        long shrinkDurationTicks = shrinkDurationMinutesOption.getValue() * 1200L;
+    private void shrinkWorldBorders(Option<Integer> targetSize, Option<Integer> duration) {
+        int size = targetSize.getValue();
+        long ticks = duration.getValue() * 1200L;
 
-        this.forEachEnabledWorld(world -> world.getWorldBorder()
-                .changeSize(this.scaleForDimension(world, targetSize), shrinkDurationTicks));
+        this.forEachEnabledWorld(world ->
+                world.getWorldBorder().changeSize(scaleForDimension(world, size), ticks));
     }
 
     private void forEachEnabledWorld(Consumer<World> action) {
         super.enabledWorlds.getValue().forEach(worldName -> {
             World world = Bukkit.getWorld(worldName);
 
-            if (world == null) {
-                throw new IllegalStateException("Enabled world is not loaded: " + worldName);
-            }
+            if (world == null) throw new IllegalStateException("Enabled world is not loaded: " + worldName);
 
             action.accept(world);
         });
     }
 
     private void forEachEnabledWorld(WorldConfigurationConsumer action) {
-        double centerX = super.centerX.getValue();
-        double centerZ = super.centerZ.getValue();
-        double survivalSize = super.survivalSize.getValue();
-
         this.forEachEnabledWorld(world -> action.accept(
                 world,
-                centerX,
-                centerZ,
-                this.scaleForDimension(world, survivalSize)));
+                scaleForDimension(world, super.centerX.getValue()),
+                scaleForDimension(world, super.centerZ.getValue()),
+                scaleForDimension(world, super.survivalSize.getValue())));
     }
 
-    @FunctionalInterface
-    private interface WorldConfigurationConsumer {
-        void accept(World world, double centerX, double centerZ, double survivalSize);
+    private static double scaleForDimension(World world, double value) {
+        return world.getEnvironment() == World.Environment.NETHER ? value / 8.0D : value;
     }
 
     private static ChunkyAPI requireChunkyService() {
         ChunkyAPI chunky = Bukkit.getServicesManager().load(ChunkyAPI.class);
 
-        if (chunky == null) {
-            throw new IllegalStateException("This plugin requires Chunky");
-        }
+        if (chunky == null) throw new IllegalStateException("This plugin requires Chunky");
 
         return chunky;
+    }
+
+    @FunctionalInterface
+    private interface WorldConfigurationConsumer {
+
+        void accept(World world, double centerX, double centerZ, double survivalSize);
     }
 }

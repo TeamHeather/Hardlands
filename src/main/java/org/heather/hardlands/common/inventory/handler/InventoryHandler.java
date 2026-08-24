@@ -11,7 +11,7 @@ public interface InventoryHandler {
 
     default void render(Inventory inventory) {}
 
-    default Optional<Boolean> handleClick(InventoryClickEvent event, Player player) {
+    default Optional<Boolean> onClick(InventoryClickEvent event, Player player) {
         return Optional.empty();
     }
 

@@ -1,48 +1,60 @@
 package org.heather.hardlands.common.inventory.handler;
 
+import io.papermc.paper.dialog.Dialog;
+import io.papermc.paper.dialog.DialogResponseView;
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
+import io.papermc.paper.registry.data.dialog.ActionButton;
+import io.papermc.paper.registry.data.dialog.DialogBase;
+import io.papermc.paper.registry.data.dialog.action.DialogAction;
+import io.papermc.paper.registry.data.dialog.body.DialogBody;
+import io.papermc.paper.registry.data.dialog.input.DialogInput;
+import io.papermc.paper.registry.data.dialog.input.SingleOptionDialogInput;
+import io.papermc.paper.registry.data.dialog.input.TextDialogInput;
+import io.papermc.paper.registry.data.dialog.type.DialogType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.IntFunction;
 
 import net.kyori.adventure.text.Component;
-import org.bukkit.Material;
+import net.kyori.adventure.text.event.ClickCallback;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
 import org.heather.hardlands.Hardlands;
-import org.heather.hardlands.common.inventory.InventoryDefinition;
-import org.heather.hardlands.common.item.ItemBuilder;
+import org.heather.hardlands.common.inventory.HardlandsInventory;
 import org.heather.hardlands.core.config.Option;
+import org.heather.hardlands.core.config.Validator;
 import org.heather.hardlands.module.scenario.Scenario;
 import org.heather.hardlands.module.scenario.ScenarioDefinition;
 import org.heather.hardlands.module.scenario.ScenarioManager;
 
+@SuppressWarnings("UnstableApiUsage")
 public final class ScenarioInventoryHandler implements InventoryHandler {
 
-    private static final int SEARCH_LIMIT = 1_000;
+    private static final String DEFAULT_VALUE = "default";
+    private static final String TRUE_VALUE = "true";
+    private static final String FALSE_VALUE = "false";
+    private static final String INPUT_PREFIX = "input";
 
     @Override
     public void render(Inventory inventory) {
         ScenarioManager manager = getScenarioManager();
         List<Scenario> scenarios = manager.getRegisteredScenarios();
-        int capacity = InventoryDefinition.getContentCapacity(inventory);
+        int capacity = HardlandsInventory.getContentCapacity(inventory);
 
         if (scenarios.size() > capacity) {
             throw new IllegalStateException(
-                    "The scenario inventory supports at most %d scenarios.".formatted(capacity));
+                    "The scenario inventory supports at most %d scenarios."
+                            .formatted(capacity));
         }
 
         clearContent(inventory);
@@ -52,19 +64,26 @@ public final class ScenarioInventoryHandler implements InventoryHandler {
             String identifier = scenario.getConfigurationIdentifier();
 
             inventory.setItem(
-                    InventoryDefinition.contentSlot(index),
+                    HardlandsInventory.contentSlot(index),
                     getScenarioDefinition(identifier)
-                            .createDisplayItem(manager.isScenarioEnabled(identifier)));
+                            .createDisplayItem(
+                                    scenario,
+                                    manager.isScenarioEnabled(identifier)));
         }
     }
 
     @Override
-    public Optional<Boolean> handleClick(InventoryClickEvent event, Player player) {
+    public Optional<Boolean> onClick(
+            InventoryClickEvent event,
+            Player player
+    ) {
         Inventory inventory = event.getView().getTopInventory();
         ScenarioManager manager = getScenarioManager();
         List<Scenario> scenarios = manager.getRegisteredScenarios();
 
-        int index = InventoryDefinition.getContentIndex(inventory, event.getRawSlot());
+        int index = HardlandsInventory.getContentIndex(
+                inventory,
+                event.getRawSlot());
 
         if (index < 0 || index >= scenarios.size()) return Optional.empty();
 
@@ -73,247 +92,565 @@ public final class ScenarioInventoryHandler implements InventoryHandler {
         ScenarioDefinition definition = getScenarioDefinition(identifier);
 
         if (event.isLeftClick()) {
-            boolean enabled = manager.isScenarioEnabled(identifier);
-
-            manager.toggleScenario(identifier);
-
-            boolean succeeded = enabled != manager.isScenarioEnabled(identifier);
+            boolean succeeded = manager.toggleScenario(identifier);
 
             if (succeeded) {
                 event.setCurrentItem(
-                        definition.createDisplayItem(manager.isScenarioEnabled(identifier)));
+                        definition.createDisplayItem(
+                                scenario,
+                                manager.isScenarioEnabled(identifier)));
             }
 
             return Optional.of(succeeded);
         }
 
         if (event.isRightClick()) {
-            openOptions(player, definition, scenario);
+            if (scenario.getConfigurationOptions().isEmpty()) {
+                return Optional.of(false);
+            }
+
+            this.showOptionsDialog(
+                    player,
+                    inventory,
+                    definition,
+                    scenario);
+
             return Optional.of(true);
         }
 
         return Optional.of(false);
     }
 
-    private static void openOptions(
+    private void showOptionsDialog(
             Player player,
+            Inventory inventory,
             ScenarioDefinition definition,
             Scenario scenario
     ) {
-        InventoryDefinition.SCENARIOS.openInventory(
-                player,
-                new OptionsHandler(definition, scenario),
-                InventoryDefinition.getSizeForContent(
-                        scenario.getConfigurationOptions().size()),
-                Component.text(definition.getName() + " - Opciones"));
+        List<OptionBinding> bindings = createBindings(scenario);
+
+        ActionButton save = ActionButton.create(
+                Component.text("Guardar"),
+                Component.text("Guarda la configuración."),
+                100,
+                DialogAction.customClick(
+                        (response, audience) -> {
+                            if (audience instanceof Player target) {
+                                this.saveOptions(
+                                        target,
+                                        inventory,
+                                        definition,
+                                        scenario,
+                                        bindings,
+                                        response);
+                            }
+                        },
+                        ClickCallback.Options.builder()
+                                .uses(ClickCallback.UNLIMITED_USES)
+                                .build()));
+
+        ActionButton cancel = ActionButton.create(
+                Component.text("Cancelar"),
+                null,
+                100,
+                DialogAction.customClick(
+                        (response, audience) -> audience.closeDialog(),
+                        ClickCallback.Options.builder()
+                                .uses(1)
+                                .build()));
+
+        player.showDialog(Dialog.create(builder -> builder
+                .empty()
+                .base(DialogBase.builder(
+                                Component.text(
+                                        definition.getName()
+                                                + " - Configuración"))
+                        .pause(false)
+                        .afterAction(DialogBase.DialogAfterAction.NONE)
+                        .body(createBody(scenario))
+                        .inputs(createInputs(bindings))
+                        .build())
+                .type(DialogType.confirmation(save, cancel))));
     }
 
-    private static void openEnchantments(
+    private void saveOptions(
             Player player,
+            Inventory inventory,
             ScenarioDefinition definition,
             Scenario scenario,
-            Option<Map<Enchantment, Integer>> option
+            List<OptionBinding> bindings,
+            DialogResponseView response
     ) {
-        InventoryDefinition.SCENARIOS.openInventory(
-                player,
-                new EnchantmentMapHandler(definition, scenario, option),
-                InventoryDefinition.MAX_SIZE,
-                Component.text(definition.getName() + " - Encantamientos"));
-    }
+        Map<Option<?>, Object> values;
 
-    private static void clearContent(Inventory inventory) {
-        int capacity = InventoryDefinition.getContentCapacity(inventory);
-
-        for (int index = 0; index < capacity; index++) {
-            inventory.clear(InventoryDefinition.contentSlot(index));
-        }
-    }
-
-    private static ScenarioManager getScenarioManager() {
-        return Hardlands.getInstance().getScenarioManager();
-    }
-
-    private static ScenarioDefinition getScenarioDefinition(String identifier) {
-        return ScenarioDefinition.findByIdentifier(identifier)
-                .orElseThrow(() ->
-                        new IllegalStateException("Missing ScenarioDefinition: " + identifier));
-    }
-
-    private static ItemStack createOptionItem(Option<?> option) {
-        Object value = option.getValue();
-
-        ItemBuilder builder = new ItemBuilder(getMaterial(option))
-                .name("<yellow>" + formatName(option.getKey()))
-                .lore("<gray>Valor: <white>" + formatValue(value));
-
-        if (isEnchantmentMap(option)) {
-            return builder
-                    .addLore(
-                            "",
-                            "<yellow>Click <gray>para editar.")
-                    .build();
+        try {
+            values = readValues(bindings, response);
+        } catch (IllegalArgumentException exception) {
+            player.sendRichMessage("<red>" + exception.getMessage());
+            return;
         }
 
-        if (option.getDataType() == Boolean.class) {
-            return builder
-                    .glint(Boolean.TRUE.equals(value))
-                    .addLore(
-                            "",
-                            "<yellow>Click <gray>para alternar.")
-                    .build();
+        values.forEach(ScenarioInventoryHandler::setValue);
+
+        ScenarioManager manager = getScenarioManager();
+        String identifier = scenario.getConfigurationIdentifier();
+        boolean disabled = manager.isScenarioEnabled(identifier)
+                && !scenario.isConfigurationValid();
+
+        if (disabled) manager.disableScenario(identifier);
+
+        this.render(inventory);
+        player.closeDialog();
+
+        if (disabled) {
+            player.sendRichMessage(
+                    "<yellow>Configuración guardada. "
+                            + "El escenario fue desactivado porque su configuración es inválida.");
+            return;
         }
 
-        if (isNumber(option)) {
-            return builder
-                    .addLore(
-                            "",
-                            "<yellow>Click izquierdo <gray>para aumentar.",
-                            "<yellow>Click derecho <gray>para reducir.",
-                            "<yellow>Shift + Click <gray>para cambiar más rápido.")
-                    .build();
-        }
-
-        return builder
-                .addLore(
-                        "",
-                        "<red>Este tipo todavía no tiene editor.")
-                .build();
+        player.sendRichMessage(
+                "<green>Configuración de <white>%s</white> guardada."
+                        .formatted(definition.getName()));
     }
 
-    @SuppressWarnings("unchecked")
-    private static boolean editOption(Option<?> option, InventoryClickEvent event) {
+    private static List<OptionBinding> createBindings(Scenario scenario) {
+        List<OptionBinding> bindings = new ArrayList<>();
+        int index = 0;
+
+        for (Option<?> option : scenario.getConfigurationOptions().values()) {
+            bindings.add(new OptionBinding(
+                    option,
+                    INPUT_PREFIX + index++));
+        }
+
+        return bindings;
+    }
+
+    private static List<DialogInput> createInputs(
+            List<OptionBinding> bindings
+    ) {
+        List<DialogInput> inputs = new ArrayList<>(bindings.size());
+
+        for (OptionBinding binding : bindings) {
+            inputs.add(createInput(binding));
+        }
+
+        return inputs;
+    }
+
+    private static DialogInput createInput(OptionBinding binding) {
+        Option<?> option = binding.option();
+        Component label = Component.text(formatLabel(option));
         Type type = option.getDataType();
 
-        if (type == Boolean.class) return toggleBoolean((Option<Boolean>) option, event);
-        if (type == Integer.class) return adjustInteger((Option<Integer>) option, event);
-        if (type == Long.class) return adjustLong((Option<Long>) option, event);
-        if (type == Float.class) return adjustFloat((Option<Float>) option, event);
-        if (type == Double.class) return adjustDouble((Option<Double>) option, event);
+        if (type == Boolean.class) {
+            return createBooleanInput(binding, label);
+        }
+
+        if (isEnchantmentMap(option)) {
+            return createEnchantmentInput(binding, label);
+        }
+
+        if (isNumber(type) || type == String.class) {
+            return createTextInput(binding, label);
+        }
+
+        throw new IllegalStateException(
+                "Unsupported dialog option type: "
+                        + type.getTypeName());
+    }
+
+    private static DialogInput createBooleanInput(
+            OptionBinding binding,
+            Component label
+    ) {
+        Object value = binding.option().getValue();
+
+        return DialogInput.singleOption(
+                binding.inputKey(),
+                300,
+                List.of(
+                        SingleOptionDialogInput.OptionEntry.create(
+                                DEFAULT_VALUE,
+                                Component.text("Sin configurar"),
+                                value == null),
+                        SingleOptionDialogInput.OptionEntry.create(
+                                TRUE_VALUE,
+                                Component.text("Activado"),
+                                Boolean.TRUE.equals(value)),
+                        SingleOptionDialogInput.OptionEntry.create(
+                                FALSE_VALUE,
+                                Component.text("Desactivado"),
+                                Boolean.FALSE.equals(value))),
+                label,
+                true);
+    }
+
+    private static DialogInput createTextInput(
+            OptionBinding binding,
+            Component label
+    ) {
+        Option<?> option = binding.option();
+
+        return DialogInput.text(
+                binding.inputKey(),
+                300,
+                label,
+                true,
+                option.hasValue()
+                        ? formatValue(option.getValue())
+                        : "",
+                64,
+                null);
+    }
+
+    private static DialogInput createEnchantmentInput(
+            OptionBinding binding,
+            Component label
+    ) {
+        return DialogInput.text(
+                binding.inputKey(),
+                400,
+                label,
+                true,
+                formatEnchantmentMap(
+                        asEnchantmentMap(binding.option())),
+                4096,
+                TextDialogInput.MultilineOptions.create(
+                        64,
+                        120));
+    }
+
+    private static List<DialogBody> createBody(Scenario scenario) {
+        List<DialogBody> body = new ArrayList<>();
+
+        body.add(DialogBody.plainMessage(
+                Component.text(
+                        "Deja un campo vacío para mantenerlo sin configurar.")));
+
+        if (hasEnchantmentMap(scenario)) {
+            body.add(DialogBody.plainMessage(
+                    Component.text(
+                            "Encantamientos: usa una entrada por línea. "
+                                    + "Ejemplo: minecraft:sharpness=5")));
+        }
+
+        return body;
+    }
+
+    private static Map<Option<?>, Object> readValues(
+            List<OptionBinding> bindings,
+            DialogResponseView response
+    ) {
+        Map<Option<?>, Object> values = new LinkedHashMap<>();
+
+        for (OptionBinding binding : bindings) {
+            Option<?> option = binding.option();
+            Object value = readValue(binding, response);
+
+            if (value != null && !isValid(option, value)) {
+                throw new IllegalArgumentException(
+                        getValidationError(option));
+            }
+
+            values.put(option, value);
+        }
+
+        return values;
+    }
+
+    private static Object readValue(
+            OptionBinding binding,
+            DialogResponseView response
+    ) {
+        Option<?> option = binding.option();
+        Type type = option.getDataType();
+
+        if (type == Boolean.class) {
+            return readBoolean(binding, response);
+        }
+
+        String input = response.getText(binding.inputKey());
+
+        if (input == null || input.isBlank()) return null;
+        if (isEnchantmentMap(option)) {
+            return parseEnchantmentMap(option, input);
+        }
+
+        String value = input.strip();
+
+        try {
+            if (type == Integer.class) {
+                return Integer.valueOf(value);
+            }
+
+            if (type == Long.class) {
+                return Long.valueOf(value);
+            }
+
+            if (type == Float.class) {
+                return parseFloat(option, value);
+            }
+
+            if (type == Double.class) {
+                return parseDouble(option, value);
+            }
+
+            if (type == String.class) return value;
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException(
+                    "\"%s\" debe ser un número válido."
+                            .formatted(option.getKey()));
+        }
+
+        throw new IllegalStateException(
+                "Unsupported dialog option type: "
+                        + type.getTypeName());
+    }
+
+    private static Boolean readBoolean(
+            OptionBinding binding,
+            DialogResponseView response
+    ) {
+        String value = response.getText(binding.inputKey());
+
+        if (value == null || value.equals(DEFAULT_VALUE)) return null;
+        if (value.equals(TRUE_VALUE)) return true;
+        if (value.equals(FALSE_VALUE)) return false;
+
+        throw new IllegalArgumentException(
+                "Valor inválido para \"%s\"."
+                        .formatted(binding.option().getKey()));
+    }
+
+    private static Float parseFloat(
+            Option<?> option,
+            String value
+    ) {
+        float result = Float.parseFloat(value);
+
+        if (!Float.isFinite(result)) {
+            throw new IllegalArgumentException(
+                    "\"%s\" debe ser un número finito."
+                            .formatted(option.getKey()));
+        }
+
+        return result;
+    }
+
+    private static Double parseDouble(
+            Option<?> option,
+            String value
+    ) {
+        double result = Double.parseDouble(value);
+
+        if (!Double.isFinite(result)) {
+            throw new IllegalArgumentException(
+                    "\"%s\" debe ser un número finito."
+                            .formatted(option.getKey()));
+        }
+
+        return result;
+    }
+
+    private static Map<Enchantment, Integer> parseEnchantmentMap(
+            Option<?> option,
+            String input
+    ) {
+        Registry<Enchantment> registry = getEnchantmentRegistry();
+        Map<Enchantment, Integer> values = new LinkedHashMap<>();
+
+        for (String rawEntry : input.split("\\R|,")) {
+            String entry = rawEntry.strip();
+
+            if (entry.isEmpty()) continue;
+
+            String[] parts = entry.split("=", 2);
+
+            if (parts.length != 2) {
+                throw new IllegalArgumentException(
+                        "Formato inválido para \"%s\". "
+                                + "Usa enchantment=nivel."
+                                .formatted(option.getKey()));
+            }
+
+            String identifier = parts[0].strip();
+
+            if (!identifier.contains(":")) {
+                identifier = "minecraft:" + identifier;
+            }
+
+            NamespacedKey key = NamespacedKey.fromString(identifier);
+
+            if (key == null) {
+                throw new IllegalArgumentException(
+                        "Encantamiento inválido: \"%s\"."
+                                .formatted(identifier));
+            }
+
+            Enchantment enchantment = registry.get(key);
+
+            if (enchantment == null) {
+                throw new IllegalArgumentException(
+                        "No existe el encantamiento \"%s\"."
+                                .formatted(identifier));
+            }
+
+            int level;
+
+            try {
+                level = Integer.parseInt(parts[1].strip());
+            } catch (NumberFormatException exception) {
+                throw new IllegalArgumentException(
+                        "Nivel inválido para \"%s\"."
+                                .formatted(identifier));
+            }
+
+            if (level < 1 || level > 255) {
+                throw new IllegalArgumentException(
+                        "El nivel de \"%s\" debe estar entre 1 y 255."
+                                .formatted(identifier));
+            }
+
+            if (values.putIfAbsent(enchantment, level) != null) {
+                throw new IllegalArgumentException(
+                        "El encantamiento \"%s\" está repetido."
+                                .formatted(identifier));
+            }
+        }
+
+        return values;
+    }
+
+    private static String formatEnchantmentMap(
+            Option<Map<Enchantment, Integer>> option
+    ) {
+        if (!option.hasValue()) return "";
+
+        StringBuilder result = new StringBuilder();
+
+        for (Map.Entry<Enchantment, Integer> entry
+                : option.getValue().entrySet()) {
+            if (!result.isEmpty()) result.append('\n');
+
+            result.append(entry.getKey().getKey())
+                    .append('=')
+                    .append(entry.getValue());
+        }
+
+        return result.toString();
+    }
+
+    private static String formatLabel(Option<?> option) {
+        String constraint = getConstraint(option);
+
+        return constraint == null
+                ? option.getKey()
+                : "%s (%s)"
+                .formatted(
+                        option.getKey(),
+                        constraint);
+    }
+
+    private static String getValidationError(Option<?> option) {
+        String constraint = getConstraint(option);
+
+        return constraint == null
+                ? "Valor inválido para \"%s\"."
+                .formatted(option.getKey())
+                : "\"%s\" debe ser %s."
+                .formatted(
+                        option.getKey(),
+                        constraint);
+    }
+
+    private static String getConstraint(Option<?> option) {
+        if (!(option.getPredicate()
+                instanceof Validator<?> validator)) {
+            return null;
+        }
+
+        String key = validator.key();
+
+        if (key.equals(Validator.Keys.UNIT_INTERVAL)) {
+            return "entre 0 y 1";
+        }
+
+        if (key.equals(Validator.Keys.POSITIVE)) {
+            return "mayor que 0";
+        }
+
+        if (key.equals(Validator.Keys.NON_NEGATIVE)) {
+            return "0 o mayor";
+        }
+
+        if (key.equals(Validator.Keys.NEGATIVE)) {
+            return "menor que 0";
+        }
+
+        if (key.equals(Validator.Keys.NON_POSITIVE)) {
+            return "0 o menor";
+        }
+
+        if (key.startsWith(Validator.Keys.AT_LEAST + ":")) {
+            return "mínimo " + getValidatorArguments(key)[0];
+        }
+
+        if (key.startsWith(Validator.Keys.AT_MOST + ":")) {
+            return "máximo " + getValidatorArguments(key)[0];
+        }
+
+        if (key.startsWith(Validator.Keys.BETWEEN + ":")) {
+            String[] arguments = getValidatorArguments(key);
+
+            if (arguments.length == 2) {
+                return "entre %s y %s"
+                        .formatted(
+                                arguments[0],
+                                arguments[1]);
+            }
+        }
+
+        return null;
+    }
+
+    private static String[] getValidatorArguments(String key) {
+        String[] parts = key.split(":");
+
+        if (parts.length <= 1) return new String[0];
+
+        String[] arguments = new String[parts.length - 1];
+        System.arraycopy(
+                parts,
+                1,
+                arguments,
+                0,
+                arguments.length);
+
+        return arguments;
+    }
+
+    private static String formatValue(Object value) {
+        if (value instanceof Float || value instanceof Double) {
+            return new BigDecimal(value.toString())
+                    .stripTrailingZeros()
+                    .toPlainString();
+        }
+
+        return String.valueOf(value);
+    }
+
+    private static boolean hasEnchantmentMap(Scenario scenario) {
+        for (Option<?> option
+                : scenario.getConfigurationOptions().values()) {
+            if (isEnchantmentMap(option)) return true;
+        }
 
         return false;
     }
 
-    private static boolean toggleBoolean(
-            Option<Boolean> option,
-            InventoryClickEvent event
-    ) {
-        if (getDirection(event) == 0) return false;
-
-        return setIfValid(option, !Boolean.TRUE.equals(option.getValue()));
-    }
-
-    private static boolean adjustInteger(
-            Option<Integer> option,
-            InventoryClickEvent event
-    ) {
-        int direction = getDirection(event);
-
-        if (direction == 0) return false;
-
-        int step = event.isShiftClick() ? 10 : 1;
-        Integer current = option.getValue();
-
-        if (current != null) return setIfValid(option, current + direction * step);
-
-        return findInitialValue(
-                option,
-                index -> direction * step * index,
-                0,
-                direction < 0);
-    }
-
-    private static boolean adjustLong(
-            Option<Long> option,
-            InventoryClickEvent event
-    ) {
-        int direction = getDirection(event);
-
-        if (direction == 0) return false;
-
-        long step = event.isShiftClick() ? 10L : 1L;
-        Long current = option.getValue();
-
-        if (current != null) return setIfValid(option, current + direction * step);
-
-        return findInitialValue(
-                option,
-                index -> direction * step * index,
-                0L,
-                direction < 0);
-    }
-
-    private static boolean adjustFloat(
-            Option<Float> option,
-            InventoryClickEvent event
-    ) {
-        int direction = getDirection(event);
-
-        if (direction == 0) return false;
-
-        float step = event.isShiftClick() ? 0.1F : 0.01F;
-        Float current = option.getValue();
-
-        if (current != null) return setIfValid(option, round(current + direction * step));
-
-        return findInitialValue(
-                option,
-                index -> round(direction * step * index),
-                0.0F,
-                direction < 0);
-    }
-
-    private static boolean adjustDouble(
-            Option<Double> option,
-            InventoryClickEvent event
-    ) {
-        int direction = getDirection(event);
-
-        if (direction == 0) return false;
-
-        double step = event.isShiftClick() ? 0.1D : 0.01D;
-        Double current = option.getValue();
-
-        if (current != null) return setIfValid(option, round(current + direction * step));
-
-        return findInitialValue(
-                option,
-                index -> round(direction * step * index),
-                0.0D,
-                direction < 0);
-    }
-
-    private static <T> boolean findInitialValue(
-            Option<T> option,
-            IntFunction<T> factory,
-            T zero,
-            boolean zeroFirst
-    ) {
-        if (zeroFirst && setIfValid(option, zero)) return true;
-
-        for (int index = 1; index <= SEARCH_LIMIT; index++) {
-            if (setIfValid(option, factory.apply(index))) return true;
-        }
-
-        return setIfValid(option, zero);
-    }
-
-    private static <T> boolean setIfValid(Option<T> option, T value) {
-        if (!option.getPredicate().test(value)) return false;
-
-        option.setValue(value);
-        return true;
-    }
-
-    private static int getDirection(InventoryClickEvent event) {
-        if (event.isLeftClick()) return 1;
-        if (event.isRightClick()) return -1;
-
-        return 0;
-    }
-
-    private static boolean isNumber(Option<?> option) {
-        Type type = option.getDataType();
-
+    private static boolean isNumber(Type type) {
         return type == Integer.class
                 || type == Long.class
                 || type == Float.class
@@ -321,7 +658,10 @@ public final class ScenarioInventoryHandler implements InventoryHandler {
     }
 
     private static boolean isEnchantmentMap(Option<?> option) {
-        if (!(option.getDataType() instanceof ParameterizedType type)) return false;
+        if (!(option.getDataType()
+                instanceof ParameterizedType type)) {
+            return false;
+        }
 
         Type[] arguments = type.getActualTypeArguments();
 
@@ -332,261 +672,62 @@ public final class ScenarioInventoryHandler implements InventoryHandler {
     }
 
     @SuppressWarnings("unchecked")
-    private static Option<Map<Enchantment, Integer>> asEnchantmentMap(Option<?> option) {
+    private static Option<Map<Enchantment, Integer>> asEnchantmentMap(
+            Option<?> option
+    ) {
         return (Option<Map<Enchantment, Integer>>) option;
     }
 
-    private static Material getMaterial(Option<?> option) {
-        if (option.getDataType() == Boolean.class) return Material.LEVER;
-        if (isNumber(option)) return Material.COMPARATOR;
-        if (isEnchantmentMap(option)) return Material.ENCHANTED_BOOK;
-
-        return Material.PAPER;
+    @SuppressWarnings("unchecked")
+    private static boolean isValid(
+            Option<?> option,
+            Object value
+    ) {
+        return ((Option<Object>) option)
+                .getPredicate()
+                .test(value);
     }
 
-    private static String formatValue(Object value) {
-        if (value == null) return "<red>No configurado";
-        if (value instanceof Boolean booleanValue) {
-            return booleanValue ? "<green>Activado" : "<red>Desactivado";
-        }
-        if (value instanceof Float floatValue) return formatDecimal(Float.toString(floatValue));
-        if (value instanceof Double doubleValue) return formatDecimal(Double.toString(doubleValue));
-        if (value instanceof Map<?, ?> map) return "%d entradas".formatted(map.size());
-
-        return String.valueOf(value);
+    @SuppressWarnings("unchecked")
+    private static void setValue(
+            Option<?> option,
+            Object value
+    ) {
+        ((Option<Object>) option).setValue(value);
     }
 
-    private static String formatDecimal(String value) {
-        return new BigDecimal(value)
-                .stripTrailingZeros()
-                .toPlainString();
-    }
-
-    private static String formatName(String value) {
-        String formatted = value
-                .replace('_', ' ')
-                .replaceAll("(?<=[a-z0-9])(?=[A-Z])", " ")
-                .toLowerCase(Locale.ROOT);
-
-        if (formatted.isEmpty()) return value;
-
-        return Character.toUpperCase(formatted.charAt(0)) + formatted.substring(1);
-    }
-
-    private static float round(float value) {
-        return Math.round(value * 10_000.0F) / 10_000.0F;
-    }
-
-    private static double round(double value) {
-        return Math.round(value * 10_000.0D) / 10_000.0D;
-    }
-
-    private static int getPreviousSlot(Inventory inventory) {
-        return InventoryDefinition.slot(InventoryDefinition.getBottomRow(inventory), 4);
-    }
-
-    private static int getNextSlot(Inventory inventory) {
-        return InventoryDefinition.slot(InventoryDefinition.getBottomRow(inventory), 6);
-    }
-
-    private static int getLastPage(int itemCount, int pageSize) {
-        return Math.max(0, (itemCount - 1) / pageSize);
-    }
-
-    private static List<Enchantment> getEnchantments() {
-        Registry<Enchantment> registry = RegistryAccess.registryAccess()
+    private static Registry<Enchantment> getEnchantmentRegistry() {
+        return RegistryAccess.registryAccess()
                 .getRegistry(RegistryKey.ENCHANTMENT);
-
-        List<Enchantment> enchantments = new ArrayList<>();
-        registry.forEach(enchantments::add);
-        enchantments.sort(Comparator.comparing(enchantment -> enchantment.getKey().toString()));
-
-        return enchantments;
     }
 
-    private static final class OptionsHandler implements InventoryHandler {
+    private static void clearContent(Inventory inventory) {
+        int capacity =
+                HardlandsInventory.getContentCapacity(inventory);
 
-        private final ScenarioDefinition definition;
-        private final Scenario scenario;
-
-        private OptionsHandler(
-                ScenarioDefinition definition,
-                Scenario scenario
-        ) {
-            this.definition = definition;
-            this.scenario = scenario;
-        }
-
-        @Override
-        public void render(Inventory inventory) {
-            List<Option<?>> options = this.getOptions();
-            int capacity = InventoryDefinition.getContentCapacity(inventory);
-
-            if (options.size() > capacity) {
-                throw new IllegalStateException(
-                        "Scenario supports at most %d options.".formatted(capacity));
-            }
-
-            clearContent(inventory);
-
-            for (int index = 0; index < options.size(); index++) {
-                inventory.setItem(
-                        InventoryDefinition.contentSlot(index),
-                        createOptionItem(options.get(index)));
-            }
-        }
-
-        @Override
-        public Optional<Boolean> handleClick(InventoryClickEvent event, Player player) {
-            Inventory inventory = event.getView().getTopInventory();
-
-            if (event.getRawSlot() == getPreviousSlot(inventory)) {
-                InventoryDefinition.SCENARIOS.openInventory(player);
-                return Optional.of(true);
-            }
-
-            List<Option<?>> options = this.getOptions();
-            int index = InventoryDefinition.getContentIndex(inventory, event.getRawSlot());
-
-            if (index < 0 || index >= options.size()) return Optional.empty();
-
-            Option<?> option = options.get(index);
-
-            if (isEnchantmentMap(option)) {
-                openEnchantments(
-                        player,
-                        this.definition,
-                        this.scenario,
-                        asEnchantmentMap(option));
-
-                return Optional.of(true);
-            }
-
-            boolean succeeded = editOption(option, event);
-
-            if (succeeded) event.setCurrentItem(createOptionItem(option));
-
-            return Optional.of(succeeded);
-        }
-
-        private List<Option<?>> getOptions() {
-            return List.copyOf(this.scenario.getConfigurationOptions().values());
+        for (int index = 0; index < capacity; index++) {
+            inventory.clear(
+                    HardlandsInventory.contentSlot(index));
         }
     }
 
-    private static final class EnchantmentMapHandler implements InventoryHandler {
-
-        private final ScenarioDefinition definition;
-        private final Scenario scenario;
-        private final Option<Map<Enchantment, Integer>> option;
-        private final List<Enchantment> enchantments = getEnchantments();
-
-        private int page;
-
-        private EnchantmentMapHandler(
-                ScenarioDefinition definition,
-                Scenario scenario,
-                Option<Map<Enchantment, Integer>> option
-        ) {
-            this.definition = definition;
-            this.scenario = scenario;
-            this.option = option;
-        }
-
-        @Override
-        public void render(Inventory inventory) {
-            int capacity = InventoryDefinition.getContentCapacity(inventory);
-            int lastPage = getLastPage(this.enchantments.size(), capacity);
-
-            this.page = Math.min(this.page, lastPage);
-
-            clearContent(inventory);
-
-            int start = this.page * capacity;
-
-            for (int index = 0;
-                 index < capacity && start + index < this.enchantments.size();
-                 index++) {
-                inventory.setItem(
-                        InventoryDefinition.contentSlot(index),
-                        this.createEnchantmentItem(this.enchantments.get(start + index)));
-            }
-        }
-
-        @Override
-        public Optional<Boolean> handleClick(InventoryClickEvent event, Player player) {
-            Inventory inventory = event.getView().getTopInventory();
-            int capacity = InventoryDefinition.getContentCapacity(inventory);
-
-            if (event.getRawSlot() == getPreviousSlot(inventory)) {
-                if (this.page > 0) {
-                    this.page--;
-                    this.render(inventory);
-                } else {
-                    openOptions(player, this.definition, this.scenario);
-                }
-
-                return Optional.of(true);
-            }
-
-            if (event.getRawSlot() == getNextSlot(inventory)) {
-                if (this.page >= getLastPage(this.enchantments.size(), capacity)) {
-                    return Optional.of(false);
-                }
-
-                this.page++;
-                this.render(inventory);
-
-                return Optional.of(true);
-            }
-
-            int index = InventoryDefinition.getContentIndex(inventory, event.getRawSlot());
-
-            if (index < 0) return Optional.empty();
-
-            int enchantmentIndex = this.page * capacity + index;
-
-            if (enchantmentIndex >= this.enchantments.size()) return Optional.empty();
-            if (!event.isLeftClick() && !event.isRightClick()) return Optional.of(false);
-
-            Enchantment enchantment = this.enchantments.get(enchantmentIndex);
-            Map<Enchantment, Integer> values = this.option.hasValue()
-                    ? new LinkedHashMap<>(this.option.getValue())
-                    : new LinkedHashMap<>();
-
-            int currentLevel = values.getOrDefault(enchantment, 0);
-            int step = event.isShiftClick() ? 5 : 1;
-            int direction = event.isLeftClick() ? 1 : -1;
-            int level = Math.clamp(currentLevel + direction * step, 0, 255);
-
-            if (level == currentLevel) return Optional.of(false);
-
-            if (level == 0) values.remove(enchantment);
-            else values.put(enchantment, level);
-
-            if (!this.option.getPredicate().test(values)) return Optional.of(false);
-
-            this.option.setValue(values);
-            event.setCurrentItem(this.createEnchantmentItem(enchantment));
-
-            return Optional.of(true);
-        }
-
-        private ItemStack createEnchantmentItem(Enchantment enchantment) {
-            int level = this.option.hasValue()
-                    ? this.option.getValue().getOrDefault(enchantment, 0)
-                    : 0;
-
-            return new ItemBuilder(Material.ENCHANTED_BOOK)
-                    .name("<yellow>" + formatName(enchantment.getKey().getKey()))
-                    .glint(level > 0)
-                    .lore(
-                            "<gray>Nivel: <white>" + level,
-                            "",
-                            "<yellow>Click izquierdo <gray>+1",
-                            "<yellow>Click derecho <gray>-1",
-                            "<yellow>Shift + Click <gray>×5")
-                    .build();
-        }
+    private static ScenarioManager getScenarioManager() {
+        return Hardlands.getInstance()
+                .getScenarioManager();
     }
+
+    private static ScenarioDefinition getScenarioDefinition(
+            String identifier
+    ) {
+        return ScenarioDefinition.findByIdentifier(identifier)
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "Missing ScenarioDefinition: "
+                                        + identifier));
+    }
+
+    private record OptionBinding(
+            Option<?> option,
+            String inputKey
+    ) {}
 }

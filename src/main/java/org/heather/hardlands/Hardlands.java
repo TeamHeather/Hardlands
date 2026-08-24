@@ -30,19 +30,21 @@ public final class Hardlands extends JavaPlugin {
     private final ThreadScheduler threadScheduler = new ThreadScheduler(this);
     private final ScenarioManager scenarioManager = new ScenarioManager(this);
     private final PhaseController phaseController = new PhaseController(this);
-    private final PresetRepository presetRepository = PresetRepository.create(this);
+    private final PresetRepository presetRepository = new PresetRepository(this);
 
-    @Nullable private WorldManager worldManager;
+    @Nullable
+    private WorldManager worldManager;
 
     @Override
     public void onEnable() {
         super.getLogger().info("Initializing...");
-        instance = this;
 
+        instance = this;
         this.worldManager = new WorldManager();
 
-        this.registerListeners(new PlayerListener(), new InventoryListener());
+        this.presetRepository.loadDefault();
 
+        this.registerListeners(new PlayerListener(), new InventoryListener());
         this.registerCommands(new HardlandsCommand());
 
         super.getLogger().info(System.lineSeparator() + """
@@ -53,15 +55,14 @@ public final class Hardlands extends JavaPlugin {
             | |  | |/ ____ \\| | \\ \\| |__| | |____ / ____ \\| |\\  | |__| |____) |
             |_|  |_/_/    \\_\\_|  \\_\\_____/|______/_/    \\_\\_| \\_|_____/|_____/
             """);
+
         super.getLogger().info("Initialized.");
     }
 
     @Override
     public void onDisable() {
         super.getLogger().info("Disabling...");
-
         this.threadScheduler.terminate();
-
         super.getLogger().info("Plugin successfully disabled.");
     }
 
@@ -90,11 +91,8 @@ public final class Hardlands extends JavaPlugin {
     }
 
     public WorldManager getWorldManagerOrThrow() {
-        if (this.worldManager == null) {
-            throw new IllegalStateException("WorldManager has not been initialized.");
-        }
-
-        return worldManager;
+        if (this.worldManager == null) throw new IllegalStateException("WorldManager has not been initialized.");
+        return this.worldManager;
     }
 
     private void registerListeners(Listener... listeners) {
@@ -105,6 +103,7 @@ public final class Hardlands extends JavaPlugin {
 
     private void registerCommands(BaseCommand... commands) {
         PaperCommandManager commandManager = new PaperCommandManager(this);
+
         for (BaseCommand command : commands) {
             commandManager.registerCommand(command);
         }

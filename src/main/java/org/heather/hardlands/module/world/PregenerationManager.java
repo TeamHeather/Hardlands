@@ -2,10 +2,10 @@ package org.heather.hardlands.module.world;
 
 import java.util.HashMap;
 import java.util.Map;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.heather.hardlands.Hardlands;
+import org.heather.hardlands.common.inventory.HardlandsInventory;
 import org.popcraft.chunky.api.ChunkyAPI;
 import org.popcraft.chunky.api.event.task.GenerationCompleteEvent;
 import org.popcraft.chunky.api.event.task.GenerationProgressEvent;
@@ -21,24 +21,6 @@ public final class PregenerationManager {
         this.chunky.onGenerationComplete(this::handleGenerationComplete);
     }
 
-    private synchronized void handleGenerationProgress(GenerationProgressEvent event) {
-        PregenerationTask task = this.pregenerating.get(event.world());
-
-        if (task == null) return;
-
-        this.pregenerating.put(event.world(), event.progress() >= 100
-                ? task.withCompletedState()
-                : task.withProgress(event.progress()));
-    }
-
-    private synchronized void handleGenerationComplete(GenerationCompleteEvent event) {
-        PregenerationTask task = this.pregenerating.get(event.world());
-
-        if (task == null) return;
-
-        this.pregenerating.put(event.world(), task.withCompletedState());
-    }
-
     public synchronized void reviewAndAccept(PregenerationRequest request) {
         String worldName = request.worldName();
 
@@ -47,13 +29,12 @@ public final class PregenerationManager {
         }
 
         this.pregenerating.put(worldName, PregenerationTask.running());
+        this.refreshPreparationItem();
     }
 
     public synchronized void pause() {
         this.pregenerating.replaceAll((worldName, task) -> {
-            if (task.state() != State.RUNNING) {
-                return task;
-            }
+            if (task.state() != State.RUNNING) return task;
 
             if (!this.chunky.pauseTask(worldName)) {
                 throw new IllegalStateException("Unable to pause pregeneration for world: " + worldName);
@@ -61,13 +42,13 @@ public final class PregenerationManager {
 
             return task.withState(State.PAUSED);
         });
+
+        this.refreshPreparationItem();
     }
 
     public synchronized void resume() {
         this.pregenerating.replaceAll((worldName, task) -> {
-            if (task.state() != State.PAUSED) {
-                return task;
-            }
+            if (task.state() != State.PAUSED) return task;
 
             if (!this.chunky.continueTask(worldName)) {
                 throw new IllegalStateException("Unable to resume pregeneration for world: " + worldName);
@@ -75,6 +56,8 @@ public final class PregenerationManager {
 
             return task.withState(State.RUNNING);
         });
+
+        this.refreshPreparationItem();
     }
 
     public synchronized State getState() {
@@ -91,13 +74,38 @@ public final class PregenerationManager {
     public synchronized float getProgress() {
         if (this.pregenerating.isEmpty()) return 0.0F;
 
-        float totalProgress = 0.0F;
+        float progress = 0.0F;
 
         for (PregenerationTask task : this.pregenerating.values()) {
-            totalProgress += task.progress();
+            progress += task.progress();
         }
 
-        return totalProgress / this.pregenerating.size();
+        return progress / this.pregenerating.size();
+    }
+
+    private synchronized void handleGenerationProgress(GenerationProgressEvent event) {
+        PregenerationTask task = this.pregenerating.get(event.world());
+
+        if (task == null) return;
+
+        this.pregenerating.put(
+                event.world(),
+                event.progress() >= 100.0F ? task.completed() : task.withProgress(event.progress()));
+
+        this.refreshPreparationItem();
+    }
+
+    private synchronized void handleGenerationComplete(GenerationCompleteEvent event) {
+        PregenerationTask task = this.pregenerating.get(event.world());
+
+        if (task == null) return;
+
+        this.pregenerating.put(event.world(), task.completed());
+        this.refreshPreparationItem();
+    }
+
+    private void refreshPreparationItem() {
+        Bukkit.getScheduler().runTask(Hardlands.getInstance(), HardlandsInventory::refreshPreparationItems);
     }
 
     private record PregenerationTask(State state, float progress) {
@@ -110,7 +118,7 @@ public final class PregenerationManager {
             return new PregenerationTask(this.state, progress);
         }
 
-        private PregenerationTask withCompletedState() {
+        private PregenerationTask completed() {
             return new PregenerationTask(State.COMPLETED, 100.0F);
         }
 
@@ -121,29 +129,17 @@ public final class PregenerationManager {
 
     public enum State {
 
-        IDLE("idle", "Sin iniciar", Material.BEDROCK, NamedTextColor.GRAY),
-        RUNNING("running", "En progreso", Material.DIRT, NamedTextColor.YELLOW),
-        PAUSED("paused", "Pausado", Material.STONE, NamedTextColor.GOLD),
-        COMPLETED("completed", "Completado", Material.GRASS_BLOCK, NamedTextColor.GREEN);
+        IDLE("Sin iniciar", Material.BEDROCK),
+        RUNNING("En progreso", Material.DIRT),
+        PAUSED("Pausado", Material.STONE),
+        COMPLETED("Completado", Material.GRASS_BLOCK);
 
-        private final String key;
         private final String name;
         private final Material material;
-        private final TextColor color;
 
-        State(String key, String name, Material material, TextColor color) {
-            this.key = key;
+        private State(String name, Material material) {
             this.name = name;
             this.material = material;
-            this.color = color;
-        }
-
-        public Component display() {
-            return Component.text(this.name, this.color);
-        }
-
-        public String getKey() {
-            return this.key;
         }
 
         public String getName() {
@@ -152,10 +148,6 @@ public final class PregenerationManager {
 
         public Material getMaterial() {
             return this.material;
-        }
-
-        public TextColor getColor() {
-            return this.color;
         }
     }
 }
