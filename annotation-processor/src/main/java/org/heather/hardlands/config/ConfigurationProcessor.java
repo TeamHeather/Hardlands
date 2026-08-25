@@ -26,7 +26,7 @@ import java.util.Set;
 @SupportedAnnotationTypes("org.heather.hardlands.config.ConfigBuilder")
 public final class ConfigurationProcessor extends AbstractProcessor {
 
-    private static final String DEFAULT_SUPERCLASS = "org.heather.hardlands.core.config.Configuration";
+    private static final String DEFAULT_SUPERCLASS = "org.heather.hardlands.config.Configuration";
     private static final String LIST_TYPE = "java.util.List";
     private static final String SET_TYPE = "java.util.Set";
     private static final String MAP_TYPE = "java.util.Map";
@@ -85,8 +85,8 @@ public final class ConfigurationProcessor extends AbstractProcessor {
         writer.write("""
                 package %s;
 
-                import org.heather.hardlands.core.config.Option;
-                import org.heather.hardlands.core.config.Validator;
+                import org.heather.hardlands.config.Option;
+                import org.heather.hardlands.config.Validator;
 
                 public abstract class %s extends %s {
 

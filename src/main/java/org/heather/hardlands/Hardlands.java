@@ -9,9 +9,9 @@ import org.bukkit.Bukkit;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.heather.hardlands.common.command.HardlandsCommand;
-import org.heather.hardlands.common.inventory.InventoryListener;
+import org.heather.hardlands.config.inventory.InventoryListener;
 import org.heather.hardlands.common.player.PlayerListener;
-import org.heather.hardlands.core.ThreadScheduler;
+import org.heather.hardlands.util.ThreadScheduler;
 import org.heather.hardlands.module.PresetRepository;
 import org.heather.hardlands.module.general.GeneralConfiguration;
 import org.heather.hardlands.module.phase.PhaseController;
@@ -27,13 +27,12 @@ public final class Hardlands extends JavaPlugin {
     private static Hardlands instance;
 
     private final GeneralConfiguration generalConfiguration = new GeneralConfiguration();
+    private final PresetRepository presetRepository = new PresetRepository(this, "presets");
     private final ThreadScheduler threadScheduler = new ThreadScheduler(this);
     private final ScenarioManager scenarioManager = new ScenarioManager(this);
     private final PhaseController phaseController = new PhaseController(this);
-    private final PresetRepository presetRepository = new PresetRepository(this);
 
-    @Nullable
-    private WorldManager worldManager;
+    @Nullable private WorldManager worldManager;
 
     @Override
     public void onEnable() {
@@ -42,7 +41,7 @@ public final class Hardlands extends JavaPlugin {
         instance = this;
         this.worldManager = new WorldManager();
 
-        this.presetRepository.loadDefault();
+        this.presetRepository.load("default");
 
         this.registerListeners(new PlayerListener(), new InventoryListener());
         this.registerCommands(new HardlandsCommand());
@@ -62,7 +61,9 @@ public final class Hardlands extends JavaPlugin {
     @Override
     public void onDisable() {
         super.getLogger().info("Disabling...");
+
         this.threadScheduler.terminate();
+
         super.getLogger().info("Plugin successfully disabled.");
     }
 
@@ -91,7 +92,10 @@ public final class Hardlands extends JavaPlugin {
     }
 
     public WorldManager getWorldManagerOrThrow() {
-        if (this.worldManager == null) throw new IllegalStateException("WorldManager has not been initialized.");
+        if (this.worldManager == null) {
+            throw new IllegalStateException("WorldManager has not been initialized.");
+        }
+
         return this.worldManager;
     }
 

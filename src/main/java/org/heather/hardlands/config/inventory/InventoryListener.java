@@ -1,8 +1,9 @@
-package org.heather.hardlands.common.inventory;
+package org.heather.hardlands.config.inventory;
 
 import java.util.Optional;
 
 import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -68,6 +69,7 @@ public final class InventoryListener implements Listener {
     private static void playFeedback(Player player, boolean succeeded) {
         player.playSound(player,
                 succeeded ? Sound.UI_BUTTON_CLICK : Sound.BLOCK_NOTE_BLOCK_BIT,
+                SoundCategory.UI,
                 0.5F,
                 succeeded ? 1.5F : 0.5F);
     }

@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.heather.hardlands.Hardlands;
-import org.heather.hardlands.core.data.json.JsonConvertible;
+import org.heather.hardlands.util.data.json.JsonConvertible;
 
 public final class ScenarioManager implements JsonConvertible {
 

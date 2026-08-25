@@ -2,130 +2,102 @@ package org.heather.hardlands.module;
 
 import com.google.gson.JsonObject;
 import com.google.gson.annotations.SerializedName;
+import org.bukkit.Material;
+import org.heather.hardlands.Hardlands;
+import org.heather.hardlands.util.data.json.JsonDataManager;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import org.bukkit.Material;
-import org.heather.hardlands.Hardlands;
-import org.heather.hardlands.core.data.json.JsonDataManager;
-
 public final class PresetRepository {
 
-    public static final String DEFAULT_NAME = "DEFAULT";
     public static final Material DEFAULT_ICON = Material.BOOK;
 
-    private static final String EXTENSION = ".json";
+    private static final String FILE_EXTENSION = ".json";
     private static final Pattern NAME_PATTERN = Pattern.compile("[\\p{L}\\p{N} _-]{1,32}");
 
     private final Hardlands plugin;
     private final Path directory;
 
-    public PresetRepository(Hardlands plugin) {
+    public PresetRepository(Hardlands plugin, String directory) {
         this.plugin = plugin;
-        this.directory = plugin.getDataPath().resolve("presets");
+        this.directory = plugin.getDataPath().resolve(directory);
     }
 
     public void save(String name, Material icon, String description) {
-        this.validateName(name);
-        this.validateIcon(icon);
+        String normalizedName = validateName(name);
+        validateIcon(icon);
 
-        try {
-            Files.createDirectories(this.directory);
-        } catch (IOException exception) {
-            throw new UncheckedIOException(exception);
-        }
-
-        this.managerFor(name).write(new Preset(
+        this.managerFor(normalizedName).write(new Preset(
                 icon.getKey().asString(),
-                cleanDescription(description),
-                this.plugin.getGeneralConfiguration().toJson().getAsJsonObject(),
-                this.plugin.getWorldManagerOrThrow().toJson().getAsJsonObject(),
+                normalizeDescription(description),
                 this.plugin.getScenarioManager().toJson().getAsJsonObject(),
-                this.plugin.getPhaseController().toJson().getAsJsonObject()));
+                this.plugin.getGeneralConfiguration().toJson().getAsJsonObject(),
+                this.plugin.getPhaseController().toJson().getAsJsonObject(),
+                this.plugin.getWorldManagerOrThrow().toJson().getAsJsonObject()));
     }
 
     public void load(String name) {
-        this.validateName(name);
+        String normalizedName = validateName(name);
 
-        this.managerFor(name).read().ifPresent(preset -> {
-            this.plugin.getGeneralConfiguration().fromJson(preset.general());
-            this.plugin.getWorldManagerOrThrow().fromJson(preset.world());
+        this.managerFor(normalizedName).read().ifPresent(preset -> {
             this.plugin.getScenarioManager().fromJson(preset.scenarios());
+            this.plugin.getGeneralConfiguration().fromJson(preset.general());
             this.plugin.getPhaseController().fromJson(preset.phase());
+            this.plugin.getWorldManagerOrThrow().fromJson(preset.world());
         });
     }
 
-    public void loadDefault() {
-        this.findPresetName(DEFAULT_NAME).ifPresent(this::load);
-    }
+    public void update(String name, Material icon, String description) {
+        String normalizedName = validateName(name);
+        validateIcon(icon);
 
-    public void updateMetadata(String name, Material icon, String description) {
-        this.validateName(name);
-        this.validateIcon(icon);
-
-        JsonDataManager<Preset> manager = this.managerFor(name);
-
-        manager.read().ifPresent(preset -> manager.write(new Preset(
-                icon.getKey().asString(),
-                cleanDescription(description),
-                preset.general(),
-                preset.world(),
-                preset.scenarios(),
-                preset.phase())));
+        JsonDataManager<Preset> manager = this.managerFor(normalizedName);
+        manager.read().ifPresent(preset ->
+                manager.write(preset.withMetadata(icon, description)));
     }
 
     public void delete(String name) {
-        this.validateName(name);
+        String normalizedName = validateName(name);
 
         try {
-            Files.deleteIfExists(this.pathFor(name));
+            Files.deleteIfExists(this.pathFor(normalizedName));
         } catch (IOException exception) {
             throw new UncheckedIOException(exception);
         }
     }
 
-    public List<PresetInfo> getPresets() {
-        List<PresetInfo> presets = new ArrayList<>();
-
-        for (String name : this.getPresetNames()) {
-            this.managerFor(name).read().ifPresent(preset ->
-                    presets.add(new PresetInfo(name, parseIcon(preset.icon()), cleanDescription(preset.description()))));
-        }
-
-        return presets;
+    public List<PresetInfo> presets() {
+        return this.presetNames().stream()
+                .flatMap(name -> this.managerFor(name).read().stream()
+                        .map(preset -> preset.toInfo(name)))
+                .toList();
     }
 
     public boolean exists(String name) {
-        return this.findPresetName(name).isPresent();
+        if (!this.isNameValid(name)) return false;
+
+        return Files.isRegularFile(this.pathFor(name.strip()));
     }
 
-    public boolean isValidName(String name) {
+    public boolean isNameValid(String name) {
         return name != null && NAME_PATTERN.matcher(name.strip()).matches();
     }
 
-    public static boolean isValidIcon(Material material) {
-        return material != null && material.isItem() && !material.isAir();
-    }
-
-    public record PresetInfo(String name, Material icon, String description) {}
-
-    private List<String> getPresetNames() {
+    private List<String> presetNames() {
         if (Files.notExists(this.directory)) return List.of();
 
-        try (Stream<Path> files = Files.list(this.directory)) {
-            return files
+        try (Stream<Path> paths = Files.list(this.directory)) {
+            return paths
                     .filter(Files::isRegularFile)
                     .map(path -> path.getFileName().toString())
-                    .filter(name -> name.endsWith(EXTENSION))
-                    .map(name -> name.substring(0, name.length() - EXTENSION.length()))
-                    .filter(this::isValidName)
+                    .filter(name -> name.endsWith(FILE_EXTENSION))
+                    .map(name -> name.substring(0, name.length() - FILE_EXTENSION.length()))
                     .sorted(String.CASE_INSENSITIVE_ORDER)
                     .toList();
         } catch (IOException exception) {
@@ -133,49 +105,76 @@ public final class PresetRepository {
         }
     }
 
-    private Optional<String> findPresetName(String name) {
-        if (!this.isValidName(name)) return Optional.empty();
-
-        String target = name.strip();
-
-        for (String preset : this.getPresetNames()) {
-            if (preset.equalsIgnoreCase(target)) return Optional.of(preset);
-        }
-
-        return Optional.empty();
-    }
-
     private JsonDataManager<Preset> managerFor(String name) {
-        return new JsonDataManager<>(Hardlands.GSON, this.pathFor(name), Preset.class);
+        return new JsonDataManager<>(
+                Hardlands.GSON,
+                this.pathFor(name),
+                Preset.class);
     }
 
     private Path pathFor(String name) {
-        return this.directory.resolve(name.strip() + EXTENSION);
+        return this.directory.resolve(name + FILE_EXTENSION);
     }
 
-    private void validateName(String name) {
-        if (!this.isValidName(name)) throw new IllegalArgumentException("Invalid preset name: " + name);
+    private static String validateName(String name) {
+        if (name == null) {
+            throw new IllegalArgumentException("Preset name cannot be null");
+        }
+
+        String normalizedName = name.strip();
+
+        if (!NAME_PATTERN.matcher(normalizedName).matches()) {
+            throw new IllegalArgumentException("Invalid preset name: " + name);
+        }
+
+        return normalizedName;
     }
 
-    private void validateIcon(Material icon) {
-        if (!isValidIcon(icon)) throw new IllegalArgumentException("Invalid preset icon: " + icon);
+    private static void validateIcon(Material icon) {
+        if (!isValidIcon(icon)) {
+            throw new IllegalArgumentException("Invalid preset icon: " + icon);
+        }
     }
 
-    private static Material parseIcon(String value) {
-        Material material = value == null ? null : Material.matchMaterial(value);
-        return isValidIcon(material) ? material : DEFAULT_ICON;
+    private static boolean isValidIcon(Material icon) {
+        return icon != null && icon.isItem() && !icon.isAir();
     }
 
-    private static String cleanDescription(String description) {
+    private static String normalizeDescription(String description) {
         return description == null ? "" : description.strip();
     }
+
+    public record PresetInfo(String name, Material icon, String description) {}
 
     private record Preset(
             @SerializedName("icon") String icon,
             @SerializedName("description") String description,
-            @SerializedName("general") JsonObject general,
-            @SerializedName("world") JsonObject world,
             @SerializedName("scenarios") JsonObject scenarios,
-            @SerializedName("phase") JsonObject phase
-    ) {}
+            @SerializedName("general") JsonObject general,
+            @SerializedName("phase") JsonObject phase,
+            @SerializedName("world") JsonObject world
+    ) {
+
+        private Preset withMetadata(Material icon, String description) {
+            return new Preset(
+                    icon.getKey().asString(),
+                    normalizeDescription(description),
+                    this.scenarios,
+                    this.general,
+                    this.phase,
+                    this.world);
+        }
+
+        private PresetInfo toInfo(String name) {
+            return new PresetInfo(
+                    name,
+                    parseIcon(this.icon),
+                    normalizeDescription(this.description));
+        }
+
+        private static Material parseIcon(String value) {
+            Material material = value == null ? null : Material.matchMaterial(value);
+            return isValidIcon(material) ? material : DEFAULT_ICON;
+        }
+    }
 }

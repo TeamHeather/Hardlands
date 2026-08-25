@@ -1,23 +1,23 @@
 package org.heather.hardlands.module.world;
 
+import java.time.Duration;
 import java.util.Set;
 import java.util.function.Consumer;
+
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.WorldBorder;
 import org.heather.hardlands.config.ConfigBuilder;
+import org.heather.hardlands.config.Option;
 import org.heather.hardlands.config.OptionDef;
-import org.heather.hardlands.core.config.Option;
-import org.heather.hardlands.core.config.Validator;
+import org.heather.hardlands.config.Validator;
 import org.popcraft.chunky.api.ChunkyAPI;
 
 @ConfigBuilder(identifier = "world", options = {
         @OptionDef(type = Set.class, elementType = String.class, name = "enabledWorlds"),
         @OptionDef(type = Integer.class, validators = Validator.Keys.POSITIVE, name = "survivalSize"),
         @OptionDef(type = Integer.class, validators = Validator.Keys.POSITIVE, name = "meetupSize"),
-        @OptionDef(type = Integer.class, validators = Validator.Keys.POSITIVE, name = "deathmatchSize"),
-        @OptionDef(type = Integer.class, validators = Validator.Keys.NON_NEGATIVE, name = "meetupShrinkTime"),
-        @OptionDef(type = Integer.class, validators = Validator.Keys.NON_NEGATIVE, name = "deathmatchShrinkTime"),
+        @OptionDef(type = Integer.class, validators = Validator.Keys.NON_NEGATIVE, name = "deathmatchSize"),
         @OptionDef(type = Boolean.class, name = "surfaceTeleport"),
         @OptionDef(type = Boolean.class, name = "borderDamage"),
         @OptionDef(type = Double.class, name = "centerX"),
@@ -30,7 +30,6 @@ public final class WorldManager extends WorldManagerConfiguration {
     public void configure() {
         this.forEachEnabledWorld((world, centerX, centerZ, survivalSize) -> {
             WorldBorder border = world.getWorldBorder();
-
             border.setCenter(centerX, centerZ);
             border.setSize(survivalSize);
         });
@@ -42,12 +41,12 @@ public final class WorldManager extends WorldManagerConfiguration {
                         new PregenerationRequest(world.getName(), centerX, centerZ, survivalSize)));
     }
 
-    public void shrinkForMeetup() {
-        this.shrinkWorldBorders(super.meetupSize, super.meetupShrinkTime);
+    public void shrinkForMeetup(Duration duration) {
+        this.shrinkWorldBorders(super.meetupSize, duration);
     }
 
-    public void shrinkForDeathmatch() {
-        this.shrinkWorldBorders(super.deathmatchSize, super.deathmatchShrinkTime);
+    public void shrinkForDeathmatch(Duration duration) {
+        this.shrinkWorldBorders(super.deathmatchSize, duration);
     }
 
     public PregenerationManager getPregenerationManager() {
@@ -65,9 +64,9 @@ public final class WorldManager extends WorldManagerConfiguration {
         return survival >= meetup && meetup >= deathmatch;
     }
 
-    private void shrinkWorldBorders(Option<Integer> targetSize, Option<Integer> duration) {
+    private void shrinkWorldBorders(Option<Integer> targetSize, Duration duration) {
         int size = targetSize.getValue();
-        long ticks = duration.getValue() * 1200L;
+        long ticks = duration.toMillis() / 50L;
 
         this.forEachEnabledWorld(world ->
                 world.getWorldBorder().changeSize(scaleForDimension(world, size), ticks));

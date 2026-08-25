@@ -5,7 +5,7 @@ import co.aikar.commands.annotation.CommandAlias;
 import co.aikar.commands.annotation.CommandPermission;
 import co.aikar.commands.annotation.Default;
 import org.bukkit.entity.Player;
-import org.heather.hardlands.common.inventory.HardlandsInventory;
+import org.heather.hardlands.config.inventory.HardlandsInventory;
 
 @CommandAlias("hardlands|hl")
 @CommandPermission("hardlands.admin")

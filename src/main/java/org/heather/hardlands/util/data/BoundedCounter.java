@@ -1,4 +1,4 @@
-package org.heather.hardlands.core.data;
+package org.heather.hardlands.util.data;
 
 public final class BoundedCounter {
     private final int limit;

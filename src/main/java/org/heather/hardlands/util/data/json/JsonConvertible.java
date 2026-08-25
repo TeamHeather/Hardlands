@@ -1,4 +1,4 @@
-package org.heather.hardlands.core.data.json;
+package org.heather.hardlands.util.data.json;
 
 import com.google.gson.JsonElement;
 

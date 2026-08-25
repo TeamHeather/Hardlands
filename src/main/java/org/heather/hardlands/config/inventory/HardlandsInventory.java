@@ -1,4 +1,4 @@
-package org.heather.hardlands.common.inventory;
+package org.heather.hardlands.config.inventory;
 
 import java.util.List;
 import java.util.Map;
@@ -10,12 +10,11 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.heather.hardlands.common.inventory.handler.InventoryHandler;
-import org.heather.hardlands.common.inventory.handler.PresetInventoryHandler;
-import org.heather.hardlands.common.inventory.handler.ScenarioInventoryHandler;
-import org.heather.hardlands.common.inventory.handler.WorldInventoryHandler;
 import org.heather.hardlands.common.item.InventoryItem;
 import org.heather.hardlands.common.item.ItemBuilder;
+import org.heather.hardlands.config.inventory.handler.InventoryHandler;
+import org.heather.hardlands.config.inventory.handler.PresetInventoryHandler;
+import org.heather.hardlands.config.inventory.handler.ScenarioInventoryHandler;
 
 public enum HardlandsInventory {
 
@@ -33,28 +32,24 @@ public enum HardlandsInventory {
             'T', InventoryItem.PRESETS)),
 
     SCENARIOS("Escenarios", Material.PINK_STAINED_GLASS_PANE, ScenarioInventoryHandler::new),
-    PLAYERS("Jugadores", Material.YELLOW_STAINED_GLASS_PANE),
-    GENERAL("General", Material.PURPLE_STAINED_GLASS_PANE),
-    PHASES("Fases", Material.LIME_STAINED_GLASS_PANE),
 
-    WORLD("Mundo", Material.LIGHT_BLUE_STAINED_GLASS_PANE, """
-            -------
-            ---W---
-            -B-R-C-
-            ---H---
-            -------
-            """, Map.of(
-            'W', InventoryItem.WORLD_WORLDS,
-            'B', InventoryItem.WORLD_BORDERS,
-            'R', InventoryItem.WORLD_SHRINK,
-            'C', InventoryItem.WORLD_CENTER,
-            'H', InventoryItem.WORLD_BEHAVIOR
-    ), WorldInventoryHandler::new),
+    PLAYERS(
+            "Jugadores",
+            Material.YELLOW_STAINED_GLASS_PANE),
+
+    GENERAL(
+            "General",
+            Material.PURPLE_STAINED_GLASS_PANE),
+
+    PHASES(
+            "Fases",
+            Material.LIME_STAINED_GLASS_PANE),
 
     PRESETS("Plantillas", Material.PURPLE_STAINED_GLASS_PANE, PresetInventoryHandler::new);
 
     private static final int COLUMNS = 9;
     private static final int CONTENT_COLUMNS = COLUMNS - 2;
+
     private static final String EMPTY_LAYOUT = """
             -------
             -------
@@ -67,6 +62,26 @@ public enum HardlandsInventory {
     private final List<String> layout;
     private final Map<Character, InventoryItem> items;
     private final Supplier<InventoryHandler> handlerFactory;
+
+    HardlandsInventory(String title, Material outline, String layout, Map<Character, InventoryItem> items, Supplier<InventoryHandler> handlerFactory) {
+        this.title = title;
+        this.outline = new ItemBuilder(outline).name("").build();
+        this.layout = layout.strip().lines().toList();
+        this.items = items;
+        this.handlerFactory = handlerFactory;
+    }
+
+    HardlandsInventory(String title, Material outline, String layout, Map<Character, InventoryItem> items) {
+        this(title, outline, layout, items, () -> InventoryHandler.EMPTY);
+    }
+
+    HardlandsInventory(String title, Material outline, Supplier<InventoryHandler> handlerFactory) {
+        this(title, outline, EMPTY_LAYOUT, Map.of(), handlerFactory);
+    }
+
+    HardlandsInventory(String title, Material outline) {
+        this(title, outline, EMPTY_LAYOUT, Map.of());
+    }
 
     public void openInventory(Player player) {
         InventoryHandler handler = this.handlerFactory.get();
@@ -88,10 +103,14 @@ public enum HardlandsInventory {
                 InventoryItem item = this.items.get(symbol);
 
                 if (item == null) {
-                    throw new IllegalStateException("No InventoryItem defined for layout symbol '%s'.".formatted(symbol));
+                    throw new IllegalStateException(
+                            "No InventoryItem defined for layout symbol '%s'."
+                                    .formatted(symbol));
                 }
 
-                inventory.setItem(slot(row + 2, column + 2), item.build());
+                inventory.setItem(
+                        slot(row + 2, column + 2),
+                        item.build());
             }
         }
     }
@@ -113,43 +132,32 @@ public enum HardlandsInventory {
     }
 
     public static int contentSlot(int index) {
-        return slot(index / CONTENT_COLUMNS + 2, index % CONTENT_COLUMNS + 2);
+        return slot(
+                index / CONTENT_COLUMNS + 2,
+                index % CONTENT_COLUMNS + 2);
     }
 
     public static void refreshPreparationItems() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             Inventory inventory = player.getOpenInventory().getTopInventory();
 
-            if (!(inventory.getHolder() instanceof HardlandsInventoryHolder)) continue;
+            if (!(inventory.getHolder() instanceof HardlandsInventoryHolder)) {
+                continue;
+            }
 
-            inventory.setItem(slot(getBottomRow(inventory), 5), InventoryItem.PREPARATION.build());
+            inventory.setItem(
+                    slot(getBottomRow(inventory), 5),
+                    InventoryItem.PREPARATION.build());
         }
-    }
-
-    private HardlandsInventory(String title, Material outline, String layout, Map<Character, InventoryItem> items,
-                               Supplier<InventoryHandler> handlerFactory) {
-        this.title = title;
-        this.outline = new ItemBuilder(outline).name("").build();
-        this.layout = layout.strip().lines().toList();
-        this.items = items;
-        this.handlerFactory = handlerFactory;
-    }
-
-    private HardlandsInventory(String title, Material outline, String layout, Map<Character, InventoryItem> items) {
-        this(title, outline, layout, items, () -> InventoryHandler.EMPTY);
-    }
-
-    private HardlandsInventory(String title, Material outline, Supplier<InventoryHandler> handlerFactory) {
-        this(title, outline, EMPTY_LAYOUT, Map.of(), handlerFactory);
-    }
-
-    private HardlandsInventory(String title, Material outline) {
-        this(title, outline, EMPTY_LAYOUT, Map.of());
     }
 
     private Inventory createInventory(InventoryHandler handler) {
         HardlandsInventoryHolder holder = new HardlandsInventoryHolder(handler);
-        Inventory inventory = Bukkit.createInventory(holder, (this.layout.size() + 2) * COLUMNS, Component.text(this.title));
+
+        Inventory inventory = Bukkit.createInventory(
+                holder,
+                (this.layout.size() + 2) * COLUMNS,
+                Component.text(this.title));
 
         holder.setInventory(inventory);
 

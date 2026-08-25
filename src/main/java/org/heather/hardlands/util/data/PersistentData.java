@@ -1,4 +1,4 @@
-package org.heather.hardlands.core.data;
+package org.heather.hardlands.util.data;
 
 import java.util.Optional;
 import org.bukkit.NamespacedKey;

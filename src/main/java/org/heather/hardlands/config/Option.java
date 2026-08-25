@@ -1,4 +1,4 @@
-package org.heather.hardlands.core.config;
+package org.heather.hardlands.config;
 
 import java.lang.reflect.Type;
 import java.util.function.Predicate;

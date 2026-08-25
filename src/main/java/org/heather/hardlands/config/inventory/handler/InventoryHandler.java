@@ -1,4 +1,4 @@
-package org.heather.hardlands.common.inventory.handler;
+package org.heather.hardlands.config.inventory.handler;
 
 import java.util.Optional;
 import org.bukkit.entity.Player;

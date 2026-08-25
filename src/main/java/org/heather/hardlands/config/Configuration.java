@@ -1,4 +1,4 @@
-package org.heather.hardlands.core.config;
+package org.heather.hardlands.config;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import org.heather.hardlands.Hardlands;
-import org.heather.hardlands.core.data.json.JsonConvertible;
+import org.heather.hardlands.util.data.json.JsonConvertible;
 
 public abstract class Configuration implements JsonConvertible {
 

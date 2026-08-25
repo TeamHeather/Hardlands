@@ -6,41 +6,45 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.heather.hardlands.common.item.InventoryItem;
 import org.heather.hardlands.common.item.ItemBuilder;
-import org.heather.hardlands.core.config.Option;
+import org.heather.hardlands.config.Option;
 import org.heather.hardlands.module.scenario.scenarios.AppleGroveScenario;
 import org.heather.hardlands.module.scenario.scenarios.BonanzaScenario;
 import org.heather.hardlands.module.scenario.scenarios.MagicManScenario;
+import org.heather.hardlands.util.text.HardlandsColor;
+import org.heather.hardlands.util.text.TextFormatter;
 
 public enum ScenarioDefinition {
 
-    APPLE_GROVE(
-            "Apple Grove",
-            AppleGroveScenario::new,
-            Material.GOLDEN_APPLE,
-            "Aumenta la obtención de {manzanas} y sus variantes."),
+    APPLE_GROVE("Apple Grove", AppleGroveScenario::new, Material.APPLE,
+            "Aumenta la obtención de manzanas y sus variantes."),
 
-    BONANZA(
-            "Bonanza",
-            BonanzaScenario::new,
-            Material.GOLD_ORE,
-            "Multiplica los recursos obtenidos de {minerales}."),
+    BONANZA("Bonanza", BonanzaScenario::new, Material.GOLD_ORE,
+            "Multiplica los recursos obtenidos de minerales."),
 
-    MAGIC_MAN(
-            "Magic Man",
-            MagicManScenario::new,
-            Material.ENCHANTING_TABLE,
-            "Configura los {encantamientos} disponibles.");
+    MAGIC_MAN("Magic Man", MagicManScenario::new, Material.ENCHANTING_TABLE,
+            "Aplica los encantamientos configurados automáticamente a sus herramientas respectivas.");
 
     private final String name;
     private final Supplier<Scenario> factory;
-    private final ItemStack displayItem;
+    private final ItemStack baseDisplayItem;
+
+    ScenarioDefinition(String name, Supplier<Scenario> factory, Material material, String description) {
+        this.name = name;
+        this.factory = factory;
+        this.baseDisplayItem = InventoryItem.createDisplayStack(material, name, description);
+    }
 
     public String identifier() {
-        return this.name().toLowerCase(Locale.ROOT);
+        return this.name.toLowerCase(Locale.ROOT);
+    }
+
+    public String getName() {
+        return this.name;
     }
 
     public Scenario createScenario() {
@@ -48,35 +52,20 @@ public enum ScenarioDefinition {
     }
 
     public ItemStack createDisplayItem(Scenario scenario, boolean enabled) {
-        ItemBuilder builder = new ItemBuilder(this.displayItem).glint(enabled);
-        boolean hasOptions = false;
+        ItemBuilder builder = new ItemBuilder(this.baseDisplayItem)
+                .name(TextFormatter.formatTinyCaps(this.name).color(enabled
+                        ? HardlandsColor.PRIMARY
+                        : NamedTextColor.DARK_GRAY))
+                .glint(enabled)
+                .addFormattedLore("", "{Estado}: [%s]".formatted(enabled ? "Activo" : "Inactivo"));
 
-        for (Option<?> option : scenario.getConfigurationOptions().values()) {
-            if (!option.hasValue()) continue;
+        addConfiguredOptions(builder, scenario);
 
-            if (!hasOptions) {
-                builder.addFormattedLore("");
-                hasOptions = true;
-            }
-
-            builder.addFormattedLore("%s: {%s}".formatted(option.getKey(), formatValue(option.getValue())));
-        }
-
-        builder.addFormattedLore(
-                "",
-                "Estado: {%s}".formatted(enabled ? "Activo" : "Inactivo"),
-                "",
-                "{Clic izquierdo} para alternar.");
-
-        if (!scenario.getConfigurationOptions().isEmpty()) {
-            builder.addFormattedLore("{Clic derecho} para configurar.");
-        }
-
-        return builder.build();
-    }
-
-    public String getName() {
-        return this.name;
+        boolean configurable = !scenario.getConfigurationOptions().isEmpty();
+        String actions = configurable
+                ? "<dark_gray>Izq. ↔ Alternar | Der. ✎ Configurar"
+                : "<dark_gray>Izq. ↔ Alternar";
+        return builder.addFormattedLore("", actions).build();
     }
 
     public static Optional<ScenarioDefinition> findByIdentifier(String identifier) {
@@ -87,10 +76,25 @@ public enum ScenarioDefinition {
         return Optional.empty();
     }
 
-    private ScenarioDefinition(String name, Supplier<Scenario> factory, Material material, String description) {
-        this.name = name;
-        this.factory = factory;
-        this.displayItem = InventoryItem.createDisplayStack(material, name, description);
+    private static void addConfiguredOptions(ItemBuilder builder, Scenario scenario) {
+        boolean headerAdded = false;
+
+        for (Option<?> option : scenario.getConfigurationOptions().values()) {
+            if (!option.hasValue()) continue;
+
+            if (!headerAdded) {
+                builder.addFormattedLore("", "{Configuración}:");
+                headerAdded = true;
+            }
+
+            builder.addFormattedLore(
+                    "▶ %s: [%s]".formatted(option.getKey(), option.getValue()));
+        }
+    }
+
+    private static String formatOptionName(String key) {
+        String name = key.replace('-', ' ').replace('_', ' ').replaceAll("(?<=[a-z0-9])(?=[A-Z])", " ");
+        return name.isEmpty() ? name : Character.toUpperCase(name.charAt(0)) + name.substring(1);
     }
 
     private static String formatValue(Object value) {

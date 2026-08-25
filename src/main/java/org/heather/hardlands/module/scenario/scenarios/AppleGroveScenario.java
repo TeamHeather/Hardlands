@@ -12,14 +12,14 @@ import org.bukkit.inventory.ItemStack;
 import org.heather.hardlands.Hardlands;
 import org.heather.hardlands.config.ConfigBuilder;
 import org.heather.hardlands.config.OptionDef;
-import org.heather.hardlands.core.config.Validator;
+import org.heather.hardlands.config.Validator;
 import org.heather.hardlands.module.scenario.Scenario;
 
 @ConfigBuilder(superclass = Scenario.class, options = {
-        @OptionDef(type = Boolean.class, name = "allTreeTypes"),
-        @OptionDef(type = Float.class, validators = Validator.Keys.UNIT_INTERVAL, name = "appleDropRate"),
-        @OptionDef(type = Float.class, validators = Validator.Keys.UNIT_INTERVAL, name = "goldenAppleDropRate"),
-        @OptionDef(type = Float.class, validators = Validator.Keys.UNIT_INTERVAL, name = "enchantedGoldenAppleDropRate")
+        @OptionDef(type = Boolean.class, name = "allTrees"),
+        @OptionDef(type = Float.class, validators = Validator.Keys.UNIT_INTERVAL, name = "appleRate"),
+        @OptionDef(type = Float.class, validators = Validator.Keys.UNIT_INTERVAL, name = "goldenRate"),
+        @OptionDef(type = Float.class, validators = Validator.Keys.UNIT_INTERVAL, name = "enchantedRate")
 })
 public class AppleGroveScenario extends AppleGroveScenarioConfiguration {
 
@@ -45,9 +45,9 @@ public class AppleGroveScenario extends AppleGroveScenarioConfiguration {
     private Optional<Material> findAppleDrop() {
         float roll = Hardlands.RANDOM.nextFloat();
 
-        float enchantedRate = super.enchantedGoldenAppleDropRate.getValue();
-        float goldenRate = enchantedRate + super.goldenAppleDropRate.getValue();
-        float appleRate = goldenRate + super.appleDropRate.getValue();
+        float enchantedRate = super.enchantedRate.getValue();
+        float goldenRate = enchantedRate + super.goldenRate.getValue();
+        float appleRate = goldenRate + super.appleRate.getValue();
 
         if (roll < enchantedRate) return Optional.of(Material.ENCHANTED_GOLDEN_APPLE);
         if (roll < goldenRate) return Optional.of(Material.GOLDEN_APPLE);
@@ -57,6 +57,6 @@ public class AppleGroveScenario extends AppleGroveScenarioConfiguration {
     }
 
     private boolean isEligibleLeaf(Material material) {
-        return Tag.LEAVES.isTagged(material) && (super.allTreeTypes.getValue() || material == Material.OAK_LEAVES);
+        return Tag.LEAVES.isTagged(material) && (super.allTrees.getValue() || material == Material.OAK_LEAVES);
     }
 }

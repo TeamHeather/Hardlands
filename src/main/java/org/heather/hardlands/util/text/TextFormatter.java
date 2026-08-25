@@ -2,17 +2,17 @@ package org.heather.hardlands.util.text;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
-import org.bukkit.entity.Player;
 import org.heather.hardlands.util.TinyCaps;
 
 public final class TextFormatter {
 
-    private static final Pattern HIGHLIGHT_PATTERN = Pattern.compile("\\{([^{}]+)}");
+    private static final Pattern HIGHLIGHT_PATTERN = Pattern.compile("\\{([^{}]+)}|\\[([^\\[\\]]+)]");
 
     private TextFormatter() {}
 
@@ -25,13 +25,20 @@ public final class TextFormatter {
     }
 
     public static Component formatHighlighted(String text) {
-        TextComponent.Builder result = Component.text().color(NamedTextColor.WHITE);
+        TextComponent.Builder result = Component.text().color(HardlandsColor.LIGHT_GRAY);
+
         Matcher matcher = HIGHLIGHT_PATTERN.matcher(text);
         int position = 0;
-
         while (matcher.find()) {
             result.append(parse(text.substring(position, matcher.start())));
-            result.append(Component.text(matcher.group(1), HardlandsColor.PRIMARY));
+
+            String primary = matcher.group(1);
+            String highlighted = primary != null ? primary : matcher.group(2);
+
+            result.append(Component.text(highlighted, primary != null
+                    ? HardlandsColor.PRIMARY
+                    : NamedTextColor.WHITE));
+
             position = matcher.end();
         }
 
@@ -41,9 +48,5 @@ public final class TextFormatter {
 
     public static Component formatTinyCaps(String text) {
         return Component.text(TinyCaps.format(text), HardlandsColor.PRIMARY);
-    }
-
-    public static String formatPlayer(Player player) {
-        return "<white><head:%s></white> %s".formatted(player.getUniqueId(), player.getName());
     }
 }
