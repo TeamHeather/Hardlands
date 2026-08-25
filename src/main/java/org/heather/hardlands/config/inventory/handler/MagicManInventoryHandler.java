@@ -20,7 +20,6 @@ import org.heather.hardlands.common.item.InventoryItem;
 import org.heather.hardlands.common.item.ItemBuilder;
 import org.heather.hardlands.config.inventory.HardlandsInventory;
 import org.heather.hardlands.config.inventory.HardlandsInventoryHolder;
-import org.heather.hardlands.enchantment.EnchantmentDefinition;
 import org.heather.hardlands.module.scenario.scenarios.MagicManScenario;
 import org.heather.hardlands.util.text.TextFormatter;
 

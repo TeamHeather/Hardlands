@@ -17,7 +17,6 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.heather.hardlands.config.ConfigBuilder;
 import org.heather.hardlands.config.OptionDef;
-import org.heather.hardlands.enchantment.EnchantmentDefinition;
 import org.heather.hardlands.module.scenario.Scenario;
 
 @ConfigBuilder(superclass = Scenario.class, options = {
