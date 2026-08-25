@@ -234,7 +234,7 @@ public final class ScenarioInventoryHandler implements InventoryHandler {
         if (isEnchantmentMap(option)) return createEnchantmentInput(binding, label);
         if (isNumber(type) || type == String.class) return createTextInput(binding, label);
 
-        throw new IllegalStateException("Unsupported dialog option type: " + type.getTypeName());
+        throw new IllegalStateException("Unsupported dialog option enchantment: " + type.getTypeName());
     }
 
     private static DialogInput createBooleanInput(OptionBinding binding, Component label) {
@@ -322,7 +322,7 @@ public final class ScenarioInventoryHandler implements InventoryHandler {
             throw new IllegalArgumentException("\"%s\" debe ser un número válido.".formatted(option.getKey()));
         }
 
-        throw new IllegalStateException("Unsupported dialog option type: " + type.getTypeName());
+        throw new IllegalStateException("Unsupported dialog option enchantment: " + type.getTypeName());
     }
 
     private static Boolean readBoolean(OptionBinding binding, DialogResponseView response) {

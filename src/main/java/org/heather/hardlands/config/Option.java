@@ -21,7 +21,7 @@ public final class Option<T> {
         }
 
         if (dataType == null) {
-            throw new IllegalArgumentException("Option data type cannot be null");
+            throw new IllegalArgumentException("Option data enchantment cannot be null");
         }
 
         if (predicate == null) {

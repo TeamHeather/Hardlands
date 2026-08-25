@@ -23,6 +23,7 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
+import org.heather.hardlands.Hardlands;
 import org.heather.hardlands.util.data.PersistentData;
 import org.heather.hardlands.util.text.TextFormatter;
 
@@ -117,6 +118,38 @@ public final class ItemBuilder {
         this.item.editMeta(SkullMeta.class, meta -> meta.setPlayerProfile(Bukkit.createProfile(owner)));
 
         return this.hideTooltip(DataComponentTypes.PROFILE);
+    }
+
+    public ItemBuilder addLoreFirst(Component... lines) {
+        ItemLore currentLore = this.item.getData(DataComponentTypes.LORE);
+        List<Component> lore = new ArrayList<>();
+
+        for (Component line : lines) {
+            lore.add(nonItalic(line));
+        }
+
+        if (currentLore != null) {
+            lore.addAll(currentLore.lines());
+        }
+
+        this.item.setData(DataComponentTypes.LORE, ItemLore.lore(lore));
+        return this;
+    }
+
+    public ItemBuilder addLoreFirst(String... lines) {
+        return this.addLoreFirst(lines, TextFormatter::parse);
+    }
+
+    private ItemBuilder addLoreFirst(String[] lines, Function<String, Component> formatter) {
+        ItemLore currentLore = this.item.getData(DataComponentTypes.LORE);
+        List<Component> lore = new ArrayList<>(formatLore(lines, formatter));
+
+        if (currentLore != null) {
+            lore.addAll(currentLore.lines());
+        }
+
+        this.item.setData(DataComponentTypes.LORE, ItemLore.lore(lore));
+        return this;
     }
 
     public ItemBuilder hideTooltip(DataComponentType... components) {

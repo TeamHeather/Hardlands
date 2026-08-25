@@ -6,6 +6,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.util.concurrent.ThreadLocalRandom;
 import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.heather.hardlands.common.command.HardlandsCommand;
@@ -58,6 +59,20 @@ public final class Hardlands extends JavaPlugin {
         super.getLogger().info("Initialized.");
     }
 
+    private void registerListeners(Listener... listeners) {
+        for (Listener listener : listeners) {
+            Bukkit.getPluginManager().registerEvents(listener, this);
+        }
+    }
+
+    private void registerCommands(BaseCommand... commands) {
+        PaperCommandManager commandManager = new PaperCommandManager(this);
+
+        for (BaseCommand command : commands) {
+            commandManager.registerCommand(command);
+        }
+    }
+
     @Override
     public void onDisable() {
         super.getLogger().info("Disabling...");
@@ -65,6 +80,10 @@ public final class Hardlands extends JavaPlugin {
         this.threadScheduler.terminate();
 
         super.getLogger().info("Plugin successfully disabled.");
+    }
+
+    public static NamespacedKey namespacedKey(String key) {
+        return NamespacedKey.fromString(key, instance);
     }
 
     public static Hardlands getInstance() {
@@ -97,19 +116,5 @@ public final class Hardlands extends JavaPlugin {
         }
 
         return this.worldManager;
-    }
-
-    private void registerListeners(Listener... listeners) {
-        for (Listener listener : listeners) {
-            Bukkit.getPluginManager().registerEvents(listener, this);
-        }
-    }
-
-    private void registerCommands(BaseCommand... commands) {
-        PaperCommandManager commandManager = new PaperCommandManager(this);
-
-        for (BaseCommand command : commands) {
-            commandManager.registerCommand(command);
-        }
     }
 }
