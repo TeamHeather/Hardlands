@@ -1,8 +1,8 @@
-package org.heather.hardlands.config.inventory;
+package org.heather.hardlands.gui.inventory;
 
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
-import org.heather.hardlands.config.inventory.handler.InventoryHandler;
+import org.heather.hardlands.gui.inventory.handler.InventoryHandler;
 import org.jspecify.annotations.NonNull;
 
 public final class HardlandsInventoryHolder implements InventoryHolder {

@@ -11,9 +11,9 @@ import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.heather.hardlands.common.command.HardlandsCommand;
 import org.heather.hardlands.common.enchantment.EnchantmentListener;
-import org.heather.hardlands.config.inventory.InventoryListener;
+import org.heather.hardlands.gui.inventory.InventoryListener;
 import org.heather.hardlands.common.player.PlayerListener;
-import org.heather.hardlands.util.ThreadScheduler;
+import org.heather.hardlands.core.SingleThreadScheduler;
 import org.heather.hardlands.module.PresetRepository;
 import org.heather.hardlands.module.general.GeneralConfiguration;
 import org.heather.hardlands.module.phase.PhaseTimer;
@@ -30,7 +30,7 @@ public final class Hardlands extends JavaPlugin {
 
     private final GeneralConfiguration generalConfiguration = new GeneralConfiguration();
     private final PresetRepository presetRepository = new PresetRepository(this, "presets");
-    private final ThreadScheduler threadScheduler = new ThreadScheduler(this);
+    private final SingleThreadScheduler singleThreadScheduler = new SingleThreadScheduler(this);
     private final ScenarioManager scenarioManager = new ScenarioManager(this);
     private final PhaseTimer phaseTimer = new PhaseTimer(this);
 
@@ -78,7 +78,7 @@ public final class Hardlands extends JavaPlugin {
     public void onDisable() {
         super.getLogger().info("Disabling...");
 
-        this.threadScheduler.terminate();
+        this.singleThreadScheduler.shutdown();
 
         super.getLogger().info("Plugin successfully disabled.");
     }
@@ -95,8 +95,8 @@ public final class Hardlands extends JavaPlugin {
         return this.generalConfiguration;
     }
 
-    public ThreadScheduler getThreadScheduler() {
-        return this.threadScheduler;
+    public SingleThreadScheduler getThreadScheduler() {
+        return this.singleThreadScheduler;
     }
 
     public ScenarioManager getScenarioManager() {

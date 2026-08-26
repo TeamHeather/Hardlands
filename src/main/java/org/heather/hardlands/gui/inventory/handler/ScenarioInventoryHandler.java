@@ -1,4 +1,4 @@
-package org.heather.hardlands.config.inventory.handler;
+package org.heather.hardlands.gui.inventory.handler;
 
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.dialog.DialogResponseView;
@@ -32,9 +32,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.heather.hardlands.Hardlands;
-import org.heather.hardlands.config.Option;
-import org.heather.hardlands.config.Validator;
-import org.heather.hardlands.config.inventory.HardlandsInventory;
+import org.heather.hardlands.core.configuration.Option;
+import org.heather.hardlands.core.configuration.Validator;
+import org.heather.hardlands.gui.inventory.HardlandsInventory;
 import org.heather.hardlands.module.scenario.Scenario;
 import org.heather.hardlands.module.scenario.ScenarioDefinition;
 import org.heather.hardlands.module.scenario.ScenarioManager;

@@ -7,10 +7,10 @@ import java.util.function.Consumer;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.WorldBorder;
-import org.heather.hardlands.config.ConfigBuilder;
-import org.heather.hardlands.config.Option;
-import org.heather.hardlands.config.OptionDef;
-import org.heather.hardlands.config.Validator;
+import org.heather.hardlands.gui.ConfigBuilder;
+import org.heather.hardlands.core.configuration.Option;
+import org.heather.hardlands.gui.OptionDef;
+import org.heather.hardlands.core.configuration.Validator;
 import org.popcraft.chunky.api.ChunkyAPI;
 
 @ConfigBuilder(identifier = "world", options = {

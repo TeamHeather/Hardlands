@@ -1,4 +1,4 @@
-package org.heather.hardlands.config;
+package org.heather.hardlands.core.configuration;
 
 import java.util.Collection;
 import java.util.Map;

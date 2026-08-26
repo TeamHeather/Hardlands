@@ -1,4 +1,4 @@
-package org.heather.hardlands.config.dialog;
+package org.heather.hardlands.gui.dialog;
 
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.dialog.DialogResponseView;
@@ -22,8 +22,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.heather.hardlands.Hardlands;
-import org.heather.hardlands.config.Option;
-import org.heather.hardlands.config.inventory.HardlandsInventory;
+import org.heather.hardlands.core.configuration.Option;
+import org.heather.hardlands.gui.inventory.HardlandsInventory;
 import org.heather.hardlands.module.world.WorldManager;
 import org.heather.hardlands.util.text.HardlandsColor;
 import org.heather.hardlands.util.text.TextFormatter;

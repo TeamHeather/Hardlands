@@ -1,4 +1,4 @@
-package org.heather.hardlands.config;
+package org.heather.hardlands.gui;
 
 import com.google.auto.service.AutoService;
 
@@ -85,8 +85,8 @@ public final class ConfigurationProcessor extends AbstractProcessor {
         writer.write("""
                 package %s;
 
-                import org.heather.hardlands.config.Option;
-                import org.heather.hardlands.config.Validator;
+                import org.heather.hardlands.core.configuration.Option;
+                import org.heather.hardlands.core.configuration.Validator;
 
                 public abstract class %s extends %s {
 

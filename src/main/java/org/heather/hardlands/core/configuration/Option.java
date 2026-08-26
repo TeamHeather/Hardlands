@@ -1,4 +1,4 @@
-package org.heather.hardlands.config;
+package org.heather.hardlands.core.configuration;
 
 import java.lang.reflect.Type;
 import java.util.Objects;

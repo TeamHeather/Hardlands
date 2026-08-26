@@ -1,4 +1,4 @@
-package org.heather.hardlands.config.inventory.handler;
+package org.heather.hardlands.gui.inventory.handler;
 
 import java.util.List;
 import java.util.Locale;
@@ -21,7 +21,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.heather.hardlands.Hardlands;
-import org.heather.hardlands.config.inventory.HardlandsInventory;
+import org.heather.hardlands.gui.inventory.HardlandsInventory;
 import org.heather.hardlands.common.item.InventoryItem;
 import org.heather.hardlands.common.item.ItemBuilder;
 import org.heather.hardlands.module.PresetRepository;

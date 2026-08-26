@@ -1,4 +1,4 @@
-package org.heather.hardlands.util.data.json;
+package org.heather.hardlands.core.data.json;
 
 import com.google.gson.Gson;
 import java.io.IOException;

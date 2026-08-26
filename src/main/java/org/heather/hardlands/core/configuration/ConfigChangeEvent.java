@@ -1,10 +1,10 @@
-package org.heather.hardlands.config;
+package org.heather.hardlands.core.configuration;
 
 import org.bukkit.Bukkit;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 
-public final class ConfigurationChangeEvent extends Event {
+public final class ConfigChangeEvent extends Event {
 
     private static final HandlerList HANDLERS = new HandlerList();
 
@@ -13,7 +13,7 @@ public final class ConfigurationChangeEvent extends Event {
     private final Object previousValue;
     private final Object newValue;
 
-    public ConfigurationChangeEvent(Configuration configuration, String optionKey, Object previousValue, Object newValue) {
+    public ConfigChangeEvent(Configuration configuration, String optionKey, Object previousValue, Object newValue) {
         super(!Bukkit.isPrimaryThread());
         this.configuration = configuration;
         this.optionKey = optionKey;

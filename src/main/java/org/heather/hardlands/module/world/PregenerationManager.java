@@ -5,7 +5,7 @@ import java.util.Map;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.heather.hardlands.Hardlands;
-import org.heather.hardlands.config.inventory.HardlandsInventory;
+import org.heather.hardlands.gui.inventory.HardlandsInventory;
 import org.popcraft.chunky.api.ChunkyAPI;
 import org.popcraft.chunky.api.event.task.GenerationCompleteEvent;
 import org.popcraft.chunky.api.event.task.GenerationProgressEvent;

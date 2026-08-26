@@ -10,9 +10,9 @@ import org.bukkit.event.block.BlockEvent;
 import org.bukkit.event.block.LeavesDecayEvent;
 import org.bukkit.inventory.ItemStack;
 import org.heather.hardlands.Hardlands;
-import org.heather.hardlands.config.ConfigBuilder;
-import org.heather.hardlands.config.OptionDef;
-import org.heather.hardlands.config.Validator;
+import org.heather.hardlands.gui.ConfigBuilder;
+import org.heather.hardlands.gui.OptionDef;
+import org.heather.hardlands.core.configuration.Validator;
 import org.heather.hardlands.module.scenario.Scenario;
 
 @ConfigBuilder(superclass = Scenario.class, options = {

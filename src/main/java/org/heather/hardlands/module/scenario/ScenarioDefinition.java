@@ -11,7 +11,7 @@ import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.heather.hardlands.common.item.InventoryItem;
 import org.heather.hardlands.common.item.ItemBuilder;
-import org.heather.hardlands.config.Option;
+import org.heather.hardlands.core.configuration.Option;
 import org.heather.hardlands.common.enchantment.HardlandsEnchantment;
 import org.heather.hardlands.module.scenario.scenarios.AppleGroveScenario;
 import org.heather.hardlands.module.scenario.scenarios.BonanzaScenario;
@@ -125,7 +125,7 @@ public enum ScenarioDefinition {
         Optional<HardlandsEnchantment> hardlandsEnchantment = HardlandsEnchantment.fromString(identifier);
 
         if (hardlandsEnchantment.isPresent()) {
-            return hardlandsEnchantment.get().getName();
+            return hardlandsEnchantment.get().getLabel();
         }
 
         int namespaceSeparator = identifier.indexOf(':');

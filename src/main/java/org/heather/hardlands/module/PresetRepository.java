@@ -4,7 +4,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.annotations.SerializedName;
 import org.bukkit.Material;
 import org.heather.hardlands.Hardlands;
-import org.heather.hardlands.util.data.json.JsonDataManager;
+import org.heather.hardlands.core.data.json.JsonDataManager;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;

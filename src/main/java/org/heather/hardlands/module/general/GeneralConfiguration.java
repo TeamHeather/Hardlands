@@ -2,8 +2,8 @@ package org.heather.hardlands.module.general;
 
 import java.util.Set;
 import org.bukkit.Material;
-import org.heather.hardlands.config.ConfigBuilder;
-import org.heather.hardlands.config.OptionDef;
+import org.heather.hardlands.gui.ConfigBuilder;
+import org.heather.hardlands.gui.OptionDef;
 
 @ConfigBuilder(identifier = "general", options = {
         @OptionDef(type = Set.class, elementType = Material.class, name = "blacklistedMaterials")

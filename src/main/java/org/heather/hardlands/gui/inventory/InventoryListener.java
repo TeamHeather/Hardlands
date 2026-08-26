@@ -1,4 +1,4 @@
-package org.heather.hardlands.config.inventory;
+package org.heather.hardlands.gui.inventory;
 
 import java.util.Optional;
 

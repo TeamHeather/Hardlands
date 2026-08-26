@@ -3,11 +3,11 @@ package org.heather.hardlands.module.phase;
 import java.time.Duration;
 
 import org.heather.hardlands.Hardlands;
-import org.heather.hardlands.config.ConfigBuilder;
-import org.heather.hardlands.config.Option;
-import org.heather.hardlands.config.OptionDef;
-import org.heather.hardlands.config.Validator;
-import org.heather.hardlands.util.ThreadScheduler;
+import org.heather.hardlands.gui.ConfigBuilder;
+import org.heather.hardlands.core.configuration.Option;
+import org.heather.hardlands.gui.OptionDef;
+import org.heather.hardlands.core.configuration.Validator;
+import org.heather.hardlands.core.SingleThreadScheduler;
 
 @ConfigBuilder(
         identifier = "timer",
@@ -20,7 +20,7 @@ import org.heather.hardlands.util.ThreadScheduler;
         })
 public final class PhaseTimer extends PhaseTimerConfiguration {
 
-    private final ThreadScheduler scheduler;
+    private final SingleThreadScheduler scheduler;
 
     private Phase phase;
 

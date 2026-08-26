@@ -12,8 +12,8 @@ import org.bukkit.Registry;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.event.EventHandler;
 import org.bukkit.inventory.ItemStack;
-import org.heather.hardlands.config.ConfigBuilder;
-import org.heather.hardlands.config.OptionDef;
+import org.heather.hardlands.gui.ConfigBuilder;
+import org.heather.hardlands.gui.OptionDef;
 import org.heather.hardlands.common.enchantment.HardlandsEnchantment;
 import org.heather.hardlands.module.scenario.Scenario;
 

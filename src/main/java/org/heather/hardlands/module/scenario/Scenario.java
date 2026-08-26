@@ -4,7 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.heather.hardlands.Hardlands;
-import org.heather.hardlands.config.Configuration;
+import org.heather.hardlands.core.configuration.Configuration;
 import org.jetbrains.annotations.Nullable;
 
 public abstract class Scenario extends Configuration implements Listener {

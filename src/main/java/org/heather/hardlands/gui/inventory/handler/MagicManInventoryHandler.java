@@ -1,4 +1,4 @@
-package org.heather.hardlands.config.inventory.handler;
+package org.heather.hardlands.gui.inventory.handler;
 
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.ItemLore;
@@ -22,7 +22,7 @@ import org.bukkit.inventory.ItemStack;
 import org.heather.hardlands.Hardlands;
 import org.heather.hardlands.common.item.InventoryItem;
 import org.heather.hardlands.common.item.ItemBuilder;
-import org.heather.hardlands.config.inventory.HardlandsInventory;
+import org.heather.hardlands.gui.inventory.HardlandsInventory;
 import org.heather.hardlands.common.enchantment.HardlandsEnchantment;
 import org.heather.hardlands.module.scenario.Scenario;
 import org.heather.hardlands.module.scenario.ScenarioDefinition;
@@ -215,7 +215,7 @@ public final class MagicManInventoryHandler implements InventoryHandler {
         for (HardlandsEnchantment enchantment : HardlandsEnchantment.values()) {
             enchantments.add(new EnchantmentEntry(
                     enchantment.name(),
-                    enchantment.getName(),
+                    enchantment.getLabel(),
                     enchantment.getMaxLevel(),
                     enchantment));
         }

@@ -1,15 +1,8 @@
 package org.heather.hardlands.common.enchantment;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Tag;
@@ -17,73 +10,113 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.heather.hardlands.Hardlands;
-import org.heather.hardlands.common.item.ItemBuilder;
-import org.heather.hardlands.util.RomanNumerals;
-import org.heather.hardlands.util.data.PersistentData;
-import org.heather.hardlands.util.text.HardlandsColor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public enum HardlandsEnchantment {
 
     DEAD_EYE(
+            Hardlands.namespacedKey("dead_eye"),
             "Dead Eye",
-            "Incrementa en un 10% el daño de cada golpe consecutivo realizado dentro de un mismo combo.",
-            3,
-            Tag.ITEMS_ENCHANTABLE_SHARP_WEAPON),
+            "Incrementa el daño de cada golpe crítico consecutivo realizado dentro del mismo combo.",
+            Tag.ITEMS_ENCHANTABLE_SHARP_WEAPON,
+            Limit.fromLevel(2)
+    ),
+
     SMELTING_TOUCH(
+            Hardlands.namespacedKey("smelting_touch"),
             "Smelting Touch",
-            "Funde automáticamente los objetos obtenidos siempre que dispongan de una receta de horno válida.",
-            Tag.ITEMS_ENCHANTABLE_MINING),
+            "Funde automáticamente los ítems obtenidos siempre que dispongan de una receta de horno válida.",
+            Tag.ITEMS_ENCHANTABLE_MINING,
+            Limit.SINGLE_LEVEL_ENCHANT
+    ),
+
     WISDOM(
+            Hardlands.namespacedKey("wisdom"),
             "Wisdom",
-            "Incrementa en un 25% por nivel la experiencia obtenida al extraer bloques.",
-            5,
-            Tag.ITEMS_ENCHANTABLE_MINING),
+            "Incrementa la experiencia obtenida al extraer bloques.",
+            Tag.ITEMS_ENCHANTABLE_MINING,
+            Limit.fromLevel(5)
+    ),
+
     VEIN_MINER(
+            Hardlands.namespacedKey("vein_miner"),
             "Vein Miner",
             "Al extraer una mena, rompe automáticamente todas las menas conectadas que formen parte de la misma veta.",
-            Tag.ITEMS_ENCHANTABLE_MINING),
+            Tag.ITEMS_ENCHANTABLE_MINING,
+            Limit.SINGLE_LEVEL_ENCHANT
+    ),
+
     TIMBER(
+            Hardlands.namespacedKey("timber"),
             "Timber",
             "Al talar un tronco, rompe automáticamente todos los troncos conectados que formen parte del mismo árbol.",
-            Tag.ITEMS_AXES),
+            Tag.ITEMS_AXES,
+            Limit.SINGLE_LEVEL_ENCHANT
+    );
 
-    ;
-
-    private final String name;
+    private final NamespacedKey namespacedKey;
+    private final String label;
     private final String description;
-    private final int maxLevel;
     private final Tag<Material> tag;
+    private final Limit limit;
 
-    HardlandsEnchantment(String name, String description, int maxLevel, Tag<Material> tag) {
-        this.name = name;
+    HardlandsEnchantment(NamespacedKey namespacedKey, String label, String description, Tag<Material> enchantables, Limit limit) {
+        this.namespacedKey = namespacedKey;
+        this.label = label;
         this.description = description;
-        this.maxLevel = maxLevel;
-        this.tag = tag;
+        this.tag = enchantables;
+        this.limit = limit;
     }
 
-    HardlandsEnchantment(String name, String description, Tag<Material> tag) {
-        this(name, description, 1, tag);
+    public NamespacedKey getNamespacedKey() {
+        return this.namespacedKey;
     }
 
-    public static Optional<HardlandsEnchantment> fromString(String value) {
-        String normalized = value.trim()
-                .replace(' ', '_')
-                .replace('-', '_')
-                .toUpperCase();
+    public String getIdentifier() {
+        return this.namespacedKey.getKey();
+    }
 
-        return Arrays.stream(values())
-                .filter(enchantment -> enchantment.name().equals(normalized))
-                .findFirst();
+    public String getLabel() {
+        return this.label;
+    }
+
+    public String getDescription() {
+        return this.description;
+    }
+
+    public Tag<Material> getTag() {
+        return this.tag;
+    }
+
+    public Limit getLimit() {
+        return this.limit;
+    }
+
+    // Functions
+
+    private LeveledEnchantment leveledEnchantment(int amplifier) {
+        return new LeveledEnchantment(this, amplifier);
+    }
+
+    private boolean validateMaterial(Material material) {
+        return this.tag.isTagged(material) || !material.isAir();
     }
 
     public void apply(ItemStack stack, int amplifier) {
-        if (!this.tag.isTagged(stack.getType())) return;
-
-        LeveledEnchantment data = new LeveledEnchantment(this, amplifier);
+        if (!this.validateMaterial(stack.getType())) {
+            return;
+        }
 
         stack.editMeta(meta -> {
-            meta.getPersistentDataContainer().set(this.namespacedKey(), PersistentDataType.INTEGER, data.amplifier());
-            removeMatchingEnchantmentLore(meta, this.name);
+            meta.getPersistentDataContainer().set(
+                    this.namespacedKey,
+                    PersistentDataType.INTEGER,
+                    leveledEnchantment(amplifier).amplifier()
+            );
+
+            removeMatchingEnchantmentLore(meta);
             this.prependEnchantmentLore(meta, amplifier);
             updateVisuals(stack, meta);
         });
@@ -94,14 +127,14 @@ public enum HardlandsEnchantment {
 
         stack.editMeta(meta -> {
             meta.getPersistentDataContainer().remove(this.namespacedKey());
-            removeMatchingEnchantmentLore(meta, this.name);
+            removeMatchingEnchantmentLore(meta, this.label);
             updateVisuals(stack, meta);
         });
     }
 
     public Optional<LeveledEnchantment> find(ItemMeta meta) {
         return PersistentData.find(meta, this.namespacedKey(), PersistentDataType.INTEGER)
-                .filter(amplifier -> amplifier >= 0 && amplifier < this.maxLevel)
+                .filter(amplifier -> amplifier >= 0 && amplifier < this.limit)
                 .map(amplifier -> new LeveledEnchantment(this, amplifier));
     }
 
@@ -116,27 +149,11 @@ public enum HardlandsEnchantment {
         return builder.build();
     }
 
-    public NamespacedKey namespacedKey() {
-        return Hardlands.namespacedKey(this.name().toLowerCase(Locale.ROOT));
-    }
-
     public Component beautifulName(int amplifier) {
         String level = amplifier == 0 ? "" : " " + RomanNumerals.format(amplifier + 1);
 
-        return Component.text(this.name + level, NamedTextColor.GRAY)
+        return Component.text(this.label + level, NamedTextColor.GRAY)
                 .decoration(TextDecoration.ITALIC, false);
-    }
-
-    public String getName() {
-        return this.name;
-    }
-
-    public int getMaxLevel() {
-        return this.maxLevel;
-    }
-
-    public Tag<Material> getTag() {
-        return this.tag;
     }
 
     public static boolean has(ItemMeta meta) {
@@ -147,12 +164,29 @@ public enum HardlandsEnchantment {
         return !stack.getType().isAir() && has(stack.getItemMeta());
     }
 
+    public record Limit(int maxAmplifier) {
+
+        public static final Limit SINGLE_LEVEL_ENCHANT = new Limit(0);
+
+        public boolean check(int amplifier) {
+            return amplifier <= this.maxAmplifier;
+        }
+
+        public static Limit fromLevel(int maxLevel) {
+            return new Limit(maxLevel - 1);
+        }
+    }
+
     public record LeveledEnchantment(HardlandsEnchantment enchantment, int amplifier) {
 
         public LeveledEnchantment {
-            if (amplifier < 0 || amplifier >= enchantment.maxLevel) {
-                throw new IllegalArgumentException("Enchantment amplifier must be between 0 and %d: %s"
-                        .formatted(enchantment.maxLevel - 1, enchantment.name()));
+            Limit limit = enchantment.getLimit();
+
+            if (amplifier < 0 || !limit.check(amplifier)) {
+                throw new IllegalArgumentException("Invalid amplifier %d; max is %d.".formatted(
+                        amplifier,
+                        limit.maxAmplifier()
+                ));
             }
         }
     }
@@ -186,18 +220,20 @@ public enum HardlandsEnchantment {
         meta.lore(lore);
     }
 
-    private static void removeMatchingEnchantmentLore(ItemMeta meta, String display) {
+    private void removeMatchingEnchantmentLore(ItemMeta meta) {
         List<Component> currentLore = meta.lore();
         if (currentLore == null) return;
 
         List<Component> lore = new ArrayList<>(currentLore);
-        String prefix = display + ' ';
+        String prefix = this.label + ' ';
 
         lore.removeIf(component -> {
             if (!(component instanceof TextComponent text)) return false;
 
             String content = text.content();
-            if (content.equals(display)) return true;
+
+            if (content.equals(this.label)) return true;
+
             if (!content.startsWith(prefix)) return false;
 
             return switch (content.substring(prefix.length())) {

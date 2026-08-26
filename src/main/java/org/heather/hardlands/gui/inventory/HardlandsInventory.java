@@ -1,4 +1,4 @@
-package org.heather.hardlands.config.inventory;
+package org.heather.hardlands.gui.inventory;
 
 import java.util.List;
 import java.util.Map;
@@ -12,10 +12,10 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.heather.hardlands.common.item.InventoryItem;
 import org.heather.hardlands.common.item.ItemBuilder;
-import org.heather.hardlands.config.inventory.handler.InventoryHandler;
-import org.heather.hardlands.config.inventory.handler.MagicManInventoryHandler;
-import org.heather.hardlands.config.inventory.handler.PresetInventoryHandler;
-import org.heather.hardlands.config.inventory.handler.ScenarioInventoryHandler;
+import org.heather.hardlands.gui.inventory.handler.InventoryHandler;
+import org.heather.hardlands.gui.inventory.handler.MagicManInventoryHandler;
+import org.heather.hardlands.gui.inventory.handler.PresetInventoryHandler;
+import org.heather.hardlands.gui.inventory.handler.ScenarioInventoryHandler;
 
 public enum HardlandsInventory {
 

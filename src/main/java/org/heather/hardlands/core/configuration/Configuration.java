@@ -1,11 +1,11 @@
-package org.heather.hardlands.config;
+package org.heather.hardlands.core.configuration;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import org.bukkit.Bukkit;
 import org.heather.hardlands.Hardlands;
-import org.heather.hardlands.util.data.json.JsonConvertible;
+import org.heather.hardlands.core.data.json.JsonConvertible;
 
 import java.lang.reflect.Type;
 import java.util.Collections;
@@ -122,7 +122,7 @@ public abstract class Configuration implements JsonConvertible {
     }
 
     private void callConfigurationChangeEvent(String optionKey, Object previousValue, Object newValue) {
-        Bukkit.getPluginManager().callEvent(new ConfigurationChangeEvent(this, optionKey, previousValue, newValue));
+        Bukkit.getPluginManager().callEvent(new ConfigChangeEvent(this, optionKey, previousValue, newValue));
     }
 
     private static Type parameterizedType(Class<?> rawType, Type... typeArguments) {

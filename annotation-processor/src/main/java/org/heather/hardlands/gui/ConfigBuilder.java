@@ -1,4 +1,4 @@
-package org.heather.hardlands.config;
+package org.heather.hardlands.gui;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
