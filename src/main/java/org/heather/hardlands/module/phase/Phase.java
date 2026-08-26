@@ -2,12 +2,17 @@ package org.heather.hardlands.module.phase;
 
 public enum Phase {
 
-    IDLE("Idle"),
-    PRE_GAME("Pre-Game"),
-    SURVIVAL("Survival"),
-    MEETUP("Meetup"),
-    DEATHMATCH("Deathmatch"),
-    POST_GAME("Post-Game");
+    IDLE("Inactivo"),
+    PREPARATION("Preparación"),
+
+    GRACE_PERIOD("Periodo de Gracia"),
+    PVP("Combate Abierto"),
+    BORDER_SHRINK("Reducción del Borde"),
+
+    MEETUP("Encuentro"),
+    DEATHMATCH("Combate Final"),
+
+    POST_GAME("Fin de la Partida");
 
     private final String displayName;
 
@@ -21,7 +26,7 @@ public enum Phase {
 
     public boolean isRunning() {
         return switch (this) {
-            case SURVIVAL, MEETUP, DEATHMATCH -> true;
+            case GRACE_PERIOD, PVP, BORDER_SHRINK, MEETUP, DEATHMATCH -> true;
             default -> false;
         };
     }

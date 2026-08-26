@@ -16,7 +16,7 @@ import org.heather.hardlands.common.player.PlayerListener;
 import org.heather.hardlands.util.ThreadScheduler;
 import org.heather.hardlands.module.PresetRepository;
 import org.heather.hardlands.module.general.GeneralConfiguration;
-import org.heather.hardlands.module.phase.PhaseController;
+import org.heather.hardlands.module.phase.PhaseTimer;
 import org.heather.hardlands.module.scenario.ScenarioManager;
 import org.heather.hardlands.module.world.WorldManager;
 import org.jetbrains.annotations.Nullable;
@@ -32,7 +32,7 @@ public final class Hardlands extends JavaPlugin {
     private final PresetRepository presetRepository = new PresetRepository(this, "presets");
     private final ThreadScheduler threadScheduler = new ThreadScheduler(this);
     private final ScenarioManager scenarioManager = new ScenarioManager(this);
-    private final PhaseController phaseController = new PhaseController(this);
+    private final PhaseTimer phaseTimer = new PhaseTimer(this);
 
     @Nullable private WorldManager worldManager;
 
@@ -103,8 +103,8 @@ public final class Hardlands extends JavaPlugin {
         return this.scenarioManager;
     }
 
-    public PhaseController getPhaseController() {
-        return this.phaseController;
+    public PhaseTimer getPhaseController() {
+        return this.phaseTimer;
     }
 
     public PresetRepository getPresetRepository() {
