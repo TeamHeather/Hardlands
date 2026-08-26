@@ -10,6 +10,7 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.heather.hardlands.common.command.HardlandsCommand;
+import org.heather.hardlands.common.enchantment.EnchantmentListener;
 import org.heather.hardlands.config.inventory.InventoryListener;
 import org.heather.hardlands.common.player.PlayerListener;
 import org.heather.hardlands.util.ThreadScheduler;
@@ -44,7 +45,7 @@ public final class Hardlands extends JavaPlugin {
 
         this.presetRepository.load("default");
 
-        this.registerListeners(new PlayerListener(), new InventoryListener());
+        this.registerListeners(new PlayerListener(), new InventoryListener(), new EnchantmentListener());
         this.registerCommands(new HardlandsCommand());
 
         super.getLogger().info(System.lineSeparator() + """
