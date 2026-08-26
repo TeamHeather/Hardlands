@@ -21,7 +21,7 @@ public abstract class Scenario extends Configuration implements Listener {
     }
 
     final void enableScenario() {
-        if (!super.isConfigurationValid()) {
+        if (!this.canEnable()) {
             throw new IllegalStateException("Scenario configuration is invalid: " + this.getConfigurationIdentifier());
         }
 
@@ -34,6 +34,10 @@ public abstract class Scenario extends Configuration implements Listener {
 
     final void disableScenario() {
         HandlerList.unregisterAll(this);
+    }
+
+    public boolean canEnable() {
+        return super.isConfigurationValid();
     }
 
     protected final Hardlands getPluginOrThrow() {

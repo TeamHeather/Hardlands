@@ -4,202 +4,139 @@ import io.papermc.paper.event.player.PlayerInventorySlotChangeEvent;
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
-import org.bukkit.Bukkit;
+import java.util.Optional;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
-import org.bukkit.Sound;
 import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
 import org.heather.hardlands.config.ConfigBuilder;
 import org.heather.hardlands.config.OptionDef;
+import org.heather.hardlands.common.enchantment.HardlandsEnchantment;
 import org.heather.hardlands.module.scenario.Scenario;
 
-@ConfigBuilder(superclass = Scenario.class, options = {
-        @OptionDef(
-                type = Map.class,
-                keyType = String.class,
-                valueType = Integer.class,
-                name = "enchantments"
-        )
-})
+@ConfigBuilder(
+        superclass = Scenario.class,
+        options = {
+                @OptionDef(type = Map.class, keyType = String.class, valueType = Integer.class, name = "enchantments")
+        }
+)
 public class MagicManScenario extends MagicManScenarioConfiguration {
 
-    public static final int DISABLED_LEVEL = -1;
-    public static final int VANILLA_LEVEL = 0;
-    private static final Registry<Enchantment> ENCHANTMENT_REGISTRY =
-            RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT);
+    public static final int PROHIBITED = -1;
+    public static final int VANILLA = 0;
 
-    @FunctionalInterface
-    private interface ItemUpdater {
-        boolean update(ItemStack item, Player player);
+    public MagicManScenario() {
+        super.enchantments.setValue(Map.of());
+    }
+
+    @Override
+    public boolean canEnable() {
+        return super.canEnable()
+                && super.enchantments.hasValue()
+                && super.enchantments.getValue().values().stream().anyMatch(level -> level != VANILLA);
     }
 
     @EventHandler
-    private void onInventoryChange(PlayerInventorySlotChangeEvent event) {
-        ItemStack item = event.getNewItemStack();
-        if (!item.isEmpty() && applyEnchantments(item, event.getPlayer())) {
-            event.getPlayer().getInventory().setItem(event.getSlot(), item);
-        }
-    }
+    private void onPlayerInventorySlotChange(PlayerInventorySlotChangeEvent event) {
+        ItemStack original = event.getNewItemStack();
+        if (original.getType().isAir()) return;
 
-    @EventHandler
-    private void onPlayerJoin(PlayerJoinEvent event) {
-        updateInventory(event.getPlayer().getInventory(), event.getPlayer());
+        ItemStack updated = original.clone();
+
+        this.applyConfiguredEnchantments(updated);
+
+        if (!updated.equals(original)) event.getPlayer().getInventory().setItem(event.getSlot(), updated);
     }
 
     public int getEnchantmentLevel(String identifier) {
-        if (!super.enchantments.hasValue()) {
-            return VANILLA_LEVEL;
-        }
-        return super.enchantments.getValue().getOrDefault(identifier, VANILLA_LEVEL);
+        String normalized = normalizeIdentifier(identifier);
+        return super.enchantments.getValue().getOrDefault(normalized, VANILLA);
     }
 
-    public int getEnchantmentLevel(Enchantment enchantment) {
-        return getEnchantmentLevel(enchantment.getKey().asString());
+    public void setEnchantmentLevel(String identifier, int level) {
+        String normalized = normalizeIdentifier(identifier);
+        int maxLevel = getMaximumLevel(normalized);
+
+        if (level < PROHIBITED || level > maxLevel) {
+            throw new IllegalArgumentException("Enchantment level must be between -1 and %d: %s".formatted(maxLevel, normalized));
+        }
+
+        Map<String, Integer> enchantments = new LinkedHashMap<>(super.enchantments.getValue());
+
+        if (level == VANILLA) enchantments.remove(normalized);
+        else enchantments.put(normalized, level);
+
+        super.enchantments.setValue(Map.copyOf(enchantments));
     }
 
-    public int getEnchantmentLevel(EnchantmentDefinition enchantment) {
-        return getEnchantmentLevel(enchantment.getKey().asString());
-    }
+    private void applyConfiguredEnchantments(ItemStack stack) {
+        super.enchantments.getValue().forEach((identifier, level) -> {
+            if (level == VANILLA) return;
 
-    public boolean setEnchantmentLevel(Enchantment enchantment, int level) {
-        String identifier = enchantment.getKey().asString();
-        int normalized = Math.clamp(level, DISABLED_LEVEL, enchantment.getMaxLevel());
-        return updateEnchantmentLevel(identifier, normalized,
-                (item, player) -> applyVanillaEnchantment(item, enchantment, normalized, player));
-    }
+            Optional<HardlandsEnchantment> hardlandsEnchantment = HardlandsEnchantment.fromString(identifier);
 
-    public boolean setEnchantmentLevel(EnchantmentDefinition enchantment, int level) {
-        String identifier = enchantment.getKey().asString();
-        int normalized = Math.clamp(level, DISABLED_LEVEL, enchantment.getMaxLevel());
-        return updateEnchantmentLevel(identifier, normalized,
-                (item, player) -> applyCustomEnchantment(item, enchantment, normalized, player));
-    }
-
-    private boolean updateEnchantmentLevel(String identifier, int level,
-                                           ItemUpdater updater) {
-        Map<String, Integer> values = new LinkedHashMap<>(
-                super.enchantments.hasValue() ? super.enchantments.getValue() : Map.of());
-
-        if (level == VANILLA_LEVEL) {
-            values.remove(identifier);
-        } else {
-            values.put(identifier, level);
-        }
-
-        if (!super.enchantments.getPredicate().test(values)) {
-            return false;
-        }
-
-        super.enchantments.setValue(values);
-
-        if (level != VANILLA_LEVEL) {
-            updateOnlinePlayers(updater);
-        }
-        return true;
-    }
-
-    private boolean applyEnchantments(ItemStack item, Player player) {
-        if (!super.enchantments.hasValue()) {
-            return false;
-        }
-
-        boolean changed = false;
-        for (Map.Entry<String, Integer> entry : super.enchantments.getValue().entrySet()) {
-            changed |= applyEnchantmentByIdentifier(item, entry.getKey(), entry.getValue(),
-                    player);
-        }
-        return changed;
-    }
-
-    private boolean applyEnchantmentByIdentifier(ItemStack item, String identifier, int level,
-                                                 Player player) {
-        NamespacedKey key = NamespacedKey.fromString(identifier);
-        if (key == null || level == VANILLA_LEVEL) {
-            return false;
-        }
-
-        EnchantmentDefinition customEnchantment = EnchantmentDefinition.find(key);
-        if (customEnchantment != null) {
-            return applyCustomEnchantment(item, customEnchantment, level, player);
-        }
-
-        Enchantment vanillaEnchantment = ENCHANTMENT_REGISTRY.get(key);
-        if (vanillaEnchantment != null) {
-            return applyVanillaEnchantment(item, vanillaEnchantment, level, player);
-        }
-
-        return false;
-    }
-
-    private static boolean applyVanillaEnchantment(ItemStack item, Enchantment enchantment,
-                                                   int level, Player player) {
-        int current = item.getEnchantmentLevel(enchantment);
-
-        if (level == DISABLED_LEVEL) {
-            if (current > 0 && item.removeEnchantment(enchantment) > 0) {
-                playSound(player, Sound.ENTITY_ITEM_BREAK, 0.7f);
-                return true;
+            if (hardlandsEnchantment.isPresent()) {
+                applyHardlandsEnchantment(stack, hardlandsEnchantment.get(), level);
+                return;
             }
-            return false;
-        }
 
-        if (level == VANILLA_LEVEL || current == level || !enchantment.canEnchantItem(item)) {
-            return false;
-        }
-
-        item.addUnsafeEnchantment(enchantment, level);
-        playSound(player, Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1.25f);
-        return true;
+            Enchantment enchantment = findVanillaEnchantment(identifier);
+            if (enchantment != null) applyVanillaEnchantment(stack, enchantment, level);
+        });
     }
 
-    private static boolean applyCustomEnchantment(ItemStack item, EnchantmentDefinition enchantment, int level, Player player) {
-        if (level == DISABLED_LEVEL) {
-            if (enchantment.remove(item)) {
-                playSound(player, Sound.BLOCK_GRINDSTONE_USE, 1.25f);
-                return true;
-            }
-            return false;
+    private static void applyVanillaEnchantment(ItemStack stack, Enchantment enchantment, int level) {
+        if (level == PROHIBITED) {
+            stack.removeEnchantment(enchantment);
+            return;
         }
 
-        if (level == VANILLA_LEVEL) {
-            return false;
-        }
-
-        if (enchantment.apply(item, level)) {
-            playSound(player, Sound.BLOCK_ENCHANTMENT_TABLE_USE, 0.85f);
-            return true;
-        }
-        return false;
-    }
-
-    private static void playSound(Player player, Sound sound, float pitch) {
-        if (player != null) {
-            player.playSound(player.getLocation(), sound, 1.0f, pitch);
+        if (level > VANILLA && level <= enchantment.getMaxLevel() && enchantment.canEnchantItem(stack)) {
+            stack.addEnchantment(enchantment, level);
         }
     }
 
-    private void updateOnlinePlayers(ItemUpdater updater) {
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            updateInventory(player.getInventory(), player, updater);
+    private static void applyHardlandsEnchantment(ItemStack stack, HardlandsEnchantment enchantment, int level) {
+        if (level == PROHIBITED) {
+            enchantment.remove(stack);
+            return;
+        }
+
+        if (level > VANILLA && level <= enchantment.getMaxLevel()) {
+            enchantment.apply(stack, level - 1);
         }
     }
 
-    private void updateInventory(PlayerInventory inventory, Player player) {
-        updateInventory(inventory, player, this::applyEnchantments);
+    private static int getMaximumLevel(String identifier) {
+        Optional<HardlandsEnchantment> hardlandsEnchantment = HardlandsEnchantment.fromString(identifier);
+        if (hardlandsEnchantment.isPresent()) return hardlandsEnchantment.get().getMaxLevel();
+
+        Enchantment enchantment = findVanillaEnchantment(identifier);
+        if (enchantment != null) return enchantment.getMaxLevel();
+
+        throw new IllegalArgumentException("Unknown enchantment: " + identifier);
     }
 
-    private static void updateInventory(PlayerInventory inventory, Player player, ItemUpdater updater) {
-        for (int slot = 0; slot < inventory.getSize(); slot++) {
-            ItemStack item = inventory.getItem(slot);
-            if (item != null && !item.isEmpty() && updater.update(item, player)) {
-                inventory.setItem(slot, item);
-            }
-        }
+    private static String normalizeIdentifier(String identifier) {
+        Optional<HardlandsEnchantment> hardlandsEnchantment = HardlandsEnchantment.fromString(identifier);
+        if (hardlandsEnchantment.isPresent()) return hardlandsEnchantment.get().name();
+
+        Enchantment enchantment = findVanillaEnchantment(identifier);
+        if (enchantment != null) return enchantment.getKey().toString();
+
+        throw new IllegalArgumentException("Unknown enchantment: " + identifier);
+    }
+
+    private static Enchantment findVanillaEnchantment(String identifier) {
+        String normalized = identifier.contains(":") ? identifier : "minecraft:" + identifier;
+        NamespacedKey key = NamespacedKey.fromString(normalized.toLowerCase(Locale.ROOT));
+        return key == null ? null : getEnchantmentRegistry().get(key);
+    }
+
+    private static Registry<Enchantment> getEnchantmentRegistry() {
+        return RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT);
     }
 }

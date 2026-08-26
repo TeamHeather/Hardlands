@@ -13,6 +13,7 @@ import org.bukkit.inventory.ItemStack;
 import org.heather.hardlands.common.item.InventoryItem;
 import org.heather.hardlands.common.item.ItemBuilder;
 import org.heather.hardlands.config.inventory.handler.InventoryHandler;
+import org.heather.hardlands.config.inventory.handler.MagicManInventoryHandler;
 import org.heather.hardlands.config.inventory.handler.PresetInventoryHandler;
 import org.heather.hardlands.config.inventory.handler.ScenarioInventoryHandler;
 
@@ -32,20 +33,14 @@ public enum HardlandsInventory {
             'T', InventoryItem.PRESETS)),
 
     SCENARIOS("Escenarios", Material.PINK_STAINED_GLASS_PANE, ScenarioInventoryHandler::new),
+    PLAYERS("Jugadores", Material.YELLOW_STAINED_GLASS_PANE),
+    GENERAL("General", Material.PURPLE_STAINED_GLASS_PANE),
+    PHASES("Fases", Material.LIME_STAINED_GLASS_PANE),
+    PRESETS("Plantillas", Material.PURPLE_STAINED_GLASS_PANE, PresetInventoryHandler::new),
 
-    PLAYERS(
-            "Jugadores",
-            Material.YELLOW_STAINED_GLASS_PANE),
+    MAGIC_MAN("Magic Man", Material.CYAN_STAINED_GLASS_PANE, MagicManInventoryHandler::new),
 
-    GENERAL(
-            "General",
-            Material.PURPLE_STAINED_GLASS_PANE),
-
-    PHASES(
-            "Fases",
-            Material.LIME_STAINED_GLASS_PANE),
-
-    PRESETS("Plantillas", Material.PURPLE_STAINED_GLASS_PANE, PresetInventoryHandler::new);
+    ;
 
     private static final int COLUMNS = 9;
     private static final int CONTENT_COLUMNS = COLUMNS - 2;

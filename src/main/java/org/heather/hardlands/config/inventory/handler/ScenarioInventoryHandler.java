@@ -38,7 +38,6 @@ import org.heather.hardlands.config.inventory.HardlandsInventory;
 import org.heather.hardlands.module.scenario.Scenario;
 import org.heather.hardlands.module.scenario.ScenarioDefinition;
 import org.heather.hardlands.module.scenario.ScenarioManager;
-import org.heather.hardlands.module.scenario.scenarios.MagicManScenario;
 
 public final class ScenarioInventoryHandler implements InventoryHandler {
 
@@ -89,24 +88,16 @@ public final class ScenarioInventoryHandler implements InventoryHandler {
         if (event.isLeftClick()) return Optional.of(toggleScenario(event, manager, definition, scenario, identifier));
 
         if (event.isRightClick()) {
-                if (scenario instanceof MagicManScenario magicMan) {
-                    new MagicManInventoryHandler(magicMan).open(player);
-                    return Optional.of(true);
-                }
-
-                if (scenario.getConfigurationOptions().isEmpty()) {
-                    return Optional.of(false);
-                }
-
-                this.showOptionsDialog(
-                        player,
-                        inventory,
-                        definition,
-                        scenario);
-
+            if (definition == ScenarioDefinition.MAGIC_MAN) {
+                HardlandsInventory.MAGIC_MAN.openInventory(player);
                 return Optional.of(true);
             }
 
+            if (scenario.getConfigurationOptions().isEmpty()) return Optional.of(false);
+
+            this.showOptionsDialog(player, inventory, definition, scenario);
+            return Optional.of(true);
+        }
 
         return Optional.of(false);
     }

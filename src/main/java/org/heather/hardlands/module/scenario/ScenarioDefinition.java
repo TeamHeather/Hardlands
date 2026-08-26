@@ -12,6 +12,7 @@ import org.bukkit.inventory.ItemStack;
 import org.heather.hardlands.common.item.InventoryItem;
 import org.heather.hardlands.common.item.ItemBuilder;
 import org.heather.hardlands.config.Option;
+import org.heather.hardlands.common.enchantment.HardlandsEnchantment;
 import org.heather.hardlands.module.scenario.scenarios.AppleGroveScenario;
 import org.heather.hardlands.module.scenario.scenarios.BonanzaScenario;
 import org.heather.hardlands.module.scenario.scenarios.MagicManScenario;
@@ -59,12 +60,15 @@ public enum ScenarioDefinition {
                 .glint(enabled)
                 .addFormattedLore("", "{Estado}: [%s]".formatted(enabled ? "Activo" : "Inactivo"));
 
-        addConfiguredOptions(builder, scenario);
+        if (this == MAGIC_MAN) addMagicManOptions(builder, scenario);
+        else addConfiguredOptions(builder, scenario);
 
         boolean configurable = !scenario.getConfigurationOptions().isEmpty();
+
         String actions = configurable
                 ? "<dark_gray>Izq. ↔ Alternar | Der. ✎ Configurar"
                 : "<dark_gray>Izq. ↔ Alternar";
+
         return builder.addFormattedLore("", actions).build();
     }
 
@@ -74,6 +78,29 @@ public enum ScenarioDefinition {
         }
 
         return Optional.empty();
+    }
+
+    private static void addMagicManOptions(ItemBuilder builder, Scenario scenario) {
+        Option<?> option = scenario.getConfigurationOptions().get("enchantments");
+        if (option == null || !(option.getValue() instanceof Map<?, ?> enchantments)) return;
+
+        boolean headerAdded = false;
+
+        for (Map.Entry<?, ?> entry : enchantments.entrySet()) {
+            if (!(entry.getKey() instanceof String identifier)) continue;
+            if (!(entry.getValue() instanceof Integer level)) continue;
+            if (level == MagicManScenario.VANILLA || level < MagicManScenario.PROHIBITED) continue;
+
+            if (!headerAdded) {
+                builder.addFormattedLore("", "{Configuración}:");
+                headerAdded = true;
+            }
+
+            builder.addFormattedLore(
+                    "▶ %s: [%s]".formatted(
+                            formatEnchantmentName(identifier),
+                            level == MagicManScenario.PROHIBITED ? "REMOVED" : level));
+        }
     }
 
     private static void addConfiguredOptions(ItemBuilder builder, Scenario scenario) {
@@ -88,17 +115,41 @@ public enum ScenarioDefinition {
             }
 
             builder.addFormattedLore(
-                    "▶ %s: [%s]".formatted(option.getKey(), option.getValue()));
+                    "▶ %s: [%s]".formatted(
+                            formatOptionName(option.getKey()),
+                            formatValue(option.getValue())));
         }
     }
 
+    private static String formatEnchantmentName(String identifier) {
+        Optional<HardlandsEnchantment> hardlandsEnchantment = HardlandsEnchantment.fromString(identifier);
+
+        if (hardlandsEnchantment.isPresent()) {
+            return hardlandsEnchantment.get().getName();
+        }
+
+        int namespaceSeparator = identifier.indexOf(':');
+        String name = namespaceSeparator >= 0
+                ? identifier.substring(namespaceSeparator + 1)
+                : identifier;
+
+        return formatOptionName(name);
+    }
+
     private static String formatOptionName(String key) {
-        String name = key.replace('-', ' ').replace('_', ' ').replaceAll("(?<=[a-z0-9])(?=[A-Z])", " ");
-        return name.isEmpty() ? name : Character.toUpperCase(name.charAt(0)) + name.substring(1);
+        String name = key.replace('-', ' ')
+                .replace('_', ' ')
+                .replaceAll("(?<=[a-z0-9])(?=[A-Z])", " ");
+
+        return name.isEmpty()
+                ? name
+                : Character.toUpperCase(name.charAt(0)) + name.substring(1);
     }
 
     private static String formatValue(Object value) {
-        if (value instanceof Boolean booleanValue) return booleanValue ? "Activado" : "Desactivado";
+        if (value instanceof Boolean booleanValue) {
+            return booleanValue ? "Activado" : "Desactivado";
+        }
 
         if (value instanceof Float || value instanceof Double) {
             return new BigDecimal(value.toString()).stripTrailingZeros().toPlainString();

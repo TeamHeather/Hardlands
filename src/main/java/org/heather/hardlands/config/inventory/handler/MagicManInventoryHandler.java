@@ -1,13 +1,16 @@
 package org.heather.hardlands.config.inventory.handler;
 
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.ItemLore;
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.Bukkit;
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
@@ -16,248 +19,275 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.heather.hardlands.Hardlands;
 import org.heather.hardlands.common.item.InventoryItem;
 import org.heather.hardlands.common.item.ItemBuilder;
 import org.heather.hardlands.config.inventory.HardlandsInventory;
-import org.heather.hardlands.config.inventory.HardlandsInventoryHolder;
+import org.heather.hardlands.common.enchantment.HardlandsEnchantment;
+import org.heather.hardlands.module.scenario.Scenario;
+import org.heather.hardlands.module.scenario.ScenarioDefinition;
 import org.heather.hardlands.module.scenario.scenarios.MagicManScenario;
+import org.heather.hardlands.util.RomanNumerals;
+import org.heather.hardlands.util.text.HardlandsColor;
 import org.heather.hardlands.util.text.TextFormatter;
 
 public final class MagicManInventoryHandler implements InventoryHandler {
 
-    private static final int INVENTORY_SIZE = 54;
-    private static final int CONTENT_SIZE = 45;
-    private static final int PREVIOUS_SLOT = 48;
-    private static final int BACK_SLOT = 49;
-    private static final int NEXT_SLOT = 50;
-    private static final String VANILLA_NAMESPACE = NamespacedKey.MINECRAFT;
-    private static final String CLICK_HELP = "<dark_gray>Izq. Vanilla | Der. +1 | Shift + Der. -1";
+    private static final int PROHIBITED_AMPLIFIER = -2;
+    private static final int VANILLA_AMPLIFIER = -1;
 
-    private static final EnchantmentDefinition[] CUSTOM_ENCHANTMENTS =
-            EnchantmentDefinition.values();
-    private static final List<Enchantment> VANILLA_ENCHANTMENTS =
-            getVanillaEnchantments();
-    private static final int ENCHANTMENT_COUNT =
-            CUSTOM_ENCHANTMENTS.length + VANILLA_ENCHANTMENTS.size();
+    private final MagicManScenario scenario = getMagicManScenario();
+    private final List<EnchantmentEntry> enchantments = createEnchantments();
 
-    private final MagicManScenario scenario;
     private int page;
-
-    public MagicManInventoryHandler(MagicManScenario scenario) {
-        this.scenario = scenario;
-    }
-
-    public void open(Player player) {
-        HardlandsInventoryHolder holder = new HardlandsInventoryHolder(this);
-        Inventory inventory = Bukkit.createInventory(holder, INVENTORY_SIZE,
-                TextFormatter.formatTinyCaps("Magic Man | Encantamientos"));
-        holder.setInventory(inventory);
-        render(inventory);
-        player.openInventory(inventory);
-        onOpen(inventory, player);
-    }
 
     @Override
     public void render(Inventory inventory) {
-        inventory.clear();
-        int start = page * CONTENT_SIZE;
-        int end = Math.min(start + CONTENT_SIZE, ENCHANTMENT_COUNT);
+        int capacity = HardlandsInventory.getContentCapacity(inventory);
+        int startIndex = this.page * capacity;
+        int endIndex = Math.min(startIndex + capacity, this.enchantments.size());
 
-        for (int i = start; i < end; i++) {
-            inventory.setItem(i - start, createEnchantmentItem(i));
-        }
+        clearContent(inventory);
 
-        if (page > 0) {
-            inventory.setItem(PREVIOUS_SLOT, InventoryItem.PREVIOUS.build());
+        for (int index = startIndex; index < endIndex; index++) {
+            EnchantmentEntry enchantment = this.enchantments.get(index);
+
+            inventory.setItem(
+                    HardlandsInventory.contentSlot(index - startIndex),
+                    this.createDisplayItem(enchantment));
         }
-        if (page < getLastPage()) {
-            inventory.setItem(NEXT_SLOT, InventoryItem.NEXT.build());
-        }
-        inventory.setItem(BACK_SLOT, createBackItem());
     }
 
     @Override
     public Optional<Boolean> onClick(InventoryClickEvent event, Player player) {
-        int slot = event.getRawSlot();
+        Inventory inventory = event.getView().getTopInventory();
+        Optional<InventoryItem> footerItem = InventoryItem.findByStack(event.getCurrentItem());
 
-        if (slot == PREVIOUS_SLOT && page > 0) {
-            page--;
-            render(event.getView().getTopInventory());
-            return Optional.of(true);
-        }
+        if (footerItem.isPresent()) {
+            if (footerItem.get() == InventoryItem.PREVIOUS) return Optional.of(this.previousPage(player, inventory));
+            if (footerItem.get() == InventoryItem.NEXT) return Optional.of(this.nextPage(inventory));
 
-        if (slot == NEXT_SLOT && page < getLastPage()) {
-            page++;
-            render(event.getView().getTopInventory());
-            return Optional.of(true);
-        }
-
-        if (slot == BACK_SLOT) {
-            HardlandsInventory.SCENARIOS.openInventory(player);
-            return Optional.of(true);
-        }
-
-        if (slot < 0 || slot >= CONTENT_SIZE) {
             return Optional.empty();
         }
 
-        int index = page * CONTENT_SIZE + slot;
-        if (index >= ENCHANTMENT_COUNT) {
-            return Optional.empty();
-        }
+        int contentIndex = HardlandsInventory.getContentIndex(inventory, event.getRawSlot());
+        if (contentIndex < 0) return Optional.empty();
 
-        boolean changed = updateEnchantment(event, index);
-        if (changed) {
-            event.setCurrentItem(createEnchantmentItem(index));
-        }
+        int index = this.page * HardlandsInventory.getContentCapacity(inventory) + contentIndex;
+        if (index >= this.enchantments.size()) return Optional.empty();
 
-        return Optional.of(changed);
+        EnchantmentEntry enchantment = this.enchantments.get(index);
+        int amplifier = getAmplifier(this.scenario.getEnchantmentLevel(enchantment.identifier()));
+        int newAmplifier;
+
+        if (event.isLeftClick()) newAmplifier = nextAmplifier(amplifier, enchantment.maxAmplifier());
+        else if (event.isRightClick()) newAmplifier = previousAmplifier(amplifier);
+        else return Optional.of(false);
+
+        if (newAmplifier == amplifier) return Optional.of(false);
+
+        this.scenario.setEnchantmentLevel(enchantment.identifier(), getConfiguredLevel(newAmplifier));
+        event.setCurrentItem(this.createDisplayItem(enchantment));
+
+        return Optional.of(true);
     }
 
-    private boolean updateEnchantment(InventoryClickEvent event, int index) {
-        if (index < CUSTOM_ENCHANTMENTS.length) {
-            return updateCustomEnchantment(event, index);
-        }
-        return updateVanillaEnchantment(event, index);
-    }
+    private ItemStack createDisplayItem(EnchantmentEntry enchantment) {
+        int amplifier = getAmplifier(this.scenario.getEnchantmentLevel(enchantment.identifier()));
 
-    private boolean updateCustomEnchantment(InventoryClickEvent event, int index) {
-        EnchantmentDefinition enchantment = CUSTOM_ENCHANTMENTS[index];
-        int currentLevel = scenario.getEnchantmentLevel(enchantment);
-        int newLevel = calculateNewLevel(event, currentLevel, enchantment.getMaxLevel());
-
-        if (newLevel != currentLevel) {
-            return scenario.setEnchantmentLevel(enchantment, newLevel);
-        }
-        return false;
-    }
-
-    private boolean updateVanillaEnchantment(InventoryClickEvent event, int index) {
-        Enchantment enchantment =
-                VANILLA_ENCHANTMENTS.get(index - CUSTOM_ENCHANTMENTS.length);
-        int currentLevel = scenario.getEnchantmentLevel(enchantment);
-        int newLevel = calculateNewLevel(event, currentLevel, enchantment.getMaxLevel());
-
-        if (newLevel != currentLevel) {
-            return scenario.setEnchantmentLevel(enchantment, newLevel);
-        }
-        return false;
-    }
-
-    private ItemStack createEnchantmentItem(int index) {
-        if (index < CUSTOM_ENCHANTMENTS.length) {
-            EnchantmentDefinition enchantment = CUSTOM_ENCHANTMENTS[index];
-            int level = scenario.getEnchantmentLevel(enchantment);
-            return buildEnchantmentItem(enchantment.getDisplayName(), level,
-                    enchantment.getMaxLevel(), true);
+        if (enchantment.hardlandsEnchantment() != null) {
+            return this.createHardlandsEnchantmentItem(enchantment.hardlandsEnchantment(), amplifier);
         }
 
-        Enchantment enchantment =
-                VANILLA_ENCHANTMENTS.get(index - CUSTOM_ENCHANTMENTS.length);
-        int level = scenario.getEnchantmentLevel(enchantment);
-        return buildEnchantmentItem(formatVanillaName(enchantment.getKey().getKey()),
-                level, enchantment.getMaxLevel(), false);
+        return this.createVanillaEnchantmentItem(enchantment, amplifier);
     }
 
-    private static ItemStack buildEnchantmentItem(String name, int level, int maxLevel,
-                                                  boolean custom) {
-        ItemBuilder builder = new ItemBuilder(getMaterialForLevel(level))
-                .name(TextFormatter.formatTinyCaps(name).color(getColorForLevel(level)))
-                .glint(level > 0)
-                .formattedLore(
-                        "Estado: [%s]".formatted(getStateForLevel(level)),
-                        "Nivel: [%s]".formatted(level > 0 ? level : "-"),
-                        "Máximo: [%d]".formatted(maxLevel));
+    private ItemStack createHardlandsEnchantmentItem(HardlandsEnchantment enchantment, int amplifier) {
+        ItemStack stack = enchantment.enchantedBook(0);
+        ItemLore bookLore = stack.getData(DataComponentTypes.LORE);
 
-        if (custom) {
-            builder.addFormattedLore("Origen: {Hardlands}");
-        }
+        String description = bookLore != null && bookLore.lines().size() >= 3
+                ? TextFormatter.toPlainText(bookLore.lines().get(2))
+                : "";
 
-        return builder.addFormattedLore("", CLICK_HELP).build();
-    }
+        stack.setType(getMaterial(amplifier));
 
-    private ItemStack createBackItem() {
-        return new ItemBuilder(Material.BARRIER)
-                .name(TextFormatter.formatTinyCaps("Volver").color(NamedTextColor.GRAY))
-                .addFormattedLore("<dark_gray>Página %d/%d".formatted(page + 1,
-                        getLastPage() + 1))
+        ItemBuilder builder = new ItemBuilder(stack)
+                .name(enchantment.beautifulName(Math.max(amplifier, 0)))
+                .formattedLore(description, "");
+
+        addEnchantmentStateLore(builder, amplifier, enchantment.getMaxLevel(), "Hardlands");
+
+        return builder
+                .addFormattedLore("", "<dark_gray>Izq. + | Der. -")
                 .build();
     }
 
-    private static int calculateNewLevel(InventoryClickEvent event, int level, int maxLevel) {
-        if (event.isLeftClick()) {
-            return MagicManScenario.VANILLA_LEVEL;
-        }
-        if (!event.isRightClick()) {
-            return level;
-        }
-        return event.isShiftClick() ? Math.max(MagicManScenario.DISABLED_LEVEL, level - 1)
-                : Math.min(maxLevel, level + 1);
+    private ItemStack createVanillaEnchantmentItem(EnchantmentEntry enchantment, int amplifier) {
+        ItemBuilder builder = new ItemBuilder(getMaterial(amplifier))
+                .name(TextFormatter.formatTinyCaps(enchantment.name()).color(getColor(amplifier)));
+
+        addEnchantmentStateLore(builder, amplifier, enchantment.maxLevel(), "Vanilla");
+
+        return builder
+                .addFormattedLore("", "<dark_gray>Izq. + | Der. -")
+                .build();
     }
 
-    private static Material getMaterialForLevel(int level) {
-        if (level < 0) {
-            return Material.BARRIER;
+    private static void addEnchantmentStateLore(ItemBuilder builder, int amplifier, int maxLevel, String origin) {
+        builder.addFormattedLore("Estado: [%s]".formatted(formatState(amplifier)));
+
+        if (maxLevel > 1) {
+            builder.addFormattedLore("Nivel máximo: [%s]".formatted(RomanNumerals.format(maxLevel)));
         }
-        if (level == 0) {
-            return Material.BOOK;
+
+        builder.addFormattedLore("Origen: [%s]".formatted(origin));
+    }
+
+    private boolean previousPage(Player player, Inventory inventory) {
+        if (this.page == 0) {
+            HardlandsInventory.SCENARIOS.openInventory(player);
+            return true;
         }
+
+        this.page--;
+        this.render(inventory);
+
+        return true;
+    }
+
+    private boolean nextPage(Inventory inventory) {
+        int capacity = HardlandsInventory.getContentCapacity(inventory);
+        if ((this.page + 1) * capacity >= this.enchantments.size()) return false;
+
+        this.page++;
+        this.render(inventory);
+
+        return true;
+    }
+
+    private static int nextAmplifier(int amplifier, int maxAmplifier) {
+        return Math.min(amplifier + 1, maxAmplifier);
+    }
+
+    private static int previousAmplifier(int amplifier) {
+        return Math.max(amplifier - 1, PROHIBITED_AMPLIFIER);
+    }
+
+    private static int getAmplifier(int configuredLevel) {
+        return switch (configuredLevel) {
+            case MagicManScenario.PROHIBITED -> PROHIBITED_AMPLIFIER;
+            case MagicManScenario.VANILLA -> VANILLA_AMPLIFIER;
+            default -> configuredLevel - 1;
+        };
+    }
+
+    private static int getConfiguredLevel(int amplifier) {
+        return switch (amplifier) {
+            case PROHIBITED_AMPLIFIER -> MagicManScenario.PROHIBITED;
+            case VANILLA_AMPLIFIER -> MagicManScenario.VANILLA;
+            default -> amplifier + 1;
+        };
+    }
+
+    private static Material getMaterial(int amplifier) {
+        if (amplifier == PROHIBITED_AMPLIFIER) return Material.BARRIER;
+        if (amplifier == VANILLA_AMPLIFIER) return Material.BOOK;
         return Material.ENCHANTED_BOOK;
     }
 
-    private static NamedTextColor getColorForLevel(int level) {
-        if (level < 0) {
-            return NamedTextColor.RED;
-        }
-        if (level == 0) {
-            return NamedTextColor.GRAY;
-        }
-        return NamedTextColor.GREEN;
+    private static TextColor getColor(int amplifier) {
+        if (amplifier == PROHIBITED_AMPLIFIER) return NamedTextColor.RED;
+        if (amplifier == VANILLA_AMPLIFIER) return NamedTextColor.GRAY;
+        return HardlandsColor.PRIMARY;
     }
 
-    private static String getStateForLevel(int level) {
-        if (level < 0) {
-            return "Prohibido";
-        }
-        if (level == 0) {
-            return "Vanilla";
-        }
-        return "Forzado";
+    private static String formatState(int amplifier) {
+        if (amplifier == PROHIBITED_AMPLIFIER) return "Prohibido";
+        if (amplifier == VANILLA_AMPLIFIER) return "Vanilla";
+
+        return "Forzado · %s".formatted(RomanNumerals.format(amplifier + 1));
     }
 
-    private int getLastPage() {
-        return Math.max(0, (ENCHANTMENT_COUNT - 1) / CONTENT_SIZE);
-    }
+    private static List<EnchantmentEntry> createEnchantments() {
+        List<EnchantmentEntry> enchantments = new ArrayList<>();
 
-    private static String formatVanillaName(String key) {
-        StringBuilder name = new StringBuilder();
-        boolean capitalize = true;
-
-        for (char character : key.toCharArray()) {
-            if (character == '_') {
-                name.append(' ');
-                capitalize = true;
-            } else {
-                name.append(capitalize ? Character.toUpperCase(character) : character);
-                capitalize = false;
-            }
+        for (HardlandsEnchantment enchantment : HardlandsEnchantment.values()) {
+            enchantments.add(new EnchantmentEntry(
+                    enchantment.name(),
+                    enchantment.getName(),
+                    enchantment.getMaxLevel(),
+                    enchantment));
         }
 
-        return name.toString();
-    }
-
-    private static List<Enchantment> getVanillaEnchantments() {
-        Registry<Enchantment> registry =
-                RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT);
-        List<Enchantment> enchantments = new ArrayList<>();
+        Registry<Enchantment> registry = RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT);
+        List<EnchantmentEntry> vanillaEnchantments = new ArrayList<>();
 
         for (Enchantment enchantment : registry) {
-            if (enchantment.getKey().getNamespace().equals(VANILLA_NAMESPACE)) {
-                enchantments.add(enchantment);
-            }
+            vanillaEnchantments.add(new EnchantmentEntry(
+                    enchantment.getKey().toString(),
+                    formatVanillaName(enchantment),
+                    enchantment.getMaxLevel(),
+                    null));
         }
 
-        enchantments.sort(Comparator.comparing(e -> e.getKey().asString()));
+        vanillaEnchantments.sort(Comparator.comparing(EnchantmentEntry::name, String.CASE_INSENSITIVE_ORDER));
+        enchantments.addAll(vanillaEnchantments);
+
         return List.copyOf(enchantments);
+    }
+
+    private static String formatVanillaName(Enchantment enchantment) {
+        String path = enchantment.getKey().getKey();
+        String[] words = path.split("_");
+        StringBuilder result = new StringBuilder();
+
+        for (String word : words) {
+            if (!result.isEmpty()) result.append(' ');
+
+            result.append(Character.toUpperCase(word.charAt(0)))
+                    .append(word.substring(1).toLowerCase(Locale.ROOT));
+        }
+
+        if (!enchantment.getKey().getNamespace().equals(NamespacedKey.MINECRAFT)) {
+            result.append(" (")
+                    .append(enchantment.getKey().getNamespace())
+                    .append(')');
+        }
+
+        return result.toString();
+    }
+
+    private static MagicManScenario getMagicManScenario() {
+        Scenario scenario = Hardlands.getInstance()
+                .getScenarioManager()
+                .findRegisteredScenario(ScenarioDefinition.MAGIC_MAN.identifier())
+                .orElseThrow(() -> new IllegalStateException("Magic Man scenario is not registered."));
+
+        if (!(scenario instanceof MagicManScenario magicMan)) {
+            throw new IllegalStateException("Magic Man definition is not backed by MagicManScenario.");
+        }
+
+        return magicMan;
+    }
+
+    private static void clearContent(Inventory inventory) {
+        int capacity = HardlandsInventory.getContentCapacity(inventory);
+
+        for (int index = 0; index < capacity; index++) {
+            inventory.clear(HardlandsInventory.contentSlot(index));
+        }
+    }
+
+    private record EnchantmentEntry(
+            String identifier,
+            String name,
+            int maxLevel,
+            HardlandsEnchantment hardlandsEnchantment
+    ) {
+
+        private int maxAmplifier() {
+            return this.maxLevel - 1;
+        }
     }
 }

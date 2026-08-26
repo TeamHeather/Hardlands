@@ -1,6 +1,8 @@
 package org.heather.hardlands.config;
 
 import java.lang.reflect.Type;
+import java.util.Objects;
+import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
 public final class Option<T> {
@@ -9,6 +11,7 @@ public final class Option<T> {
     private final Type dataType;
     private final Predicate<T> predicate;
 
+    private BiConsumer<T, T> changeListener = (_, _) -> {};
     private T value;
 
     public Option(String key, Type dataType) {
@@ -21,7 +24,7 @@ public final class Option<T> {
         }
 
         if (dataType == null) {
-            throw new IllegalArgumentException("Option data enchantment cannot be null");
+            throw new IllegalArgumentException("Option data type cannot be null");
         }
 
         if (predicate == null) {
@@ -50,7 +53,11 @@ public final class Option<T> {
     }
 
     public void setValue(T value) {
+        if (Objects.equals(this.value, value)) return;
+
+        T previousValue = this.value;
         this.value = value;
+        this.changeListener.accept(previousValue, value);
     }
 
     public T getValue() {
@@ -59,5 +66,9 @@ public final class Option<T> {
 
     public boolean hasValue() {
         return this.value != null;
+    }
+
+    void setChangeListener(BiConsumer<T, T> changeListener) {
+        this.changeListener = changeListener;
     }
 }
