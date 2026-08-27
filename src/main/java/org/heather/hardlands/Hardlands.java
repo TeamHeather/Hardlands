@@ -12,7 +12,7 @@ import org.heather.hardlands.common.command.HardlandsCommand;
 import org.heather.hardlands.common.enchantment.EnchantmentListener;
 import org.heather.hardlands.gui.inventory.InventoryListener;
 import org.heather.hardlands.common.player.PlayerListener;
-import org.heather.hardlands.core.SingleThreadScheduler;
+import org.heather.hardlands.task.SingleThreadScheduler;
 import org.heather.hardlands.module.PresetRepository;
 import org.heather.hardlands.module.game.GameFlow;
 import org.heather.hardlands.module.general.GeneralConfiguration;
@@ -26,7 +26,7 @@ public final class Hardlands extends JavaPlugin {
 
     @Nullable private static Hardlands instance;
 
-    private final SingleThreadScheduler singleThreadScheduler = new SingleThreadScheduler(this);
+    private final SingleThreadScheduler<Hardlands> singleThreadScheduler = new SingleThreadScheduler<>(this);
     private final GeneralConfiguration generalConfiguration = new GeneralConfiguration();
     private final PresetRepository presetRepository = new PresetRepository(this, "presets");
     private final ScenarioManager scenarioManager = new ScenarioManager(this);

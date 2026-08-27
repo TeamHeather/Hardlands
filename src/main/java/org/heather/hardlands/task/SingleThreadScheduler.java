@@ -1,24 +1,21 @@
-package org.heather.hardlands.core;
+package org.heather.hardlands.task;
 
 import java.time.Duration;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.bukkit.plugin.Plugin;
 
-/**
- * Executes delayed and repeating tasks on a dedicated single thread.
- */
-public final class SingleThreadScheduler implements AutoCloseable {
+public final class SingleThreadScheduler<P extends Plugin> implements AutoCloseable {
 
-    private final Logger logger;
+    private final P plugin;
     private final ScheduledThreadPoolExecutor executor;
 
-    public SingleThreadScheduler(Plugin plugin) {
-        this.logger = plugin.getLogger();
+    public SingleThreadScheduler(P plugin) {
+        this.plugin = plugin;
         this.executor = new ScheduledThreadPoolExecutor(
                 1,
                 Thread.ofPlatform()
@@ -31,31 +28,20 @@ public final class SingleThreadScheduler implements AutoCloseable {
         this.executor.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
     }
 
-    /**
-     * Stops the scheduler and cancels pending tasks.
-     */
     @Override
     public void close() {
         this.executor.shutdownNow();
     }
 
-    // Public API
-
-    /**
-     * Repeats a task at the given interval.
-     */
-    public ScheduledFuture<?> loop(Runnable task, Duration interval) {
+    public ScheduledFuture<?> loop(Consumer<P> task, Duration interval) {
         return this.executor.scheduleAtFixedRate(
-                safe(task),
+                safe(() -> task.accept(this.plugin)),
                 0L,
                 positiveNanos(interval),
                 TimeUnit.NANOSECONDS
         );
     }
 
-    /**
-     * Executes a task after the given delay.
-     */
     public ScheduledFuture<?> schedule(Runnable task, Duration delay) {
         return this.executor.schedule(
                 safe(task),
@@ -63,8 +49,6 @@ public final class SingleThreadScheduler implements AutoCloseable {
                 TimeUnit.NANOSECONDS
         );
     }
-
-    // Internal Utilities
 
     private Runnable safe(Runnable task) {
         if (task == null) {
@@ -75,11 +59,7 @@ public final class SingleThreadScheduler implements AutoCloseable {
             try {
                 task.run();
             } catch (Exception exception) {
-                this.logger.log(
-                        Level.SEVERE,
-                        "Scheduled task failed",
-                        exception
-                );
+                this.plugin.getLogger().log(Level.SEVERE, "Scheduled task failed", exception);
             }
         };
     }
