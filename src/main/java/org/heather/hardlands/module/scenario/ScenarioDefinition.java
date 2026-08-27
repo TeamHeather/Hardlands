@@ -12,10 +12,10 @@ import org.bukkit.inventory.ItemStack;
 import org.heather.hardlands.common.item.InventoryItem;
 import org.heather.hardlands.common.item.ItemBuilder;
 import org.heather.hardlands.core.configuration.Option;
-import org.heather.hardlands.common.enchantment.HardlandsEnchantment;
-import org.heather.hardlands.module.scenario.scenarios.AppleGroveScenario;
-import org.heather.hardlands.module.scenario.scenarios.BonanzaScenario;
-import org.heather.hardlands.module.scenario.scenarios.MagicManScenario;
+import org.heather.hardlands.module.enchantment.HardlandsEnchantment;
+import org.heather.hardlands.module.scenario.implementation.AppleGroveScenario;
+import org.heather.hardlands.module.scenario.implementation.BonanzaScenario;
+import org.heather.hardlands.module.scenario.implementation.MagicManScenario;
 import org.heather.hardlands.util.text.HardlandsColor;
 import org.heather.hardlands.util.text.TextFormatter;
 

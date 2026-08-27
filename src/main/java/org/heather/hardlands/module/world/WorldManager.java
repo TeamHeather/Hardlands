@@ -11,6 +11,8 @@ import org.heather.hardlands.configuration.ConfigBuilder;
 import org.heather.hardlands.core.configuration.Option;
 import org.heather.hardlands.configuration.OptionDef;
 import org.heather.hardlands.core.configuration.Validator;
+import org.heather.hardlands.module.world.pregeneration.PregenerationManager;
+import org.heather.hardlands.module.world.pregeneration.PregenerationRequest;
 import org.popcraft.chunky.api.ChunkyAPI;
 
 @ConfigBuilder(identifier = "world", options = {

@@ -18,9 +18,9 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.profile.PlayerTextures;
 import org.heather.hardlands.Hardlands;
 import org.heather.hardlands.core.configuration.Option;
-import org.heather.hardlands.gui.dialog.WorldConfigurationDialog;
-import org.heather.hardlands.gui.inventory.HardlandsInventory;
-import org.heather.hardlands.module.world.PregenerationManager;
+import org.heather.hardlands.common.ui.dialog.WorldConfigurationDialog;
+import org.heather.hardlands.common.ui.inventory.HardlandsInventory;
+import org.heather.hardlands.module.world.pregeneration.PregenerationManager;
 import org.heather.hardlands.module.world.WorldManager;
 import org.heather.hardlands.util.text.TextFormatter;
 

@@ -23,7 +23,7 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
-import org.heather.hardlands.core.data.PersistentData;
+import org.heather.hardlands.core.data.pdc.PersistentData;
 import org.heather.hardlands.util.text.TextFormatter;
 
 public final class ItemBuilder {
