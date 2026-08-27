@@ -3,19 +3,20 @@ package org.heather.hardlands.module.scenario.scenarios;
 import io.papermc.paper.event.player.PlayerInventorySlotChangeEvent;
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
-import java.util.LinkedHashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.event.EventHandler;
 import org.bukkit.inventory.ItemStack;
-import org.heather.hardlands.gui.ConfigBuilder;
-import org.heather.hardlands.gui.OptionDef;
 import org.heather.hardlands.common.enchantment.HardlandsEnchantment;
+import org.heather.hardlands.configuration.ConfigBuilder;
+import org.heather.hardlands.configuration.OptionDef;
 import org.heather.hardlands.module.scenario.Scenario;
+
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 
 @ConfigBuilder(
         superclass = Scenario.class,
@@ -25,8 +26,8 @@ import org.heather.hardlands.module.scenario.Scenario;
 )
 public class MagicManScenario extends MagicManScenarioConfiguration {
 
-    public static final int PROHIBITED = -1;
-    public static final int VANILLA = 0;
+    public static final int PROHIBITED_AMPLIFIER = -2;
+    public static final int VANILLA_AMPLIFIER = -1;
 
     public MagicManScenario() {
         super.enchantments.setValue(Map.of());
@@ -36,7 +37,7 @@ public class MagicManScenario extends MagicManScenarioConfiguration {
     public boolean canEnable() {
         return super.canEnable()
                 && super.enchantments.hasValue()
-                && super.enchantments.getValue().values().stream().anyMatch(level -> level != VANILLA);
+                && super.enchantments.getValue().values().stream().anyMatch(amplifier -> amplifier != VANILLA_AMPLIFIER);
     }
 
     @EventHandler
@@ -45,84 +46,89 @@ public class MagicManScenario extends MagicManScenarioConfiguration {
         if (original.getType().isAir()) return;
 
         ItemStack updated = original.clone();
-
         this.applyConfiguredEnchantments(updated);
 
-        if (!updated.equals(original)) event.getPlayer().getInventory().setItem(event.getSlot(), updated);
+        if (!updated.equals(original)) {
+            event.getPlayer().getInventory().setItem(event.getSlot(), updated);
+        }
     }
 
-    public int getEnchantmentLevel(String identifier) {
-        String normalized = normalizeIdentifier(identifier);
-        return super.enchantments.getValue().getOrDefault(normalized, VANILLA);
+    public int getEnchantmentAmplifier(String identifier) {
+        return super.enchantments.getValue().getOrDefault(normalizeIdentifier(identifier), VANILLA_AMPLIFIER);
     }
 
-    public void setEnchantmentLevel(String identifier, int level) {
+    public void setEnchantmentAmplifier(String identifier, int amplifier) {
         String normalized = normalizeIdentifier(identifier);
-        int maxLevel = getMaximumLevel(normalized);
+        int maxAmplifier = getMaximumAmplifier(normalized);
 
-        if (level < PROHIBITED || level > maxLevel) {
-            throw new IllegalArgumentException("Enchantment level must be between -1 and %d: %s".formatted(maxLevel, normalized));
+        if (amplifier < PROHIBITED_AMPLIFIER || amplifier > maxAmplifier) {
+            throw new IllegalArgumentException(
+                    "Enchantment amplifier must be between %d and %d: %s"
+                            .formatted(PROHIBITED_AMPLIFIER, maxAmplifier, normalized)
+            );
         }
 
         Map<String, Integer> enchantments = new LinkedHashMap<>(super.enchantments.getValue());
 
-        if (level == VANILLA) enchantments.remove(normalized);
-        else enchantments.put(normalized, level);
+        if (amplifier == VANILLA_AMPLIFIER) enchantments.remove(normalized);
+        else enchantments.put(normalized, amplifier);
 
         super.enchantments.setValue(Map.copyOf(enchantments));
     }
 
     private void applyConfiguredEnchantments(ItemStack stack) {
-        super.enchantments.getValue().forEach((identifier, level) -> {
-            if (level == VANILLA) return;
-
+        super.enchantments.getValue().forEach((identifier, amplifier) -> {
             Optional<HardlandsEnchantment> hardlandsEnchantment = HardlandsEnchantment.fromString(identifier);
 
             if (hardlandsEnchantment.isPresent()) {
-                applyHardlandsEnchantment(stack, hardlandsEnchantment.get(), level);
+                applyHardlandsEnchantment(stack, hardlandsEnchantment.get(), amplifier);
                 return;
             }
 
-            Enchantment enchantment = findVanillaEnchantment(identifier);
-            if (enchantment != null) applyVanillaEnchantment(stack, enchantment, level);
+            Enchantment vanillaEnchantment = findVanillaEnchantment(identifier);
+            if (vanillaEnchantment != null) applyVanillaEnchantment(stack, vanillaEnchantment, amplifier);
         });
     }
 
-    private static void applyVanillaEnchantment(ItemStack stack, Enchantment enchantment, int level) {
-        if (level == PROHIBITED) {
+    private static void applyVanillaEnchantment(ItemStack stack, Enchantment enchantment, int amplifier) {
+        if (amplifier == PROHIBITED_AMPLIFIER) {
             stack.removeEnchantment(enchantment);
             return;
         }
 
-        if (level > VANILLA && level <= enchantment.getMaxLevel() && enchantment.canEnchantItem(stack)) {
-            stack.addEnchantment(enchantment, level);
+        if (amplifier >= 0 && amplifier < enchantment.getMaxLevel() && enchantment.canEnchantItem(stack)) {
+            stack.addEnchantment(enchantment, amplifier + 1);
         }
     }
 
-    private static void applyHardlandsEnchantment(ItemStack stack, HardlandsEnchantment enchantment, int level) {
-        if (level == PROHIBITED) {
+    private static void applyHardlandsEnchantment(ItemStack stack, HardlandsEnchantment enchantment, int amplifier) {
+        if (amplifier == PROHIBITED_AMPLIFIER) {
             enchantment.remove(stack);
             return;
         }
 
-        if (level > VANILLA && level <= enchantment.getMaxLevel()) {
-            enchantment.apply(stack, level - 1);
+        if (amplifier >= 0 && enchantment.getLimit().check(amplifier)) {
+            enchantment.apply(stack, amplifier);
         }
     }
 
-    private static int getMaximumLevel(String identifier) {
+    private static int getMaximumAmplifier(String identifier) {
         Optional<HardlandsEnchantment> hardlandsEnchantment = HardlandsEnchantment.fromString(identifier);
-        if (hardlandsEnchantment.isPresent()) return hardlandsEnchantment.get().getMaxLevel();
+        if (hardlandsEnchantment.isPresent()) {
+            return hardlandsEnchantment.get().getLimit().maxAmplifier();
+        }
 
         Enchantment enchantment = findVanillaEnchantment(identifier);
-        if (enchantment != null) return enchantment.getMaxLevel();
+        if (enchantment != null) return enchantment.getMaxLevel() - 1;
 
         throw new IllegalArgumentException("Unknown enchantment: " + identifier);
     }
 
     private static String normalizeIdentifier(String identifier) {
         Optional<HardlandsEnchantment> hardlandsEnchantment = HardlandsEnchantment.fromString(identifier);
-        if (hardlandsEnchantment.isPresent()) return hardlandsEnchantment.get().name();
+        if (hardlandsEnchantment.isPresent()) {
+            return hardlandsEnchantment.get().createIdentifier();
+        }
 
         Enchantment enchantment = findVanillaEnchantment(identifier);
         if (enchantment != null) return enchantment.getKey().toString();
@@ -133,6 +139,7 @@ public class MagicManScenario extends MagicManScenarioConfiguration {
     private static Enchantment findVanillaEnchantment(String identifier) {
         String normalized = identifier.contains(":") ? identifier : "minecraft:" + identifier;
         NamespacedKey key = NamespacedKey.fromString(normalized.toLowerCase(Locale.ROOT));
+
         return key == null ? null : getEnchantmentRegistry().get(key);
     }
 

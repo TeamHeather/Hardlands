@@ -4,11 +4,6 @@ import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.ItemLore;
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Material;
@@ -20,16 +15,22 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.heather.hardlands.Hardlands;
+import org.heather.hardlands.common.enchantment.HardlandsEnchantment;
 import org.heather.hardlands.common.item.InventoryItem;
 import org.heather.hardlands.common.item.ItemBuilder;
 import org.heather.hardlands.gui.inventory.HardlandsInventory;
-import org.heather.hardlands.common.enchantment.HardlandsEnchantment;
 import org.heather.hardlands.module.scenario.Scenario;
 import org.heather.hardlands.module.scenario.ScenarioDefinition;
 import org.heather.hardlands.module.scenario.scenarios.MagicManScenario;
 import org.heather.hardlands.util.RomanNumerals;
 import org.heather.hardlands.util.text.HardlandsColor;
 import org.heather.hardlands.util.text.TextFormatter;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 
 public final class MagicManInventoryHandler implements InventoryHandler {
 
@@ -54,7 +55,8 @@ public final class MagicManInventoryHandler implements InventoryHandler {
 
             inventory.setItem(
                     HardlandsInventory.contentSlot(index - startIndex),
-                    this.createDisplayItem(enchantment));
+                    this.createDisplayItem(enchantment)
+            );
         }
     }
 
@@ -77,29 +79,29 @@ public final class MagicManInventoryHandler implements InventoryHandler {
         if (index >= this.enchantments.size()) return Optional.empty();
 
         EnchantmentEntry enchantment = this.enchantments.get(index);
-        int amplifier = getAmplifier(this.scenario.getEnchantmentLevel(enchantment.identifier()));
+        int amplifier = this.scenario.getEnchantmentAmplifier(enchantment.identifier());
         int newAmplifier;
 
-        if (event.isLeftClick()) newAmplifier = nextAmplifier(amplifier, enchantment.maxAmplifier());
-        else if (event.isRightClick()) newAmplifier = previousAmplifier(amplifier);
+        if (event.isLeftClick()) newAmplifier = Math.min(amplifier + 1, enchantment.maxAmplifier());
+        else if (event.isRightClick()) newAmplifier = Math.max(amplifier - 1, PROHIBITED_AMPLIFIER);
         else return Optional.of(false);
 
         if (newAmplifier == amplifier) return Optional.of(false);
 
-        this.scenario.setEnchantmentLevel(enchantment.identifier(), getConfiguredLevel(newAmplifier));
+        this.scenario.setEnchantmentAmplifier(enchantment.identifier(), newAmplifier);
         event.setCurrentItem(this.createDisplayItem(enchantment));
 
         return Optional.of(true);
     }
 
     private ItemStack createDisplayItem(EnchantmentEntry enchantment) {
-        int amplifier = getAmplifier(this.scenario.getEnchantmentLevel(enchantment.identifier()));
+        int amplifier = this.scenario.getEnchantmentAmplifier(enchantment.identifier());
 
         if (enchantment.hardlandsEnchantment() != null) {
             return this.createHardlandsEnchantmentItem(enchantment.hardlandsEnchantment(), amplifier);
         }
 
-        return this.createVanillaEnchantmentItem(enchantment, amplifier);
+        return createVanillaEnchantmentItem(enchantment, amplifier);
     }
 
     private ItemStack createHardlandsEnchantmentItem(HardlandsEnchantment enchantment, int amplifier) {
@@ -113,32 +115,32 @@ public final class MagicManInventoryHandler implements InventoryHandler {
         stack.setType(getMaterial(amplifier));
 
         ItemBuilder builder = new ItemBuilder(stack)
-                .name(enchantment.beautifulName(Math.max(amplifier, 0)))
+                .name(enchantment.createBeautifulName(Math.max(amplifier, 0)))
                 .formattedLore(description, "");
 
-        addEnchantmentStateLore(builder, amplifier, enchantment.getMaxLevel(), "Hardlands");
+        addEnchantmentStateLore(builder, amplifier, enchantment.getLimit().maxAmplifier(), "Hardlands");
 
         return builder
                 .addFormattedLore("", "<dark_gray>Izq. + | Der. -")
                 .build();
     }
 
-    private ItemStack createVanillaEnchantmentItem(EnchantmentEntry enchantment, int amplifier) {
+    private static ItemStack createVanillaEnchantmentItem(EnchantmentEntry enchantment, int amplifier) {
         ItemBuilder builder = new ItemBuilder(getMaterial(amplifier))
                 .name(TextFormatter.formatTinyCaps(enchantment.name()).color(getColor(amplifier)));
 
-        addEnchantmentStateLore(builder, amplifier, enchantment.maxLevel(), "Vanilla");
+        addEnchantmentStateLore(builder, amplifier, enchantment.maxAmplifier(), "Vanilla");
 
         return builder
                 .addFormattedLore("", "<dark_gray>Izq. + | Der. -")
                 .build();
     }
 
-    private static void addEnchantmentStateLore(ItemBuilder builder, int amplifier, int maxLevel, String origin) {
+    private static void addEnchantmentStateLore(ItemBuilder builder, int amplifier, int maxAmplifier, String origin) {
         builder.addFormattedLore("Estado: [%s]".formatted(formatState(amplifier)));
 
-        if (maxLevel > 1) {
-            builder.addFormattedLore("Nivel máximo: [%s]".formatted(RomanNumerals.format(maxLevel)));
+        if (maxAmplifier > 0) {
+            builder.addFormattedLore("Nivel máximo: [%s]".formatted(RomanNumerals.format(maxAmplifier + 1)));
         }
 
         builder.addFormattedLore("Origen: [%s]".formatted(origin));
@@ -166,39 +168,17 @@ public final class MagicManInventoryHandler implements InventoryHandler {
         return true;
     }
 
-    private static int nextAmplifier(int amplifier, int maxAmplifier) {
-        return Math.min(amplifier + 1, maxAmplifier);
-    }
-
-    private static int previousAmplifier(int amplifier) {
-        return Math.max(amplifier - 1, PROHIBITED_AMPLIFIER);
-    }
-
-    private static int getAmplifier(int configuredLevel) {
-        return switch (configuredLevel) {
-            case MagicManScenario.PROHIBITED -> PROHIBITED_AMPLIFIER;
-            case MagicManScenario.VANILLA -> VANILLA_AMPLIFIER;
-            default -> configuredLevel - 1;
-        };
-    }
-
-    private static int getConfiguredLevel(int amplifier) {
-        return switch (amplifier) {
-            case PROHIBITED_AMPLIFIER -> MagicManScenario.PROHIBITED;
-            case VANILLA_AMPLIFIER -> MagicManScenario.VANILLA;
-            default -> amplifier + 1;
-        };
-    }
-
     private static Material getMaterial(int amplifier) {
         if (amplifier == PROHIBITED_AMPLIFIER) return Material.BARRIER;
         if (amplifier == VANILLA_AMPLIFIER) return Material.BOOK;
+
         return Material.ENCHANTED_BOOK;
     }
 
     private static TextColor getColor(int amplifier) {
         if (amplifier == PROHIBITED_AMPLIFIER) return NamedTextColor.RED;
         if (amplifier == VANILLA_AMPLIFIER) return NamedTextColor.GRAY;
+
         return HardlandsColor.PRIMARY;
     }
 
@@ -216,8 +196,9 @@ public final class MagicManInventoryHandler implements InventoryHandler {
             enchantments.add(new EnchantmentEntry(
                     enchantment.name(),
                     enchantment.getLabel(),
-                    enchantment.getMaxLevel(),
-                    enchantment));
+                    enchantment.getLimit().maxAmplifier(),
+                    enchantment
+            ));
         }
 
         Registry<Enchantment> registry = RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT);
@@ -227,8 +208,9 @@ public final class MagicManInventoryHandler implements InventoryHandler {
             vanillaEnchantments.add(new EnchantmentEntry(
                     enchantment.getKey().toString(),
                     formatVanillaName(enchantment),
-                    enchantment.getMaxLevel(),
-                    null));
+                    enchantment.getMaxLevel() - 1,
+                    null
+            ));
         }
 
         vanillaEnchantments.sort(Comparator.comparing(EnchantmentEntry::name, String.CASE_INSENSITIVE_ORDER));
@@ -282,12 +264,7 @@ public final class MagicManInventoryHandler implements InventoryHandler {
     private record EnchantmentEntry(
             String identifier,
             String name,
-            int maxLevel,
+            int maxAmplifier,
             HardlandsEnchantment hardlandsEnchantment
-    ) {
-
-        private int maxAmplifier() {
-            return this.maxLevel - 1;
-        }
-    }
+    ) {}
 }

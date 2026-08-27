@@ -1,5 +1,9 @@
 package org.heather.hardlands.common.enchantment;
 
+import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
+
+import org.bukkit.Material;
 import org.bukkit.Tag;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Animals;
@@ -9,12 +13,22 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockDropItemEvent;
+import org.bukkit.event.block.LeavesDecayEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
+import org.heather.hardlands.common.enchantment.handlers.DeadEyeHandler;
+import org.heather.hardlands.core.data.BoundedCounter;
+import org.heather.hardlands.core.event.TimberBreakLeavesEvent;
+import org.heather.hardlands.util.BlockUtils;
+import org.heather.hardlands.util.SmeltingHelper;
 
 public final class EnchantmentListener implements Listener {
+
+    private static final int TIMBER_LOG_LIMIT = 64;
+    private static final int TIMBER_LEAF_LIMIT = 128;
+    private static final int VEIN_MINER_BLOCK_LIMIT = 64;
 
     private final DeadEyeHandler deadEyeHandler = new DeadEyeHandler();
 
@@ -30,7 +44,11 @@ public final class EnchantmentListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     private void onBlockDropItem(BlockDropItemEvent event) {
-        handleSmeltingTouch(event);
+        ItemStack tool = event.getPlayer().getInventory().getItemInMainHand();
+
+        if (HardlandsEnchantment.SMELTING_TOUCH.matches(tool, _ -> BlockUtils.isOre(event.getBlockState().getType()))) {
+            SmeltingHelper.smeltDrops(event);
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -40,7 +58,16 @@ public final class EnchantmentListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     private void onEntityDeath(EntityDeathEvent event) {
-        handleSmeltingTouch(event);
+        if (!(event.getEntity() instanceof Animals)) return;
+
+        Player killer = event.getEntity().getKiller();
+        if (killer == null) return;
+
+        ItemStack tool = killer.getInventory().getItemInMainHand();
+
+        if (HardlandsEnchantment.SMELTING_TOUCH.matches(tool)) {
+            event.getDrops().forEach(SmeltingHelper::smeltFood);
+        }
     }
 
     @EventHandler
@@ -48,62 +75,88 @@ public final class EnchantmentListener implements Listener {
         this.deadEyeHandler.reset(event.getPlayer());
     }
 
-    private static boolean handleTimber(BlockBreakEvent event, ItemStack tool) {
-        Block block = event.getBlock();
+    //* Enchantment Handlers
 
-        if (HardlandsEnchantment.TIMBER.level(tool) <= 0 || !Tag.ITEMS_AXES.isTagged(tool.getType()) || !Tag.LOGS.isTagged(block.getType())) {
-            return false;
-        }
+    private static boolean handleTimber(BlockBreakEvent event, ItemStack tool) {
+        Block origin = event.getBlock();
+
+        if (!HardlandsEnchantment.TIMBER.matches(tool, item -> Tag.ITEMS_AXES.isTagged(item.getType()))
+                || !Tag.LOGS.isTagged(origin.getType())) return false;
 
         event.setCancelled(true);
-        TimberHandler.handle(block, tool);
+
+        BoundedCounter logs = new BoundedCounter(TIMBER_LOG_LIMIT);
+        BoundedCounter leaves = new BoundedCounter(TIMBER_LEAF_LIMIT);
+
+        BlockUtils.floodFill(origin, block -> {
+            Material material = block.getType();
+
+            if (Tag.LOGS.isTagged(material)) {
+                if (!logs.tryAdvance()) return false;
+
+                block.breakNaturally(tool);
+                return true;
+            }
+
+            if (!Tag.LEAVES.isTagged(material) || !leaves.tryAdvance()) return false;
+
+            TimberBreakLeavesEvent leavesEvent = new TimberBreakLeavesEvent(block);
+            if (leavesEvent.callEvent()) block.breakNaturally();
+
+            return true;
+        });
+
         return true;
     }
 
     private static boolean handleVeinMiner(BlockBreakEvent event, ItemStack tool) {
-        Block block = event.getBlock();
+        Block origin = event.getBlock();
 
-        if (HardlandsEnchantment.VEIN_MINER.level(tool) <= 0
-                || !Tag.ITEMS_PICKAXES.isTagged(tool.getType())
-                || !VeinMinerHandler.isOre(block)) {
-            return false;
-        }
+        if (!HardlandsEnchantment.VEIN_MINER.matches(tool, item -> Tag.ITEMS_PICKAXES.isTagged(item.getType()))
+                || !BlockUtils.isOre(origin.getType())) return false;
 
-        event.setCancelled(true);
-        VeinMinerHandler.handle(block, tool);
+        Material ore = origin.getType();
+        boolean smeltingTouch = HardlandsEnchantment.SMELTING_TOUCH.matches(tool);
+        BoundedCounter blocks = new BoundedCounter(VEIN_MINER_BLOCK_LIMIT);
+
+        BlockUtils.floodFill(origin, block -> {
+            if (block.getType() != ore || !blocks.tryAdvance()) return false;
+            if (block.equals(origin)) return true;
+
+            if (smeltingTouch) SmeltingHelper.breakSmelted(block, tool);
+            else block.breakNaturally(tool);
+
+            return true;
+        });
+
         return true;
     }
 
     private static void handleWisdom(BlockBreakEvent event, ItemStack tool) {
-        int level = HardlandsEnchantment.WISDOM.level(tool);
-        if (level > 0) WisdomHandler.handle(event, level);
-    }
+        HardlandsEnchantment.WISDOM.findMatchingLevel(tool).ifPresent(level -> {
+            int experience = event.getExpToDrop();
+            if (experience <= 0) return;
 
-    private static void handleSmeltingTouch(BlockDropItemEvent event) {
-        ItemStack tool = event.getPlayer().getInventory().getItemInMainHand();
+            double increasedExperience = experience * (1.0D + level * 0.25D);
+            int result = (int) increasedExperience;
 
-        if (HardlandsEnchantment.SMELTING_TOUCH.level(tool) > 0) SmeltingTouchHandler.handle(event);
-    }
+            if (ThreadLocalRandom.current().nextDouble() < increasedExperience - result) {
+                result++;
+            }
 
-    private static void handleSmeltingTouch(EntityDeathEvent event) {
-        if (!(event.getEntity() instanceof Animals)) return;
-
-        Player killer = event.getEntity().getKiller();
-        if (killer == null) return;
-
-        ItemStack tool = killer.getInventory().getItemInMainHand();
-        if (HardlandsEnchantment.SMELTING_TOUCH.level(tool) > 0) SmeltingTouchHandler.handle(event);
+            event.setExpToDrop(result);
+        });
     }
 
     private void handleDeadEye(EntityDamageByEntityEvent event, Player player) {
         ItemStack weapon = player.getInventory().getItemInMainHand();
-        int level = HardlandsEnchantment.DEAD_EYE.level(weapon);
+        Optional<Integer> level = HardlandsEnchantment.DEAD_EYE.findMatchingLevel(weapon);
 
-        if (level <= 0 || !Tag.ITEMS_ENCHANTABLE_SHARP_WEAPON.isTagged(weapon.getType())) {
+        if (level.isEmpty()) {
             this.deadEyeHandler.reset(player);
             return;
         }
 
-        if (event.isCritical()) this.deadEyeHandler.handle(event, player, level);
+        if (event.isCritical()) this.deadEyeHandler.handle(event, player, level.get());
     }
 }

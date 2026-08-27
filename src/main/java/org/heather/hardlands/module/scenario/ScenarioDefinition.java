@@ -89,7 +89,7 @@ public enum ScenarioDefinition {
         for (Map.Entry<?, ?> entry : enchantments.entrySet()) {
             if (!(entry.getKey() instanceof String identifier)) continue;
             if (!(entry.getValue() instanceof Integer level)) continue;
-            if (level == MagicManScenario.VANILLA || level < MagicManScenario.PROHIBITED) continue;
+            if (level == MagicManScenario.VANILLA_AMPLIFIER || level < MagicManScenario.PROHIBITED_AMPLIFIER) continue;
 
             if (!headerAdded) {
                 builder.addFormattedLore("", "{Configuración}:");
@@ -99,7 +99,7 @@ public enum ScenarioDefinition {
             builder.addFormattedLore(
                     "▶ %s: [%s]".formatted(
                             formatEnchantmentName(identifier),
-                            level == MagicManScenario.PROHIBITED ? "REMOVED" : level));
+                            level == MagicManScenario.PROHIBITED_AMPLIFIER ? "REMOVED" : level));
         }
     }
 

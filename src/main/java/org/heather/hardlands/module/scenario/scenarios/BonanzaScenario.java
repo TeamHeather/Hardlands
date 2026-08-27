@@ -4,8 +4,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.block.BlockDropItemEvent;
 import org.bukkit.inventory.ItemStack;
-import org.heather.hardlands.gui.ConfigBuilder;
-import org.heather.hardlands.gui.OptionDef;
+import org.heather.hardlands.configuration.ConfigBuilder;
+import org.heather.hardlands.configuration.OptionDef;
 import org.heather.hardlands.module.scenario.Scenario;
 import org.heather.hardlands.util.BlockUtils;
 

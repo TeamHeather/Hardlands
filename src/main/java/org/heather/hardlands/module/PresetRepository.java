@@ -38,7 +38,7 @@ public final class PresetRepository {
                 normalizeDescription(description),
                 this.plugin.getScenarioManager().toJson().getAsJsonObject(),
                 this.plugin.getGeneralConfiguration().toJson().getAsJsonObject(),
-                this.plugin.getPhaseController().toJson().getAsJsonObject(),
+                this.plugin.getGameFlow().toJson().getAsJsonObject(),
                 this.plugin.getWorldManagerOrThrow().toJson().getAsJsonObject()));
     }
 
@@ -48,7 +48,7 @@ public final class PresetRepository {
         this.managerFor(normalizedName).read().ifPresent(preset -> {
             this.plugin.getScenarioManager().fromJson(preset.scenarios());
             this.plugin.getGeneralConfiguration().fromJson(preset.general());
-            this.plugin.getPhaseController().fromJson(preset.phase());
+            this.plugin.getGameFlow().fromJson(preset.phase());
             this.plugin.getWorldManagerOrThrow().fromJson(preset.world());
         });
     }

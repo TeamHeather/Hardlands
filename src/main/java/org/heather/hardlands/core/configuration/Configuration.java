@@ -6,6 +6,7 @@ import com.google.gson.reflect.TypeToken;
 import org.bukkit.Bukkit;
 import org.heather.hardlands.Hardlands;
 import org.heather.hardlands.core.data.json.JsonConvertible;
+import org.heather.hardlands.core.event.ConfigChangeEvent;
 
 import java.lang.reflect.Type;
 import java.util.Collections;

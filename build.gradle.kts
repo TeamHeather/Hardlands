@@ -2,8 +2,6 @@ plugins {
     id("java-library")
     kotlin("jvm")
 
-    id("com.diffplug.spotless") version "8.9.0"
-
     alias(libs.plugins.run.paper)
     alias(libs.plugins.shadow)
 }
@@ -28,25 +26,6 @@ dependencies {
 
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(25)
-}
-
-spotless {
-    encoding("UTF-8")
-
-    java {
-        // Import hygiene
-        removeUnusedImports()
-        importOrder("", "\\#")
-        forbidWildcardImports()
-        forbidModuleImports()
-
-        // Annotation normalization
-        formatAnnotations()
-
-        // Source hygiene
-        trimTrailingWhitespace()
-        endWithNewline()
-    }
 }
 
 tasks {

@@ -1,4 +1,4 @@
-package org.heather.hardlands.gui;
+package org.heather.hardlands.configuration;
 
 import com.google.auto.service.AutoService;
 
@@ -23,13 +23,21 @@ import java.util.Set;
 
 @AutoService(Processor.class)
 @SupportedSourceVersion(SourceVersion.RELEASE_25)
-@SupportedAnnotationTypes("org.heather.hardlands.config.ConfigBuilder")
+@SupportedAnnotationTypes("org.heather.hardlands.configuration.ConfigBuilder")
 public final class ConfigurationProcessor extends AbstractProcessor {
 
-    private static final String DEFAULT_SUPERCLASS = "org.heather.hardlands.config.Configuration";
+    private static final String CONFIG_PACKAGE = "org.heather.hardlands.core.configuration";
+    private static final String CONFIGURATION_PACKAGE = "org.heather.hardlands.core.configuration";
+
+    private static final String CONFIG_BUILDER_TYPE = CONFIG_PACKAGE + ".ConfigBuilder";
+    private static final String DEFAULT_SUPERCLASS = CONFIGURATION_PACKAGE + ".Configuration";
+    private static final String OPTION_TYPE = CONFIGURATION_PACKAGE + ".Option";
+    private static final String VALIDATOR_TYPE = CONFIGURATION_PACKAGE + ".Validator";
+
     private static final String LIST_TYPE = "java.util.List";
     private static final String SET_TYPE = "java.util.Set";
     private static final String MAP_TYPE = "java.util.Map";
+    private static final String JAVA_LANG_PREFIX = "java.lang.";
 
     private final ValidatorFormatter validatorFormatter = new ValidatorFormatter();
 
@@ -64,43 +72,47 @@ public final class ConfigurationProcessor extends AbstractProcessor {
         String qualifiedName = packageName + "." + className;
         String superclass = this.resolveSuperclass(annotation);
 
+        Set<String> fieldNames = new HashSet<>();
+        Set<String> keys = new HashSet<>();
+
         try (Writer writer = this.processingEnv.getFiler()
                 .createSourceFile(qualifiedName, annotated)
                 .openWriter()) {
 
             this.writeHeader(writer, packageName, className, superclass);
-            this.writeOptions(writer, annotated, annotation.options());
+            this.writeOptions(writer, annotated, annotation.options(), fieldNames, keys);
+            this.writeMinuteOptions(writer, annotated, annotation.minuteOptions(), fieldNames, keys);
             this.writeConstructor(writer, className, annotation.identifier());
 
             writer.write("}\n");
         }
     }
 
-    private void writeHeader(
-            Writer writer,
-            String packageName,
-            String className,
-            String superclass
-    ) throws IOException {
+    private void writeHeader(Writer writer, String packageName, String className, String superclass) throws IOException {
         writer.write("""
-                package %s;
+            package %s;
 
-                import org.heather.hardlands.core.configuration.Option;
-                import org.heather.hardlands.core.configuration.Validator;
+            import %s;
+            import %s;
 
-                public abstract class %s extends %s {
+            public abstract class %s extends %s {
 
-                """.formatted(packageName, className, superclass));
+            """.formatted(
+                packageName,
+                OPTION_TYPE,
+                VALIDATOR_TYPE,
+                className,
+                superclass
+        ));
     }
 
     private void writeOptions(
             Writer writer,
             TypeElement annotated,
-            OptionDef[] options
+            OptionDef[] options,
+            Set<String> fieldNames,
+            Set<String> keys
     ) throws IOException {
-        Set<String> fieldNames = new HashSet<>();
-        Set<String> keys = new HashSet<>();
-
         for (OptionDef option : options) {
             String fieldName = option.name();
             String key = toKebabCase(option.key().isBlank() ? fieldName : option.key());
@@ -115,6 +127,34 @@ public final class ConfigurationProcessor extends AbstractProcessor {
                         annotated
                 );
             }
+        }
+    }
+
+    private void writeMinuteOptions(
+            Writer writer,
+            TypeElement annotated,
+            MinuteOptionDef[] options,
+            Set<String> fieldNames,
+            Set<String> keys
+    ) throws IOException {
+        for (MinuteOptionDef option : options) {
+            String fieldName = option.name();
+            String key = toKebabCase(fieldName);
+
+            if (!this.validateOption(annotated, fieldNames, keys, fieldName, key)) continue;
+
+            String optionType = "Option<Integer>";
+            String validators = this.validatorFormatter.format(
+                    "Integer",
+                    new String[]{"non-negative"}
+            );
+
+            writer.write(
+                    "    public final %s %s = super.registerOption(\"%s\", Integer.class%s);\n\n"
+                            .formatted(optionType, fieldName, key, validators)
+            );
+
+            this.writeGetter(writer, fieldName, optionType);
         }
     }
 
@@ -363,14 +403,11 @@ public final class ConfigurationProcessor extends AbstractProcessor {
 
     private String referenceTypeName(TypeMirror type) {
         String typeName = type.getKind().isPrimitive()
-                ? this.processingEnv.getTypeUtils()
-                .boxedClass((PrimitiveType) type)
-                .getQualifiedName()
-                .toString()
+                ? this.processingEnv.getTypeUtils().boxedClass((PrimitiveType) type).getQualifiedName().toString()
                 : type.toString();
 
-        return typeName.startsWith("java.lang.")
-                ? typeName.substring("java.lang.".length())
+        return typeName.startsWith(JAVA_LANG_PREFIX)
+                ? typeName.substring(JAVA_LANG_PREFIX.length())
                 : typeName;
     }
 

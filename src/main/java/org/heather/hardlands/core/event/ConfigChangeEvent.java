@@ -1,8 +1,9 @@
-package org.heather.hardlands.core.configuration;
+package org.heather.hardlands.core.event;
 
 import org.bukkit.Bukkit;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
+import org.heather.hardlands.core.configuration.Configuration;
 
 public final class ConfigChangeEvent extends Event {
 

@@ -1,4 +1,4 @@
-package org.heather.hardlands.gui;
+package org.heather.hardlands.configuration;
 
 import java.util.Locale;
 import java.util.regex.Pattern;

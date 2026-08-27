@@ -1,4 +1,4 @@
-package org.heather.hardlands.gui;
+package org.heather.hardlands.configuration;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -14,4 +14,6 @@ public @interface ConfigBuilder {
     Class<?> superclass() default Void.class;
 
     OptionDef[] options() default {};
+
+    MinuteOptionDef[] minuteOptions() default {};
 }

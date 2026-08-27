@@ -3,6 +3,7 @@ package org.heather.hardlands.common.enchantment;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Tag;
@@ -10,14 +11,22 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.heather.hardlands.Hardlands;
+import org.heather.hardlands.common.item.ItemBuilder;
+import org.heather.hardlands.core.data.PersistentData;
+import org.heather.hardlands.util.RomanNumerals;
+import org.heather.hardlands.util.text.HardlandsColor;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 public enum HardlandsEnchantment {
 
     DEAD_EYE(
-            Hardlands.namespacedKey("dead_eye"),
+            Hardlands.createNamespacedKey("dead_eye"),
             "Dead Eye",
             "Incrementa el daño de cada golpe crítico consecutivo realizado dentro del mismo combo.",
             Tag.ITEMS_ENCHANTABLE_SHARP_WEAPON,
@@ -25,7 +34,7 @@ public enum HardlandsEnchantment {
     ),
 
     SMELTING_TOUCH(
-            Hardlands.namespacedKey("smelting_touch"),
+            Hardlands.createNamespacedKey("smelting_touch"),
             "Smelting Touch",
             "Funde automáticamente los ítems obtenidos siempre que dispongan de una receta de horno válida.",
             Tag.ITEMS_ENCHANTABLE_MINING,
@@ -33,7 +42,7 @@ public enum HardlandsEnchantment {
     ),
 
     WISDOM(
-            Hardlands.namespacedKey("wisdom"),
+            Hardlands.createNamespacedKey("wisdom"),
             "Wisdom",
             "Incrementa la experiencia obtenida al extraer bloques.",
             Tag.ITEMS_ENCHANTABLE_MINING,
@@ -41,7 +50,7 @@ public enum HardlandsEnchantment {
     ),
 
     VEIN_MINER(
-            Hardlands.namespacedKey("vein_miner"),
+            Hardlands.createNamespacedKey("vein_miner"),
             "Vein Miner",
             "Al extraer una mena, rompe automáticamente todas las menas conectadas que formen parte de la misma veta.",
             Tag.ITEMS_ENCHANTABLE_MINING,
@@ -49,7 +58,7 @@ public enum HardlandsEnchantment {
     ),
 
     TIMBER(
-            Hardlands.namespacedKey("timber"),
+            Hardlands.createNamespacedKey("timber"),
             "Timber",
             "Al talar un tronco, rompe automáticamente todos los troncos conectados que formen parte del mismo árbol.",
             Tag.ITEMS_AXES,
@@ -70,12 +79,92 @@ public enum HardlandsEnchantment {
         this.limit = limit;
     }
 
-    public NamespacedKey getNamespacedKey() {
-        return this.namespacedKey;
+    //* Public API
+
+    public static Optional<HardlandsEnchantment> fromString(String value) {
+        return Arrays.stream(values())
+                .filter(enchantment -> enchantment.createIdentifier().equalsIgnoreCase(value))
+                .findFirst();
     }
 
-    public String getIdentifier() {
+    public static boolean containsHardlandsEnchantment(ItemMeta meta) {
+        return Arrays.stream(values())
+                .anyMatch(enchantment -> enchantment.findLevel(meta).isPresent());
+    }
+
+    public void apply(ItemStack stack, int amplifier) {
+        this.editIfCompatible(stack, meta -> {
+            meta.getPersistentDataContainer().set(
+                    this.namespacedKey,
+                    PersistentDataType.INTEGER,
+                    createLeveledEnchantment(amplifier).amplifier()
+            );
+
+            this.removeMatchingEnchantmentLore(meta);
+            this.prependEnchantmentLore(meta, amplifier);
+
+            updateVisuals(stack, meta);
+        });
+    }
+
+    public void remove(ItemStack stack) {
+        this.editIfCompatible(stack, meta -> {
+            meta.getPersistentDataContainer().remove(this.namespacedKey);
+
+            this.removeMatchingEnchantmentLore(meta);
+
+            updateVisuals(stack, meta);
+        });
+    }
+
+    public Optional<Integer> findLevel(ItemStack stack) {
+        return this.findLevel(stack.getItemMeta());
+    }
+
+    public Optional<Integer> findLevel(ItemMeta meta) {
+        return PersistentData.find(meta, this.namespacedKey, PersistentDataType.INTEGER);
+    }
+
+    public ItemStack enchantedBook(int amplifier) {
+        ItemBuilder builder = new ItemBuilder(Material.ENCHANTED_BOOK);
+        builder.addLore(
+                this.createBeautifulName(amplifier),
+                Component.empty(),
+                Component.text(this.description, HardlandsColor.LIGHT_GRAY)
+        );
+        return builder.build();
+    }
+
+    public Component createBeautifulName(int amplifier) {
+        String level = amplifier != 0
+                ? " " + RomanNumerals.format(amplifier + 1)
+                : "";
+        return Component.text(
+                this.label + level,
+                NamedTextColor.GRAY
+        ).decoration(TextDecoration.ITALIC, false);
+    }
+
+    public String createIdentifier() {
         return this.namespacedKey.getKey();
+    }
+
+    @SafeVarargs
+    public final Optional<Integer> findMatchingLevel(ItemStack stack, Predicate<ItemStack>... predicates) {
+        if (!this.tag.isTagged(stack.getType())) return Optional.empty();
+
+        return this.findLevel(stack)
+                .filter(_ -> Arrays.stream(predicates).allMatch(predicate -> predicate.test(stack)));
+    }
+
+    @SafeVarargs
+    public final boolean matches(ItemStack stack, Predicate<ItemStack>... predicates) {
+        return this.findMatchingLevel(stack, predicates).isPresent();
+    }
+
+    // Getters
+    public NamespacedKey getNamespacedKey() {
+        return this.namespacedKey;
     }
 
     public String getLabel() {
@@ -94,75 +183,7 @@ public enum HardlandsEnchantment {
         return this.limit;
     }
 
-    // Functions
-
-    private LeveledEnchantment leveledEnchantment(int amplifier) {
-        return new LeveledEnchantment(this, amplifier);
-    }
-
-    private boolean validateMaterial(Material material) {
-        return this.tag.isTagged(material) || !material.isAir();
-    }
-
-    public void apply(ItemStack stack, int amplifier) {
-        if (!this.validateMaterial(stack.getType())) {
-            return;
-        }
-
-        stack.editMeta(meta -> {
-            meta.getPersistentDataContainer().set(
-                    this.namespacedKey,
-                    PersistentDataType.INTEGER,
-                    leveledEnchantment(amplifier).amplifier()
-            );
-
-            removeMatchingEnchantmentLore(meta);
-            this.prependEnchantmentLore(meta, amplifier);
-            updateVisuals(stack, meta);
-        });
-    }
-
-    public void remove(ItemStack stack) {
-        if (stack.getType().isAir()) return;
-
-        stack.editMeta(meta -> {
-            meta.getPersistentDataContainer().remove(this.namespacedKey());
-            removeMatchingEnchantmentLore(meta, this.label);
-            updateVisuals(stack, meta);
-        });
-    }
-
-    public Optional<LeveledEnchantment> find(ItemMeta meta) {
-        return PersistentData.find(meta, this.namespacedKey(), PersistentDataType.INTEGER)
-                .filter(amplifier -> amplifier >= 0 && amplifier < this.limit)
-                .map(amplifier -> new LeveledEnchantment(this, amplifier));
-    }
-
-    public ItemStack enchantedBook(int amplifier) {
-        ItemBuilder builder = new ItemBuilder(Material.ENCHANTED_BOOK);
-
-        builder.addLore(
-                this.beautifulName(amplifier),
-                Component.empty(),
-                Component.text(this.description, HardlandsColor.LIGHT_GRAY));
-
-        return builder.build();
-    }
-
-    public Component beautifulName(int amplifier) {
-        String level = amplifier == 0 ? "" : " " + RomanNumerals.format(amplifier + 1);
-
-        return Component.text(this.label + level, NamedTextColor.GRAY)
-                .decoration(TextDecoration.ITALIC, false);
-    }
-
-    public static boolean has(ItemMeta meta) {
-        return Arrays.stream(values()).anyMatch(enchantment -> enchantment.find(meta).isPresent());
-    }
-
-    public static boolean has(ItemStack stack) {
-        return !stack.getType().isAir() && has(stack.getItemMeta());
-    }
+    //* Subclasses
 
     public record Limit(int maxAmplifier) {
 
@@ -177,11 +198,13 @@ public enum HardlandsEnchantment {
         }
     }
 
-    public record LeveledEnchantment(HardlandsEnchantment enchantment, int amplifier) {
+    public record LeveledEnchantment(
+            HardlandsEnchantment enchantment,
+            int amplifier
+    ) {
 
         public LeveledEnchantment {
             Limit limit = enchantment.getLimit();
-
             if (amplifier < 0 || !limit.check(amplifier)) {
                 throw new IllegalArgumentException("Invalid amplifier %d; max is %d.".formatted(
                         amplifier,
@@ -191,33 +214,28 @@ public enum HardlandsEnchantment {
         }
     }
 
-    // Internal
+    //* Internal Class Utilities
 
     private static void updateVisuals(ItemStack stack, ItemMeta meta) {
-        if (!has(meta) || meta.hasEnchants()) return;
+        if (!containsHardlandsEnchantment(meta) || meta.hasEnchants()) return;
 
         meta.setEnchantmentGlintOverride(true);
 
-        if (meta.hasCustomName()) {
-            meta.customName(meta.customName().color(NamedTextColor.AQUA));
+        Component customName = meta.customName();
+        if (customName != null) {
+            meta.customName(customName.color(NamedTextColor.AQUA));
             return;
         }
 
-        Component name = meta.hasItemName()
+        meta.itemName(meta.hasItemName()
                 ? meta.itemName()
-                : Component.translatable(stack.translationKey());
-
-        meta.itemName(name.color(NamedTextColor.AQUA));
+                : Component.translatable(stack.translationKey()).color(NamedTextColor.AQUA));
     }
 
-    private void prependEnchantmentLore(ItemMeta meta, int amplifier) {
-        List<Component> lore = new ArrayList<>();
-        lore.add(this.beautifulName(amplifier));
-
-        List<Component> currentLore = meta.lore();
-        if (currentLore != null) lore.addAll(currentLore);
-
-        meta.lore(lore);
+    private void editIfCompatible(ItemStack stack, Consumer<ItemMeta> operation) {
+        if (this.tag.isTagged(stack.getType())) {
+            stack.editMeta(operation);
+        }
     }
 
     private void removeMatchingEnchantmentLore(ItemMeta meta) {
@@ -243,5 +261,21 @@ public enum HardlandsEnchantment {
         });
 
         meta.lore(lore.isEmpty() ? null : lore);
+    }
+
+    private void prependEnchantmentLore(ItemMeta meta, int amplifier) {
+        List<Component> lore = new ArrayList<>();
+        lore.add(this.createBeautifulName(amplifier));
+
+        List<Component> currentLore = meta.lore();
+        if (currentLore != null) {
+            lore.addAll(currentLore);
+        }
+
+        meta.lore(lore);
+    }
+
+    private LeveledEnchantment createLeveledEnchantment(int amplifier) {
+        return new LeveledEnchantment(this, amplifier);
     }
 }
