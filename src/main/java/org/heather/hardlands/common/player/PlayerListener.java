@@ -1,4 +1,4 @@
-package org.heather.hardlands.module.player;
+package org.heather.hardlands.common.player;
 
 import io.papermc.paper.datacomponent.item.ResolvableProfile;
 import net.kyori.adventure.text.Component;
