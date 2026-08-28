@@ -18,7 +18,15 @@ final class ValidatorFormatter {
             expression.append(".and(").append(this.formatValidator(typeName, validators[index])).append(')');
         }
 
+        if (this.requiresGenericAdapter(typeName)) {
+            return ", value -> " + expression + ".test(value)";
+        }
+
         return ", " + expression;
+    }
+
+    private boolean requiresGenericAdapter(String typeName) {
+        return typeName.equals(LIST_TYPE) || typeName.equals(SET_TYPE) || typeName.equals(MAP_TYPE);
     }
 
     private String formatValidator(String typeName, String specification) {

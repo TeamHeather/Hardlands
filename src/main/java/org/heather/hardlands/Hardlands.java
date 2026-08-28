@@ -15,9 +15,9 @@ import org.heather.hardlands.module.player.PlayerListener;
 import org.heather.hardlands.core.SingleThreadScheduler;
 import org.heather.hardlands.module.preset.PresetRepository;
 import org.heather.hardlands.game.GameFlow;
-import org.heather.hardlands.game.general.GeneralConfiguration;
 import org.heather.hardlands.module.scenario.ScenarioManager;
 import org.heather.hardlands.module.world.WorldManager;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public final class Hardlands extends JavaPlugin {
@@ -27,7 +27,6 @@ public final class Hardlands extends JavaPlugin {
     @Nullable private static Hardlands instance;
 
     private final SingleThreadScheduler<Hardlands> singleThreadScheduler = new SingleThreadScheduler<>(this);
-    private final GeneralConfiguration generalConfiguration = new GeneralConfiguration();
     private final PresetRepository presetRepository = new PresetRepository(this, "presets");
     private final ScenarioManager scenarioManager = new ScenarioManager(this);
     private final GameFlow gameFlow = new GameFlow(this);
@@ -36,24 +35,24 @@ public final class Hardlands extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        super.getLogger().info("Initializing Hardlands...");
+        getLogger().info("Initializing Hardlands...");
 
-        super.getLogger().info("Initializing instance and WorldManager...");
-        instance = this;
-        this.worldManager = new WorldManager();
+        getLogger().info("Initializing instance and WorldManager...");
+        setInstance(this);
+        worldManager = new WorldManager();
 
-        super.getLogger().info("Loading default preset...");
-        this.presetRepository.load("default");
+        getLogger().info("Loading default preset...");
+        presetRepository.load("default");
 
-        super.getLogger().info("Registering commands and listeners...");
-        this.registerCommands(new HardlandsCommand());
-        this.registerListeners(
+        getLogger().info("Registering commands and listeners...");
+        registerCommands(new HardlandsCommand());
+        registerListeners(
                 new PlayerListener(),
                 new InventoryListener(),
                 new EnchantmentListener()
         );
 
-        super.getLogger().info(System.lineSeparator() + """
+        getLogger().info(System.lineSeparator() + """
              _    _          _____  _____  _               _   _ _____   _____
             | |  | |   /\\   |  __ \\|  __ \\| |        /\\   | \\ | |  __ \\ / ____|
             | |__| |  /  \\  | |__) | |  | | |       /  \\  |  \\| | |  | | (___
@@ -61,58 +60,55 @@ public final class Hardlands extends JavaPlugin {
             | |  | |/ ____ \\| | \\ \\| |__| | |____ / ____ \\| |\\  | |__| |____) |
             |_|  |_/_/    \\_\\_|  \\_\\_____/|______/_/    \\_\\_| \\_|_____/|_____/
             """);
-        super.getLogger().info("Plugin successfully enabled.");
+        getLogger().info("Plugin successfully enabled.");
     }
 
     @Override
     public void onDisable() {
-        super.getLogger().info("Disabling Hardlands...");
+        getLogger().info("Disabling Hardlands...");
 
-        super.getLogger().info("Closing SingleThreadScheduler...");
-        this.singleThreadScheduler.close();
+        getLogger().info("Closing SingleThreadScheduler...");
+        singleThreadScheduler.close();
 
-        super.getLogger().info("Plugin successfully disabled.");
+        getLogger().info("Plugin successfully disabled.");
     }
 
     public WorldManager getWorldManagerOrThrow() {
-        if (this.worldManager == null) {
+        if (worldManager == null) {
             throw new IllegalStateException("WorldManager has not been initialized.");
         }
 
-        return this.worldManager;
+        return worldManager;
     }
 
-    //* Public API
+    //! Public API
 
     public static NamespacedKey createNamespacedKey(String key) {
         return NamespacedKey.fromString(key, instance);
     }
 
+    @Nullable
     public static Hardlands getInstance() {
         return instance;
     }
 
-    public SingleThreadScheduler getSingleThreadScheduler() {
-        return this.singleThreadScheduler;
-    }
-
-    public GeneralConfiguration getGeneralConfiguration() {
-        return this.generalConfiguration;
+    public SingleThreadScheduler<Hardlands> getSingleThreadScheduler() {
+        return singleThreadScheduler;
     }
 
     public PresetRepository getPresetRepository() {
-        return this.presetRepository;
+        return presetRepository;
     }
 
     public ScenarioManager getScenarioManager() {
-        return this.scenarioManager;
+        return scenarioManager;
     }
 
     public GameFlow getGameFlow() {
-        return this.gameFlow;
+        return gameFlow;
     }
 
-    //* Internal Class Utilities
+    //! Internal Class Utilities
 
     private void registerListeners(Listener... listeners) {
         for (Listener listener : listeners) {
@@ -126,5 +122,9 @@ public final class Hardlands extends JavaPlugin {
         for (BaseCommand command : commands) {
             commandManager.registerCommand(command);
         }
+    }
+
+    private static void setInstance(@NotNull Hardlands instance) {
+        Hardlands.instance = instance;
     }
 }

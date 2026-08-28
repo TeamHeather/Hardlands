@@ -26,10 +26,8 @@ import java.util.Set;
 @SupportedAnnotationTypes("org.heather.hardlands.configuration.ConfigBuilder")
 public final class ConfigurationProcessor extends AbstractProcessor {
 
-    private static final String CONFIG_PACKAGE = "org.heather.hardlands.core.configuration";
     private static final String CONFIGURATION_PACKAGE = "org.heather.hardlands.core.configuration";
 
-    private static final String CONFIG_BUILDER_TYPE = CONFIG_PACKAGE + ".ConfigBuilder";
     private static final String DEFAULT_SUPERCLASS = CONFIGURATION_PACKAGE + ".Configuration";
     private static final String OPTION_TYPE = CONFIGURATION_PACKAGE + ".Option";
     private static final String VALIDATOR_TYPE = CONFIGURATION_PACKAGE + ".Validator";

@@ -17,7 +17,6 @@ import java.util.stream.Stream;
 public final class PresetRepository {
 
     public static final Material DEFAULT_ICON = Material.BOOK;
-
     private static final String FILE_EXTENSION = ".json";
     private static final Pattern NAME_PATTERN = Pattern.compile("[\\p{L}\\p{N} _-]{1,32}");
 
@@ -37,7 +36,6 @@ public final class PresetRepository {
                 icon.getKey().asString(),
                 normalizeDescription(description),
                 this.plugin.getScenarioManager().toJson().getAsJsonObject(),
-                this.plugin.getGeneralConfiguration().toJson().getAsJsonObject(),
                 this.plugin.getGameFlow().toJson().getAsJsonObject(),
                 this.plugin.getWorldManagerOrThrow().toJson().getAsJsonObject()));
     }
@@ -47,7 +45,6 @@ public final class PresetRepository {
 
         this.managerFor(normalizedName).read().ifPresent(preset -> {
             this.plugin.getScenarioManager().fromJson(preset.scenarios());
-            this.plugin.getGeneralConfiguration().fromJson(preset.general());
             this.plugin.getGameFlow().fromJson(preset.phase());
             this.plugin.getWorldManagerOrThrow().fromJson(preset.world());
         });
@@ -137,11 +134,15 @@ public final class PresetRepository {
     }
 
     private static boolean isValidIcon(Material icon) {
-        return icon != null && icon.isItem() && !icon.isAir();
+        return icon != null
+                && icon.isItem()
+                && !icon.isAir();
     }
 
     private static String normalizeDescription(String description) {
-        return description == null ? "" : description.strip();
+        return description == null
+                ? ""
+                : description.strip();
     }
 
     public record PresetInfo(String name, Material icon, String description) {}
@@ -150,7 +151,6 @@ public final class PresetRepository {
             @SerializedName("icon") String icon,
             @SerializedName("description") String description,
             @SerializedName("scenarios") JsonObject scenarios,
-            @SerializedName("general") JsonObject general,
             @SerializedName("phase") JsonObject phase,
             @SerializedName("world") JsonObject world
     ) {
@@ -160,7 +160,6 @@ public final class PresetRepository {
                     icon.getKey().asString(),
                     normalizeDescription(description),
                     this.scenarios,
-                    this.general,
                     this.phase,
                     this.world);
         }
@@ -173,8 +172,12 @@ public final class PresetRepository {
         }
 
         private static Material parseIcon(String value) {
-            Material material = value == null ? null : Material.matchMaterial(value);
-            return isValidIcon(material) ? material : DEFAULT_ICON;
+            Material material = value == null
+                    ? null
+                    : Material.matchMaterial(value);
+            return isValidIcon(material)
+                    ? material
+                    : DEFAULT_ICON;
         }
     }
 }
