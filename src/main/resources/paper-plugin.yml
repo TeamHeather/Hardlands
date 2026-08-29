@@ -1,6 +1,6 @@
 name: Hardlands
 version: '${version}'
-main: org.heather.hardlands.Hardlands
+main: team.heather.hardlands.Hardlands
 description: A Paper plugin for hosting and managing UHC matches.
 author: Pepe3012
 website: https://github.com/TeamHeather/Hardlands
