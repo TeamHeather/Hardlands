@@ -1,19 +1,23 @@
 name: Hardlands
 version: '${version}'
-main: org.heather.hardlands.Hardlands
+main: team.heather.hardlands.Hardlands
+description: A Paper plugin for hosting and managing UHC matches.
+author: Pepe3012
+website: https://github.com/TeamHeather/Hardlands
 api-version: '26.2'
 load: POSTWORLD
-authors:
-  - Pepe3012
-permissions:
-  hardlands.admin:
-    description: Access to Hardlands admin commands
-    default: op
+
 dependencies:
   server:
     Chunky:
       load: BEFORE
       required: true
       join-classpath: true
+
 libraries:
   - com.google.code.gson:gson:2.14.0
+
+permissions:
+  hardlands.admin:
+    description: Grants access to Hardlands administrative commands.
+    default: op
