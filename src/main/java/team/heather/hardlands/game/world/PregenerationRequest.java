@@ -1,4 +1,4 @@
-package team.heather.hardlands.module.world.pregeneration;
+package team.heather.hardlands.game.world;
 
 import org.popcraft.chunky.api.ChunkyAPI;
 

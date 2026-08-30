@@ -1,4 +1,4 @@
-package team.heather.hardlands.common.item;
+package team.heather.hardlands.feature.item;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import io.papermc.paper.datacomponent.DataComponentType;

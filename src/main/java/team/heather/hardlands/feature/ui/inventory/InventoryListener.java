@@ -1,4 +1,4 @@
-package team.heather.hardlands.common.ui.inventory;
+package team.heather.hardlands.feature.ui.inventory;
 
 import java.util.Optional;
 
@@ -12,7 +12,7 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
-import team.heather.hardlands.common.item.InventoryItem;
+import team.heather.hardlands.feature.item.InventoryItem;
 
 public final class InventoryListener implements Listener {
 

@@ -5,8 +5,8 @@ import java.util.function.Function;
 
 import net.kyori.adventure.bossbar.BossBar;
 import team.heather.hardlands.core.config.Option;
-import team.heather.hardlands.game.GameFlowConfiguration;
 import team.heather.hardlands.game.GameManager;
+import team.heather.hardlands.game.GameManagerConfiguration;
 
 public enum Phase {
 
@@ -43,7 +43,7 @@ public enum Phase {
             Stage.EARLY_GAME,
             Progression.DRAIN,
             new PreGenerationHandler(), //TODO CAMBIAR
-            GameFlowConfiguration::getGracePeriodMinuteOption
+            GameManagerConfiguration::getGracePeriodMinuteOption
     ),
 
     PVP(
@@ -51,7 +51,7 @@ public enum Phase {
             Stage.COMBAT,
             Progression.DRAIN,
             new PreGenerationHandler(), //TODO CAMBIAR
-            GameFlowConfiguration::getPvpMinuteOption
+            GameManagerConfiguration::getPvpMinuteOption
     ),
 
     BORDER_SHRINK(
@@ -59,7 +59,7 @@ public enum Phase {
             Stage.COMBAT,
             Progression.FILL,
             new PreGenerationHandler(), //TODO CAMBIAR
-            GameFlowConfiguration::getBorderShrinkMinuteOption
+            GameManagerConfiguration::getBorderShrinkMinuteOption
     ),
 
     MEETUP(
@@ -67,7 +67,7 @@ public enum Phase {
             Stage.COMBAT,
             Progression.DRAIN,
             new PreGenerationHandler(), //TODO CAMBIAR
-            GameFlowConfiguration::getMeetupMinuteOption
+            GameManagerConfiguration::getMeetupMinuteOption
     ),
 
     FINAL_SHRINK(
@@ -75,7 +75,7 @@ public enum Phase {
             Stage.COMBAT,
             Progression.FILL,
             new PreGenerationHandler(), //TODO CAMBIAR
-            GameFlowConfiguration::getFinalShrinkMinuteOption
+            GameManagerConfiguration::getFinalShrinkMinuteOption
     ),
 
     DEATHMATCH(
@@ -83,7 +83,7 @@ public enum Phase {
             Stage.DEATHMATCH,
             Progression.FULL,
             new PreGenerationHandler(), //TODO CAMBIAR
-            GameFlowConfiguration::getDeathmatchMinuteOption
+            GameManagerConfiguration::getDeathmatchMinuteOption
     ),
 
     POST_GAME(

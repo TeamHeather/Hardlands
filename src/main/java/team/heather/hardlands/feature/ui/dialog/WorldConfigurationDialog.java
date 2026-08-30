@@ -1,4 +1,4 @@
-package team.heather.hardlands.common.ui.dialog;
+package team.heather.hardlands.feature.ui.dialog;
 
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.dialog.DialogResponseView;
@@ -23,8 +23,8 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.core.config.Option;
-import team.heather.hardlands.common.ui.inventory.HardlandsInventory;
-import team.heather.hardlands.module.world.WorldManager;
+import team.heather.hardlands.feature.ui.inventory.HardlandsInventory;
+import team.heather.hardlands.game.world.WorldManager;
 import team.heather.hardlands.util.text.HardlandsColor;
 import team.heather.hardlands.util.text.TextFormatter;
 
@@ -396,7 +396,7 @@ public final class WorldConfigurationDialog {
     }
 
     private static WorldManager getWorldManager() {
-        return Hardlands.getInstance().getWorldManagerOrThrow();
+        return Hardlands.getInstance().getWorldManager();
     }
 
     private record WorldSettings(

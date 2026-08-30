@@ -10,7 +10,11 @@ import team.heather.hardlands.core.config.Validator;
 import team.heather.hardlands.util.BlockUtils;
 
 @ScenarioConfigBuilder(options = {
-        @OptionDef(name = "multiplier", type = Integer.class, validators = Validator.Keys.POSITIVE)
+        @OptionDef(
+                name = "multiplier",
+                type = Integer.class,
+                validators = Validator.Keys.POSITIVE
+        )
 })
 public final class BonanzaScenario extends BonanzaScenarioConfiguration {
 

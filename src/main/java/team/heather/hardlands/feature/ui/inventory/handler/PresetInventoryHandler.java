@@ -1,4 +1,4 @@
-package team.heather.hardlands.common.ui.inventory.handler;
+package team.heather.hardlands.feature.ui.inventory.handler;
 
 import java.util.List;
 import java.util.Locale;
@@ -21,11 +21,11 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import team.heather.hardlands.Hardlands;
-import team.heather.hardlands.common.ui.inventory.HardlandsInventory;
-import team.heather.hardlands.common.item.InventoryItem;
-import team.heather.hardlands.common.item.ItemBuilder;
-import team.heather.hardlands.module.preset.PresetRepository;
-import team.heather.hardlands.module.preset.PresetRepository.PresetInfo;
+import team.heather.hardlands.feature.ui.inventory.HardlandsInventory;
+import team.heather.hardlands.feature.item.InventoryItem;
+import team.heather.hardlands.feature.item.ItemBuilder;
+import team.heather.hardlands.game.PresetRepository;
+import team.heather.hardlands.game.PresetRepository.PresetInfo;
 import team.heather.hardlands.util.text.HardlandsColor;
 import team.heather.hardlands.util.text.TextFormatter;
 

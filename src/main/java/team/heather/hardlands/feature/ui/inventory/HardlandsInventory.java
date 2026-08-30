@@ -1,4 +1,4 @@
-package team.heather.hardlands.common.ui.inventory;
+package team.heather.hardlands.feature.ui.inventory;
 
 import java.util.List;
 import java.util.Map;
@@ -10,12 +10,12 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import team.heather.hardlands.common.item.InventoryItem;
-import team.heather.hardlands.common.item.ItemBuilder;
-import team.heather.hardlands.common.ui.inventory.handler.EnchantiaInventoryHandler;
-import team.heather.hardlands.common.ui.inventory.handler.InventoryHandler;
-import team.heather.hardlands.common.ui.inventory.handler.PresetInventoryHandler;
-import team.heather.hardlands.common.ui.inventory.handler.ScenarioInventoryHandler;
+import team.heather.hardlands.feature.item.InventoryItem;
+import team.heather.hardlands.feature.item.ItemBuilder;
+import team.heather.hardlands.feature.ui.inventory.handler.EnchantiaInventoryHandler;
+import team.heather.hardlands.feature.ui.inventory.handler.InventoryHandler;
+import team.heather.hardlands.feature.ui.inventory.handler.PresetInventoryHandler;
+import team.heather.hardlands.feature.ui.inventory.handler.ScenarioInventoryHandler;
 
 public enum HardlandsInventory {
 
@@ -35,7 +35,6 @@ public enum HardlandsInventory {
     SCENARIOS("Escenarios", Material.PINK_STAINED_GLASS_PANE, ScenarioInventoryHandler::new),
     PLAYERS("Jugadores", Material.YELLOW_STAINED_GLASS_PANE),
     GENERAL("General", Material.PURPLE_STAINED_GLASS_PANE),
-    PHASES("Fases", Material.LIME_STAINED_GLASS_PANE),
     PRESETS("Plantillas", Material.PURPLE_STAINED_GLASS_PANE, PresetInventoryHandler::new),
 
     ENCHANTIA("Enchantia", Material.LIGHT_BLUE_STAINED_GLASS_PANE, EnchantiaInventoryHandler::new),

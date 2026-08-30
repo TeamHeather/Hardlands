@@ -1,7 +1,8 @@
-package team.heather.hardlands.common.ui.inventory.handler;
+package team.heather.hardlands.feature.ui.inventory.handler;
 
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -16,9 +17,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import team.heather.hardlands.common.item.InventoryItem;
-import team.heather.hardlands.common.item.ItemBuilder;
-import team.heather.hardlands.common.ui.inventory.HardlandsInventory;
+import team.heather.hardlands.feature.item.InventoryItem;
+import team.heather.hardlands.feature.item.ItemBuilder;
+import team.heather.hardlands.feature.ui.inventory.HardlandsInventory;
 import team.heather.hardlands.module.enchantment.HardlandsEnchantment;
 import team.heather.hardlands.module.scenario.Scenario;
 import team.heather.hardlands.module.scenario.implementation.EnchantiaScenario;
@@ -113,16 +114,16 @@ public final class EnchantiaInventoryHandler implements InventoryHandler {
     }
 
     private List<Entry> createEntries() {
-        List<Entry> result = new ArrayList<>();
+        List<Entry> entries = new ArrayList<>();
 
         for (HardlandsEnchantment enchantment : HardlandsEnchantment.values()) {
-            result.add(new Entry(
+            entries.add(new Entry(
                     enchantment.getLabel(),
                     enchantment.getDescription(),
                     "Hardlands",
                     enchantment.createMaxLevel(),
-                    () -> this.scenario.getLevel(enchantment),
-                    level -> this.scenario.setLevel(enchantment, level)
+                    () -> this.scenario.level(enchantment),
+                    level -> this.scenario.level(enchantment, level)
             ));
         }
 
@@ -137,12 +138,12 @@ public final class EnchantiaInventoryHandler implements InventoryHandler {
                         "Encantamiento original de Minecraft.",
                         "Vanilla",
                         enchantment.getMaxLevel(),
-                        () -> this.scenario.getLevel(enchantment),
-                        level -> this.scenario.setLevel(enchantment, level)
+                        () -> this.scenario.level(enchantment),
+                        level -> this.scenario.level(enchantment, level)
                 ))
-                .forEach(result::add);
+                .forEach(entries::add);
 
-        return List.copyOf(result);
+        return List.copyOf(entries);
     }
 
     private static String formatName(String identifier) {
@@ -173,7 +174,7 @@ public final class EnchantiaInventoryHandler implements InventoryHandler {
 
         private boolean changeLevel(int delta) {
             int current = this.getLevel();
-            int level = Math.max(-1, Math.min(current + delta, this.maxLevel));
+            int level = Math.clamp(current + delta, -1, this.maxLevel);
 
             if (level == current) return false;
 
@@ -184,14 +185,20 @@ public final class EnchantiaInventoryHandler implements InventoryHandler {
         private ItemStack createItem() {
             int level = this.getLevel();
 
-            return new ItemBuilder(level > 0 ? Material.ENCHANTED_BOOK : Material.BOOK)
+            Material material = switch (level) {
+                case -1 -> Material.BARRIER;
+                case 0 -> Material.BOOK;
+                default -> Material.ENCHANTED_BOOK;
+            };
+
+            return new ItemBuilder(material)
                     .name(TextFormatter.formatTinyCaps(this.name))
                     .glint(level > 0)
                     .formattedLore(
                             this.description,
                             "",
                             "{Tipo}: [%s]".formatted(this.source),
-                            "{Nivel}: [%d]".formatted(level),
+                            "{Nivel}: [%s]".formatted(formatLevel(level)),
                             "{Estado}: %s".formatted(status(level)),
                             "",
                             "<dark_gray>Izq. ＋ Nivel | Der. － Nivel"
@@ -199,9 +206,13 @@ public final class EnchantiaInventoryHandler implements InventoryHandler {
                     .build();
         }
 
+        private static String formatLevel(int level) {
+            return level == -1 ? "—" : Integer.toString(level);
+        }
+
         private static String status(int level) {
             return switch (level) {
-                case -1 -> "<red>No aplicable";
+                case -1 -> "<red>Prohibido";
                 case 0 -> "<gray>Sin modificar";
                 default -> "<green>Forzado";
             };

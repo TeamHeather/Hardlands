@@ -1,6 +1,4 @@
-package team.heather.hardlands.common.item;
-
-import java.util.Optional;
+package team.heather.hardlands.feature.item;
 
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
@@ -48,10 +46,6 @@ public enum HardlandsItem {
 
     HardlandsItem(ItemBuilder builder) {
         this.builder = builder;
-    }
-
-    public static Optional<HardlandsItem> find(String identifier) {
-        return Optional.of(valueOf(identifier.toUpperCase()));
     }
 
     public ItemStack build() {

@@ -1,4 +1,4 @@
-package team.heather.hardlands.common.item;
+package team.heather.hardlands.feature.item;
 
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -18,10 +18,11 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.profile.PlayerTextures;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.core.config.Option;
-import team.heather.hardlands.common.ui.dialog.WorldConfigurationDialog;
-import team.heather.hardlands.common.ui.inventory.HardlandsInventory;
-import team.heather.hardlands.module.world.pregeneration.PregenerationManager;
-import team.heather.hardlands.module.world.WorldManager;
+import team.heather.hardlands.feature.ui.dialog.PhaseConfigurationDialog;
+import team.heather.hardlands.feature.ui.dialog.WorldConfigurationDialog;
+import team.heather.hardlands.feature.ui.inventory.HardlandsInventory;
+import team.heather.hardlands.game.world.PregenerationManager;
+import team.heather.hardlands.game.world.WorldManager;
 import team.heather.hardlands.util.text.TextFormatter;
 
 public enum InventoryItem {
@@ -64,7 +65,7 @@ public enum InventoryItem {
             Material.CLOCK,
             "Fases",
             "Define la [progresión] de la partida.",
-            openInventory(() -> HardlandsInventory.PHASES)),
+            openDialog(PhaseConfigurationDialog::show)),
 
     WORLD(
             HeadTexture.WORLD,
@@ -133,7 +134,7 @@ public enum InventoryItem {
     }
 
     private static ItemStack createPreparationItem() {
-        WorldManager worldManager = Hardlands.getInstance().getWorldManagerOrThrow();
+        WorldManager worldManager = Hardlands.getInstance().getWorldManager();
         PregenerationManager pregenerationManager = worldManager.getPregenerationManager();
         Option<Integer> survivalSize = worldManager.getSurvivalSizeOption();
 
@@ -170,7 +171,7 @@ public enum InventoryItem {
     }
 
     private static boolean onClickPreparation(InventoryClickEvent event) {
-        WorldManager worldManager = Hardlands.getInstance().getWorldManagerOrThrow();
+        WorldManager worldManager = Hardlands.getInstance().getWorldManager();
         PregenerationManager pregenerationManager = worldManager.getPregenerationManager();
 
         switch (pregenerationManager.getState()) {

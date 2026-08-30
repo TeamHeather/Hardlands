@@ -4,7 +4,9 @@ import java.util.Optional;
 
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 import team.heather.hardlands.core.config.Option;
 import team.heather.hardlands.game.phase.Phase;
 
@@ -25,20 +27,24 @@ public final class GameTimer {
         this.gameManager = gameManager;
     }
 
-    public void updateProgress() {
-        if (this.progressDelta == 0.0D || this.ended) {
-            return;
-        }
+    public synchronized void updateProgress(Plugin plugin) {
+        Bukkit.getScheduler().runTask(plugin, () ->         {
+            if (this.progressDelta == 0.0D || this.ended) {
+                return;
+            }
 
-        double progress = this.bossBar.progress() + this.progressDelta;
-        double clampedProgress = Math.clamp(progress, 0.0D, 1.0D);
+            double progress = this.bossBar.progress() + this.progressDelta;
+            double clampedProgress = Math.clamp(progress, 0.0D, 1.0D);
 
-        this.bossBar.progress((float) clampedProgress);
+            this.bossBar.progress((float) clampedProgress);
 
-        if (clampedProgress == 0.0D || clampedProgress == 1.0D) {
-            this.ended = true;
-            this.gameManager.getPhase().next().ifPresent(this.gameManager::changePhase);
-        }
+            if (clampedProgress == 0.0D || clampedProgress == 1.0D) {
+                this.ended = true;
+                this.gameManager.getPhase()
+                        .next()
+                        .ifPresent(this.gameManager::changePhase);
+            }
+        });
     }
 
     public void updateState() {

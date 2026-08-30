@@ -8,55 +8,51 @@ import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
-import team.heather.hardlands.common.command.HardlandsCommand;
-import team.heather.hardlands.common.player.PlayerListener;
-import team.heather.hardlands.common.ui.inventory.InventoryListener;
-import team.heather.hardlands.core.SingleThreadScheduler;
-import team.heather.hardlands.module.enchantment.EnchantmentManager;
-import team.heather.hardlands.module.preset.PresetRepository;
-import team.heather.hardlands.game.GameManager;
-import team.heather.hardlands.module.scenario.ScenarioManager;
-import team.heather.hardlands.module.world.WorldManager;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import team.heather.hardlands.feature.command.HardlandsCommand;
+import team.heather.hardlands.core.SingleThreadScheduler;
+import team.heather.hardlands.feature.item.ItemListener;
+import team.heather.hardlands.feature.player.PlayerListener;
+import team.heather.hardlands.feature.ui.inventory.InventoryListener;
+import team.heather.hardlands.game.GameManager;
+import team.heather.hardlands.game.PresetRepository;
+import team.heather.hardlands.game.world.WorldManager;
+import team.heather.hardlands.module.enchantment.EnchantmentManager;
+import team.heather.hardlands.module.scenario.ScenarioManager;
 
 public final class Hardlands extends JavaPlugin {
 
-    public static final Gson GSON = new GsonBuilder()
-            .setPrettyPrinting()
-            .create();
+    public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     @Nullable private static Hardlands instance;
 
     private final SingleThreadScheduler<Hardlands> singleThreadScheduler = new SingleThreadScheduler<>(this);
 
-    private final PresetRepository presetRepository = new PresetRepository(this, "presets");
-    private final EnchantmentManager enchantmentManager = new EnchantmentManager(this);
-    private final ScenarioManager scenarioManager = new ScenarioManager(this);
-    private final GameManager gameManager = new GameManager(this);
-
+    @Nullable private PresetRepository presetRepository;
+    @Nullable private EnchantmentManager enchantmentManager;
+    @Nullable private ScenarioManager scenarioManager;
+    @Nullable private GameManager gameManager;
     @Nullable private WorldManager worldManager;
 
     @Override
     public void onEnable() {
-        getLogger().info("Initializing Hardlands...");
+        instance = this;
 
-        getLogger().info("Initializing instance and WorldManager...");
-        setInstance(this);
+        this.presetRepository = new PresetRepository(this, "presets");
+        this.enchantmentManager = new EnchantmentManager(this);
+        this.scenarioManager = new ScenarioManager(this);
+        this.gameManager = new GameManager(this);
         this.worldManager = new WorldManager();
 
-        getLogger().info("Loading default preset...");
         this.presetRepository.load("default");
 
-        getLogger().info("Registering commands and listeners...");
-        registerCommands(new HardlandsCommand());
-        registerListeners(
+        this.registerCommands(new HardlandsCommand());
+        this.registerListeners(
                 new PlayerListener(),
                 new InventoryListener(),
-                new GameListener()
+                new ItemListener()
         );
 
-        getLogger().info("Initializing tasks...");
         this.gameManager.initialize();
 
         getLogger().info(System.lineSeparator() + """
@@ -67,75 +63,65 @@ public final class Hardlands extends JavaPlugin {
             | |  | |/ ____ \\| | \\ \\| |__| | |____ / ____ \\| |\\  | |__| |____) |
             |_|  |_/_/    \\_\\_|  \\_\\_____/|______/_/    \\_\\_| \\_|_____/|_____/
             """);
-        getLogger().info("Plugin successfully enabled.");
+
+        getLogger().info("Hardlands successfully enabled.");
     }
 
     @Override
     public void onDisable() {
-        getLogger().info("Disabling Hardlands...");
-
-        getLogger().info("Closing SingleThreadScheduler...");
         this.singleThreadScheduler.close();
+        instance = null;
 
-        getLogger().info("Plugin successfully disabled.");
+        getLogger().info("Hardlands successfully disabled.");
     }
 
-    public WorldManager getWorldManagerOrThrow() {
-        if (this.worldManager == null) {
-            throw new IllegalStateException("WorldManager has not been initialized.");
-        }
-
-        return this.worldManager;
-    }
-
-    //! Public API
+    //* Public API
 
     public static NamespacedKey createKey(String path) {
-        return NamespacedKey.fromString(path, instance);
+        return NamespacedKey.fromString(path, getInstance());
     }
 
-    @Nullable
     public static Hardlands getInstance() {
-        return instance;
+        return requireInitialized(instance, "Hardlands");
     }
 
     public SingleThreadScheduler<Hardlands> getSingleThreadScheduler() {
-        return singleThreadScheduler;
+        return this.singleThreadScheduler;
     }
 
     public PresetRepository getPresetRepository() {
-        return presetRepository;
+        return requireInitialized(this.presetRepository, "PresetRepository");
     }
 
     public EnchantmentManager getEnchantmentManager() {
-        return enchantmentManager;
+        return requireInitialized(this.enchantmentManager, "EnchantmentManager");
     }
 
     public ScenarioManager getScenarioManager() {
-        return scenarioManager;
+        return requireInitialized(this.scenarioManager, "ScenarioManager");
     }
 
-    public GameManager getGameFlow() {
-        return gameManager;
+    public GameManager getGameManager() {
+        return requireInitialized(this.gameManager, "GameManager");
     }
 
-    //! Internal Class Utilities
-
-    private void registerListeners(Listener... listeners) {
-        for (Listener listener : listeners) {
-            Bukkit.getPluginManager().registerEvents(listener, this);
-        }
+    public WorldManager getWorldManager() {
+        return requireInitialized(this.worldManager, "WorldManager");
     }
+
+    //* Registration
 
     private void registerCommands(BaseCommand... commands) {
         PaperCommandManager commandManager = new PaperCommandManager(this);
-
-        for (BaseCommand command : commands) {
-            commandManager.registerCommand(command);
-        }
+        for (BaseCommand command : commands) commandManager.registerCommand(command);
     }
 
-    private static void setInstance(@NotNull Hardlands instance) {
-        Hardlands.instance = instance;
+    private void registerListeners(Listener... listeners) {
+        for (Listener listener : listeners) Bukkit.getPluginManager().registerEvents(listener, this);
+    }
+
+    private static <T> T requireInitialized(@Nullable T value, String name) {
+        if (value == null) throw new IllegalStateException(name + " has not been initialized.");
+        return value;
     }
 }

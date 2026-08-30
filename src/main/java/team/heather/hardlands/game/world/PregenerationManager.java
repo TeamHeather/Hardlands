@@ -1,11 +1,11 @@
-package team.heather.hardlands.module.world.pregeneration;
+package team.heather.hardlands.game.world;
 
 import java.util.HashMap;
 import java.util.Map;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import team.heather.hardlands.Hardlands;
-import team.heather.hardlands.common.ui.inventory.HardlandsInventory;
+import team.heather.hardlands.feature.ui.inventory.HardlandsInventory;
 import org.popcraft.chunky.api.ChunkyAPI;
 import org.popcraft.chunky.api.event.task.GenerationCompleteEvent;
 import org.popcraft.chunky.api.event.task.GenerationProgressEvent;

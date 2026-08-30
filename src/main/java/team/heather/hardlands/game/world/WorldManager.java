@@ -1,4 +1,4 @@
-package team.heather.hardlands.module.world;
+package team.heather.hardlands.game.world;
 
 import java.time.Duration;
 import java.util.Set;
@@ -11,8 +11,6 @@ import team.heather.hardlands.config.ConfigBuilder;
 import team.heather.hardlands.core.config.Option;
 import team.heather.hardlands.config.OptionDef;
 import team.heather.hardlands.core.config.Validator;
-import team.heather.hardlands.module.world.pregeneration.PregenerationManager;
-import team.heather.hardlands.module.world.pregeneration.PregenerationRequest;
 import org.popcraft.chunky.api.ChunkyAPI;
 
 @ConfigBuilder(identifier = "world", options = {

@@ -2,7 +2,6 @@ package team.heather.hardlands.game;
 
 import java.time.Duration;
 
-import org.bukkit.Bukkit;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.config.ConfigBuilder;
 import team.heather.hardlands.config.MinuteOptionDef;
@@ -20,7 +19,7 @@ import team.heather.hardlands.game.phase.Phase;
                 @MinuteOptionDef(name = "deathmatchMinute")
         }
 )
-public final class GameManager extends GameFlowConfiguration {
+public final class GameManager extends GameManagerConfiguration {
 
     private final GameTimer gameTimer = new GameTimer(this);
     private final Hardlands plugin;
@@ -40,7 +39,7 @@ public final class GameManager extends GameFlowConfiguration {
         this.gameTimer.updateState();
 
         this.plugin.getSingleThreadScheduler().loop(
-                _ -> this.gameTimer.updateProgress(),
+                _ -> this.gameTimer.updateProgress(this.plugin),
                 Duration.ofSeconds(1)
         );
 
@@ -48,14 +47,14 @@ public final class GameManager extends GameFlowConfiguration {
     }
 
     public synchronized void changePhase(Phase newPhase) {
-        Bukkit.getScheduler().runTask(this.plugin, () -> {
-            this.phase.onStart();
+        Phase previousPhase = this.phase;
 
-            this.phase = newPhase;
-            this.gameTimer.updateState();
+        previousPhase.onStop();
 
-            this.phase.onStop();
-        });
+        this.phase = newPhase;
+        this.gameTimer.updateState();
+
+        newPhase.onStart();
     }
 
     public Phase getPhase() {

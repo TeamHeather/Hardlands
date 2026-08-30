@@ -1,4 +1,4 @@
-package team.heather.hardlands.common.ui.inventory.handler;
+package team.heather.hardlands.feature.ui.inventory.handler;
 
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.dialog.DialogResponseView;
@@ -30,7 +30,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import team.heather.hardlands.Hardlands;
-import team.heather.hardlands.common.ui.inventory.HardlandsInventory;
+import team.heather.hardlands.feature.ui.inventory.HardlandsInventory;
 import team.heather.hardlands.core.config.Option;
 import team.heather.hardlands.core.config.Validator;
 import team.heather.hardlands.module.scenario.Scenario;
@@ -49,7 +49,7 @@ public final class ScenarioInventoryHandler implements InventoryHandler {
     @Override
     public void render(Inventory inventory) {
         ScenarioManager manager = getScenarioManager();
-        List<Scenario> scenarios = manager.getRegisteredScenarios();
+        List<Scenario> scenarios = ScenarioManager.REGISTERED_SCENARIOS;
 
         if (scenarios.size() > HardlandsInventory.getContentCapacity(inventory)) {
             throw new IllegalStateException(
@@ -72,7 +72,7 @@ public final class ScenarioInventoryHandler implements InventoryHandler {
     @Override
     public Optional<Boolean> onClick(InventoryClickEvent event, Player player) {
         Inventory inventory = event.getView().getTopInventory();
-        List<Scenario> scenarios = getScenarioManager().getRegisteredScenarios();
+        List<Scenario> scenarios = ScenarioManager.REGISTERED_SCENARIOS;
         int index = HardlandsInventory.getContentIndex(inventory, event.getRawSlot());
 
         if (index < 0 || index >= scenarios.size()) {

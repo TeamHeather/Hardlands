@@ -1,4 +1,4 @@
-package team.heather.hardlands.module.preset;
+package team.heather.hardlands.game;
 
 import com.google.gson.JsonObject;
 import com.google.gson.annotations.SerializedName;
@@ -36,8 +36,8 @@ public final class PresetRepository {
                 icon.getKey().asString(),
                 normalizeDescription(description),
                 this.plugin.getScenarioManager().toJson().getAsJsonObject(),
-                this.plugin.getGameFlow().toJson().getAsJsonObject(),
-                this.plugin.getWorldManagerOrThrow().toJson().getAsJsonObject()));
+                this.plugin.getGameManager().toJson().getAsJsonObject(),
+                this.plugin.getWorldManager().toJson().getAsJsonObject()));
     }
 
     public void load(String name) {
@@ -45,8 +45,8 @@ public final class PresetRepository {
 
         this.managerFor(normalizedName).read().ifPresent(preset -> {
             this.plugin.getScenarioManager().fromJson(preset.scenarios());
-            this.plugin.getGameFlow().fromJson(preset.phase());
-            this.plugin.getWorldManagerOrThrow().fromJson(preset.world());
+            this.plugin.getGameManager().fromJson(preset.phase());
+            this.plugin.getWorldManager().fromJson(preset.world());
         });
     }
 
