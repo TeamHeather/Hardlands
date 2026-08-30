@@ -1,4 +1,4 @@
-package team.heather.hardlands.feature.ui.inventory;
+package team.heather.hardlands.ui.inventory;
 
 import java.util.Optional;
 

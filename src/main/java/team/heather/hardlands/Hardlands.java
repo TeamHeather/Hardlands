@@ -9,20 +9,24 @@ import org.bukkit.NamespacedKey;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
-import team.heather.hardlands.feature.command.HardlandsCommand;
+import team.heather.hardlands.command.HardlandsCommand;
 import team.heather.hardlands.core.SingleThreadScheduler;
+import team.heather.hardlands.command.PhaseCommand;
 import team.heather.hardlands.feature.item.ItemListener;
 import team.heather.hardlands.feature.player.PlayerListener;
-import team.heather.hardlands.feature.ui.inventory.InventoryListener;
+import team.heather.hardlands.ui.inventory.InventoryListener;
+import team.heather.hardlands.game.GameListener;
 import team.heather.hardlands.game.GameManager;
-import team.heather.hardlands.game.PresetRepository;
+import team.heather.hardlands.game.preset.PresetRepository;
 import team.heather.hardlands.game.world.WorldManager;
 import team.heather.hardlands.module.enchantment.EnchantmentManager;
 import team.heather.hardlands.module.scenario.ScenarioManager;
+import team.heather.hardlands.util.HardlandsColor;
 
 public final class Hardlands extends JavaPlugin {
 
     public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    public static final String LABEL = HardlandsColor.PRIMARY + "ʜᴀʀᴅʟᴀɴᴅꜱ";
 
     @Nullable private static Hardlands instance;
 
@@ -46,11 +50,15 @@ public final class Hardlands extends JavaPlugin {
 
         this.presetRepository.load("default");
 
-        this.registerCommands(new HardlandsCommand());
+        this.registerCommands(
+                new HardlandsCommand(),
+                new PhaseCommand()
+        );
         this.registerListeners(
                 new PlayerListener(),
                 new InventoryListener(),
-                new ItemListener()
+                new ItemListener(),
+                new GameListener(this.gameManager)
         );
 
         this.gameManager.initialize();

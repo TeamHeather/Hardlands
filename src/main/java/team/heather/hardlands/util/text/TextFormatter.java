@@ -8,7 +8,7 @@ import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
-import team.heather.hardlands.util.TinyCaps;
+import team.heather.hardlands.util.HardlandsColor;
 
 public final class TextFormatter {
 
@@ -46,7 +46,7 @@ public final class TextFormatter {
         return result.build();
     }
 
-    public static Component formatTinyCaps(String text) {
+    public static Component tinyCaps(String text) {
         return Component.text(TinyCaps.format(text), HardlandsColor.PRIMARY);
     }
 }

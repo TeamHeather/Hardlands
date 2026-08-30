@@ -1,4 +1,4 @@
-package team.heather.hardlands.feature.ui.inventory.handler;
+package team.heather.hardlands.ui.inventory.handler;
 
 import java.util.List;
 import java.util.Locale;
@@ -21,12 +21,12 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import team.heather.hardlands.Hardlands;
-import team.heather.hardlands.feature.ui.inventory.HardlandsInventory;
+import team.heather.hardlands.ui.inventory.HardlandsInventory;
 import team.heather.hardlands.feature.item.InventoryItem;
 import team.heather.hardlands.feature.item.ItemBuilder;
-import team.heather.hardlands.game.PresetRepository;
-import team.heather.hardlands.game.PresetRepository.PresetInfo;
-import team.heather.hardlands.util.text.HardlandsColor;
+import team.heather.hardlands.game.preset.PresetRepository;
+import team.heather.hardlands.game.preset.PresetRepository.PresetInfo;
+import team.heather.hardlands.util.HardlandsColor;
 import team.heather.hardlands.util.text.TextFormatter;
 
 public final class PresetInventoryHandler implements InventoryHandler {
@@ -431,7 +431,7 @@ public final class PresetInventoryHandler implements InventoryHandler {
 
     private static ItemStack createSaveItem() {
         return new ItemBuilder(Material.WRITABLE_BOOK)
-                .name(TextFormatter.formatTinyCaps("Crear preset"))
+                .name(TextFormatter.tinyCaps("Crear preset"))
                 .formattedLore(
                         "Guarda la [configuración actual].",
                         "",
@@ -441,7 +441,7 @@ public final class PresetInventoryHandler implements InventoryHandler {
 
     private static ItemStack createPresetItem(PresetInfo preset) {
         ItemBuilder builder = new ItemBuilder(preset.icon())
-                .name(TextFormatter.formatTinyCaps(preset.name()));
+                .name(TextFormatter.tinyCaps(preset.name()));
 
         if (!preset.description().isBlank()) {
             builder.addLore(Component.text(

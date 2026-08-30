@@ -1,4 +1,4 @@
-package team.heather.hardlands.feature.ui.inventory;
+package team.heather.hardlands.ui.inventory;
 
 import java.util.List;
 import java.util.Map;
@@ -12,25 +12,25 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import team.heather.hardlands.feature.item.InventoryItem;
 import team.heather.hardlands.feature.item.ItemBuilder;
-import team.heather.hardlands.feature.ui.inventory.handler.EnchantiaInventoryHandler;
-import team.heather.hardlands.feature.ui.inventory.handler.InventoryHandler;
-import team.heather.hardlands.feature.ui.inventory.handler.PresetInventoryHandler;
-import team.heather.hardlands.feature.ui.inventory.handler.ScenarioInventoryHandler;
+import team.heather.hardlands.ui.inventory.handler.EnchantiaInventoryHandler;
+import team.heather.hardlands.ui.inventory.handler.InventoryHandler;
+import team.heather.hardlands.ui.inventory.handler.PresetInventoryHandler;
+import team.heather.hardlands.ui.inventory.handler.ScenarioInventoryHandler;
 
 public enum HardlandsInventory {
 
     MAIN("Hardlands", Material.RED_STAINED_GLASS_PANE, """
             -------
-            -SPGFW-
-            ---T---
+            -NIGER-
+            ---K---
             -------
             """, Map.of(
-            'S', InventoryItem.SCENARIOS,
-            'P', InventoryItem.PLAYERS,
+            'N', InventoryItem.SCENARIOS,
+            'I', InventoryItem.PLAYERS,
             'G', InventoryItem.GENERAL,
-            'F', InventoryItem.PHASES,
-            'W', InventoryItem.WORLD,
-            'T', InventoryItem.PRESETS)),
+            'E', InventoryItem.PHASES,
+            'R', InventoryItem.WORLD,
+            'K', InventoryItem.PRESETS)),
 
     SCENARIOS("Escenarios", Material.PINK_STAINED_GLASS_PANE, ScenarioInventoryHandler::new),
     PLAYERS("Jugadores", Material.YELLOW_STAINED_GLASS_PANE),

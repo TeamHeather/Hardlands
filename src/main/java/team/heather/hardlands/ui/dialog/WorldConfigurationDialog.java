@@ -1,4 +1,4 @@
-package team.heather.hardlands.feature.ui.dialog;
+package team.heather.hardlands.ui.dialog;
 
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.dialog.DialogResponseView;
@@ -23,9 +23,9 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.core.config.Option;
-import team.heather.hardlands.feature.ui.inventory.HardlandsInventory;
+import team.heather.hardlands.ui.inventory.HardlandsInventory;
 import team.heather.hardlands.game.world.WorldManager;
-import team.heather.hardlands.util.text.HardlandsColor;
+import team.heather.hardlands.util.HardlandsColor;
 import team.heather.hardlands.util.text.TextFormatter;
 
 @SuppressWarnings("UnstableApiUsage")
@@ -63,7 +63,7 @@ public final class WorldConfigurationDialog {
 
         player.showDialog(Dialog.create(builder -> builder
                 .empty()
-                .base(DialogBase.builder(TextFormatter.formatTinyCaps("Configuración del mundo"))
+                .base(DialogBase.builder(TextFormatter.tinyCaps("Configuración del mundo"))
                         .externalTitle(Component.text("Mundo"))
                         .canCloseWithEscape(true)
                         .pause(false)
@@ -161,7 +161,7 @@ public final class WorldConfigurationDialog {
             default -> world.getName();
         };
 
-        return TextFormatter.formatTinyCaps(name).color(NamedTextColor.WHITE);
+        return TextFormatter.tinyCaps(name).color(NamedTextColor.WHITE);
     }
 
     private static DialogInput booleanInput(String key, String icon, String name, Boolean value) {
@@ -203,21 +203,21 @@ public final class WorldConfigurationDialog {
     private static SingleOptionDialogInput.OptionEntry stateOption(
             String key, String name, TextColor color, boolean selected) {
 
-        return SingleOptionDialogInput.OptionEntry.create(key, TextFormatter.formatTinyCaps(name).color(color), selected);
+        return SingleOptionDialogInput.OptionEntry.create(key, TextFormatter.tinyCaps(name).color(color), selected);
     }
 
     private static Component iconLabel(String icon, String name) {
         return Component.text(icon + "  ", HardlandsColor.PRIMARY)
-                .append(TextFormatter.formatTinyCaps(name).color(NamedTextColor.WHITE));
+                .append(TextFormatter.tinyCaps(name).color(NamedTextColor.WHITE));
     }
 
     private static Component plainLabel(String name) {
-        return TextFormatter.formatTinyCaps(name).color(NamedTextColor.WHITE);
+        return TextFormatter.tinyCaps(name).color(NamedTextColor.WHITE);
     }
 
     private static ActionButton createSaveButton(WorldManager manager, List<World> worlds) {
         return ActionButton.create(
-                TextFormatter.formatTinyCaps("Guardar").color(HardlandsColor.PRIMARY),
+                TextFormatter.tinyCaps("Guardar").color(HardlandsColor.PRIMARY),
                 Component.text("Aplicar los cambios.", HardlandsColor.LIGHT_GRAY),
                 ACTION_WIDTH,
                 DialogAction.customClick(
@@ -242,7 +242,7 @@ public final class WorldConfigurationDialog {
 
     private static ActionButton createCancelButton() {
         return ActionButton.create(
-                TextFormatter.formatTinyCaps("Cancelar").color(NamedTextColor.GRAY),
+                TextFormatter.tinyCaps("Cancelar").color(NamedTextColor.GRAY),
                 Component.text("Cerrar sin guardar.", HardlandsColor.LIGHT_GRAY),
                 ACTION_WIDTH,
                 DialogAction.customClick(

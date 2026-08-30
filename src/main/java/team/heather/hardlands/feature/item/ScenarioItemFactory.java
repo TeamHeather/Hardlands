@@ -9,8 +9,8 @@ import org.bukkit.inventory.ItemStack;
 import team.heather.hardlands.module.enchantment.HardlandsEnchantment;
 import team.heather.hardlands.module.scenario.Scenario;
 import team.heather.hardlands.module.scenario.ScenarioProcessor;
-import team.heather.hardlands.util.RomanNumerals;
-import team.heather.hardlands.util.text.HardlandsColor;
+import team.heather.hardlands.util.text.RomanNumerals;
+import team.heather.hardlands.util.HardlandsColor;
 import team.heather.hardlands.util.text.TextFormatter;
 
 public final class ScenarioItemFactory {
@@ -20,7 +20,7 @@ public final class ScenarioItemFactory {
     public static ItemStack create(Scenario scenario, boolean enabled) {
         ScenarioProcessor processor = scenario.getProcessor();
 
-        Component name = TextFormatter.formatTinyCaps(scenario.getLabel())
+        Component name = TextFormatter.tinyCaps(scenario.getLabel())
                 .color(enabled ? HardlandsColor.PRIMARY : NamedTextColor.DARK_GRAY);
 
         ItemBuilder builder = new ItemBuilder(scenario.getMaterial())

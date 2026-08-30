@@ -1,4 +1,4 @@
-package team.heather.hardlands.util;
+package team.heather.hardlands.util.text;
 
 import java.util.Map;
 import java.util.regex.Pattern;

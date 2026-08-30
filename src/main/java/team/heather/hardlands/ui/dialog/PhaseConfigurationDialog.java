@@ -1,4 +1,4 @@
-package team.heather.hardlands.feature.ui.dialog;
+package team.heather.hardlands.ui.dialog;
 
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.dialog.DialogResponseView;
@@ -20,7 +20,7 @@ import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.core.config.Option;
 import team.heather.hardlands.game.GameManager;
 import team.heather.hardlands.game.phase.Phase;
-import team.heather.hardlands.util.text.HardlandsColor;
+import team.heather.hardlands.util.HardlandsColor;
 import team.heather.hardlands.util.text.TextFormatter;
 
 @SuppressWarnings("UnstableApiUsage")
@@ -41,7 +41,7 @@ public final class PhaseConfigurationDialog {
 
         player.showDialog(Dialog.create(builder -> builder
                 .empty()
-                .base(DialogBase.builder(TextFormatter.formatTinyCaps("Configuración de fases"))
+                .base(DialogBase.builder(TextFormatter.tinyCaps("Configuración de fases"))
                         .externalTitle(Component.text("Fases"))
                         .canCloseWithEscape(true)
                         .pause(false)
@@ -57,13 +57,24 @@ public final class PhaseConfigurationDialog {
     private static List<PhaseSetting> createSettings(GameManager manager) {
         List<PhaseSetting> settings = new ArrayList<>();
 
+        settings.add(new PhaseSetting(
+                Phase.WAITING,
+                manager.getWaitingMinuteOption(),
+                inputKey(Phase.WAITING)
+        ));
+
         for (Phase phase : Phase.values()) {
+            if (phase == Phase.WAITING) continue;
+
             Option<Integer> option = phase.getMinuteOption(manager);
-            if (option != null) settings.add(new PhaseSetting(phase, option, inputKey(phase)));
+            if (option != null) {
+                settings.add(new PhaseSetting(phase, option, inputKey(phase)));
+            }
         }
 
         return settings;
     }
+
 
     private static List<DialogInput> createInputs(List<PhaseSetting> settings) {
         List<DialogInput> inputs = new ArrayList<>(settings.size());
@@ -74,7 +85,7 @@ public final class PhaseConfigurationDialog {
             inputs.add(DialogInput.numberRange(
                     setting.inputKey(),
                     INPUT_WIDTH,
-                    TextFormatter.formatTinyCaps(setting.phase().getLabel()).color(NamedTextColor.WHITE),
+                    TextFormatter.tinyCaps(setting.phase().getLabel()).color(NamedTextColor.WHITE),
                     "%1$s: %2$s min",
                     MIN_MINUTE,
                     MAX_MINUTE,
@@ -88,7 +99,7 @@ public final class PhaseConfigurationDialog {
 
     private static ActionButton createSaveButton(List<PhaseSetting> settings) {
         return ActionButton.create(
-                TextFormatter.formatTinyCaps("Guardar").color(HardlandsColor.PRIMARY),
+                TextFormatter.tinyCaps("Guardar").color(HardlandsColor.PRIMARY),
                 Component.text("Aplicar los minutos de inicio.", HardlandsColor.LIGHT_GRAY),
                 ACTION_WIDTH,
                 DialogAction.customClick(
@@ -116,7 +127,7 @@ public final class PhaseConfigurationDialog {
 
     private static ActionButton createCancelButton() {
         return ActionButton.create(
-                TextFormatter.formatTinyCaps("Cancelar").color(NamedTextColor.GRAY),
+                TextFormatter.tinyCaps("Cancelar").color(NamedTextColor.GRAY),
                 Component.text("Cerrar sin guardar.", HardlandsColor.LIGHT_GRAY),
                 ACTION_WIDTH,
                 DialogAction.customClick(

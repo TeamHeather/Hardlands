@@ -1,4 +1,4 @@
-package team.heather.hardlands.feature.ui.inventory.handler;
+package team.heather.hardlands.ui.inventory.handler;
 
 import io.papermc.paper.registry.RegistryAccess;
 import io.papermc.paper.registry.RegistryKey;
@@ -19,7 +19,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import team.heather.hardlands.feature.item.InventoryItem;
 import team.heather.hardlands.feature.item.ItemBuilder;
-import team.heather.hardlands.feature.ui.inventory.HardlandsInventory;
+import team.heather.hardlands.ui.inventory.HardlandsInventory;
 import team.heather.hardlands.module.enchantment.HardlandsEnchantment;
 import team.heather.hardlands.module.scenario.Scenario;
 import team.heather.hardlands.module.scenario.implementation.EnchantiaScenario;
@@ -192,7 +192,7 @@ public final class EnchantiaInventoryHandler implements InventoryHandler {
             };
 
             return new ItemBuilder(material)
-                    .name(TextFormatter.formatTinyCaps(this.name))
+                    .name(TextFormatter.tinyCaps(this.name))
                     .glint(level > 0)
                     .formattedLore(
                             this.description,

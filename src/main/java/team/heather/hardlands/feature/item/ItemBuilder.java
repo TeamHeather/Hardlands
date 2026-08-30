@@ -60,7 +60,7 @@ public final class ItemBuilder {
     }
 
     public ItemBuilder tinyCapsLore(String... lines) {
-        return this.setLore(lines, TextFormatter::formatTinyCaps);
+        return this.setLore(lines, TextFormatter::tinyCaps);
     }
 
     public ItemBuilder instantAttack() {
@@ -89,7 +89,7 @@ public final class ItemBuilder {
     }
 
     public ItemBuilder addTinyCapsLore(String... lines) {
-        return this.addLore(lines, TextFormatter::formatTinyCaps);
+        return this.addLore(lines, TextFormatter::tinyCaps);
     }
 
     public ItemBuilder enchant(Enchantment enchantment, int level) {

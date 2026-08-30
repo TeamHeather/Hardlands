@@ -5,7 +5,6 @@ import java.util.function.Function;
 
 import net.kyori.adventure.bossbar.BossBar;
 import team.heather.hardlands.core.config.Option;
-import team.heather.hardlands.game.GameManager;
 import team.heather.hardlands.game.GameManagerConfiguration;
 
 public enum Phase {
@@ -14,35 +13,36 @@ public enum Phase {
             "Idle",
             Stage.NEUTRAL,
             Progression.EMPTY,
-            new IdleHandler()
+            PhaseHandler.IDLE
     ),
 
     PRE_GENERATION(
             "Pre-Generation",
             Stage.NEUTRAL,
             Progression.FILL,
-            new PreGenerationHandler()
+            PhaseHandler.PRE_GENERATION
     ),
 
     WAITING(
             "Waiting",
             Stage.NEUTRAL,
             Progression.DRAIN,
-            new WaitingHandler()
+            PhaseHandler.WAITING,
+            GameManagerConfiguration::getWaitingMinuteOption
     ),
 
     SCATTER(
             "Scatter",
             Stage.EARLY_GAME,
             Progression.FILL,
-            new PreGenerationHandler() //TODO CAMBIAR
+            PhaseHandler.SCATTER
     ),
 
     GRACE_PERIOD(
             "Grace Period",
             Stage.EARLY_GAME,
             Progression.DRAIN,
-            new PreGenerationHandler(), //TODO CAMBIAR
+            PhaseHandler.GRACE_PERIOD,
             GameManagerConfiguration::getGracePeriodMinuteOption
     ),
 
@@ -50,7 +50,7 @@ public enum Phase {
             "PvP",
             Stage.COMBAT,
             Progression.DRAIN,
-            new PreGenerationHandler(), //TODO CAMBIAR
+            PhaseHandler.PVP,
             GameManagerConfiguration::getPvpMinuteOption
     ),
 
@@ -58,7 +58,7 @@ public enum Phase {
             "Border Shrink",
             Stage.COMBAT,
             Progression.FILL,
-            new PreGenerationHandler(), //TODO CAMBIAR
+            PhaseHandler.BORDER_SHRINK,
             GameManagerConfiguration::getBorderShrinkMinuteOption
     ),
 
@@ -66,7 +66,7 @@ public enum Phase {
             "Meetup",
             Stage.COMBAT,
             Progression.DRAIN,
-            new PreGenerationHandler(), //TODO CAMBIAR
+            PhaseHandler.MEETUP,
             GameManagerConfiguration::getMeetupMinuteOption
     ),
 
@@ -74,7 +74,7 @@ public enum Phase {
             "Final Shrink",
             Stage.COMBAT,
             Progression.FILL,
-            new PreGenerationHandler(), //TODO CAMBIAR
+            PhaseHandler.FINAL_SHRINK,
             GameManagerConfiguration::getFinalShrinkMinuteOption
     ),
 
@@ -82,7 +82,7 @@ public enum Phase {
             "Deathmatch",
             Stage.DEATHMATCH,
             Progression.FULL,
-            new PreGenerationHandler(), //TODO CAMBIAR
+            PhaseHandler.DEATHMATCH,
             GameManagerConfiguration::getDeathmatchMinuteOption
     ),
 
@@ -90,14 +90,14 @@ public enum Phase {
             "Post-Game",
             Stage.NEUTRAL,
             Progression.EMPTY,
-            new PreGenerationHandler() //TODO CAMBI
+            PhaseHandler.POST_GAME
     );
 
     private final String label;
     private final Stage stage;
     private final Progression progression;
     private final PhaseHandler handler;
-    private final Function<GameManager, Option<Integer>> minuteOption;
+    private final Function<GameManagerConfiguration, Option<Integer>> minuteOption;
 
     Phase(
             String label,
@@ -113,7 +113,7 @@ public enum Phase {
             Stage stage,
             Progression progression,
             PhaseHandler handler,
-            Function<GameManager, Option<Integer>> minuteOption
+            Function<GameManagerConfiguration, Option<Integer>> minuteOption
     ) {
         this.label = label;
         this.stage = stage;
@@ -148,24 +148,32 @@ public enum Phase {
     }
 
     public String getLabel() {
-        return this.label;
+        return label;
     }
 
-    public Stage getCategory() {
-        return this.stage;
+    public Stage getStage() {
+        return stage;
     }
 
     public Progression getProgression() {
-        return this.progression;
+        return progression;
     }
 
-    public Option<Integer> getMinuteOption(GameManager flow) {
-        return this.minuteOption == null ? null : this.minuteOption.apply(flow);
+    public Option<Integer> getMinuteOption(GameManagerConfiguration configuration) {
+        return minuteOption == null
+                ? null
+                : minuteOption.apply(configuration);
     }
 
     public boolean isRunning() {
         return switch (this) {
-            case SCATTER, GRACE_PERIOD, PVP, BORDER_SHRINK, MEETUP, FINAL_SHRINK, DEATHMATCH -> true;
+            case SCATTER,
+                 GRACE_PERIOD,
+                 PVP,
+                 BORDER_SHRINK,
+                 MEETUP,
+                 FINAL_SHRINK,
+                 DEATHMATCH -> true;
             default -> false;
         };
     }
@@ -184,7 +192,7 @@ public enum Phase {
         }
 
         public BossBar.Color getBossBarColor() {
-            return this.bossBarColor;
+            return bossBarColor;
         }
     }
 

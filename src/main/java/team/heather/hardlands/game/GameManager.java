@@ -2,6 +2,8 @@ package team.heather.hardlands.game;
 
 import java.time.Duration;
 
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.config.ConfigBuilder;
 import team.heather.hardlands.config.MinuteOptionDef;
@@ -11,6 +13,7 @@ import team.heather.hardlands.game.phase.Phase;
 @ConfigBuilder(
         identifier = "game",
         minuteOptions = {
+                @MinuteOptionDef(name = "waitingMinute"),
                 @MinuteOptionDef(name = "gracePeriodMinute"),
                 @MinuteOptionDef(name = "pvpMinute"),
                 @MinuteOptionDef(name = "borderShrinkMinute"),
@@ -21,7 +24,8 @@ import team.heather.hardlands.game.phase.Phase;
 )
 public final class GameManager extends GameManagerConfiguration {
 
-    private final GameTimer gameTimer = new GameTimer(this);
+    private final GameScoreboard scoreboardManager;
+    private final GameTimer timerManager;
     private final Hardlands plugin;
 
     private Phase phase = Phase.IDLE;
@@ -29,6 +33,24 @@ public final class GameManager extends GameManagerConfiguration {
 
     public GameManager(Hardlands plugin) {
         this.plugin = plugin;
+        this.scoreboardManager = new GameScoreboard(this);
+        this.timerManager = new GameTimer(this);
+    }
+
+    public void addViewer(Player player) {
+        this.scoreboardManager.addViewer(player);
+        this.timerManager.addViewer(player);
+        this.scoreboardManager.update();
+    }
+
+    public void removeViewer(Player player) {
+        this.scoreboardManager.removeViewer(player);
+        this.timerManager.removeViewer(player);
+        this.scoreboardManager.update();
+    }
+
+    public void resetChronometer() {
+        this.timerManager.resetChronometer();
     }
 
     public void initialize() {
@@ -36,12 +58,15 @@ public final class GameManager extends GameManagerConfiguration {
             throw new IllegalStateException("Game is already initialized");
         }
 
-        this.gameTimer.updateState();
+        this.scoreboardManager.update();
+        this.timerManager.updateState();
 
         this.plugin.getSingleThreadScheduler().loop(
-                _ -> this.gameTimer.updateProgress(this.plugin),
+                _ -> this.timerManager.updateProgress(this.plugin),
                 Duration.ofSeconds(1)
         );
+
+        Bukkit.getPluginManager().registerEvents(new GameListener(this), this.plugin);
 
         this.initialized = true;
     }
@@ -52,7 +77,8 @@ public final class GameManager extends GameManagerConfiguration {
         previousPhase.onStop();
 
         this.phase = newPhase;
-        this.gameTimer.updateState();
+        this.timerManager.updateState();
+        this.scoreboardManager.update();
 
         newPhase.onStart();
     }
@@ -67,6 +93,7 @@ public final class GameManager extends GameManagerConfiguration {
             return false;
         }
 
+        int waiting = super.waitingMinute.getValue();
         int gracePeriod = super.gracePeriodMinute.getValue();
         int pvp = super.pvpMinute.getValue();
         int borderShrink = super.borderShrinkMinute.getValue();
@@ -74,7 +101,8 @@ public final class GameManager extends GameManagerConfiguration {
         int finalShrink = super.finalShrinkMinute.getValue();
         int deathmatch = super.deathmatchMinute.getValue();
 
-        return gracePeriod < pvp
+        return waiting < gracePeriod
+                && gracePeriod < pvp
                 && pvp < borderShrink
                 && borderShrink < meetup
                 && meetup < finalShrink

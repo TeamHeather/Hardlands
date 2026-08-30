@@ -26,7 +26,7 @@ public final class BonanzaScenario extends BonanzaScenarioConfiguration {
 
         event.getItems().forEach(item -> {
             ItemStack stack = item.getItemStack();
-            stack.setAmount(stack.getAmount() * multiplier.getValue());
+            stack.setAmount(stack.getAmount() * super.multiplier.getValue());
         });
     }
 }
