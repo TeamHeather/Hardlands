@@ -5,6 +5,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import team.heather.hardlands.Hardlands;
+import team.heather.hardlands.game.phase.Phase;
 
 public final class GameListener implements Listener {
 
@@ -19,6 +21,13 @@ public final class GameListener implements Listener {
 				Player player = event.getPlayer();
 
 				this.manager.addViewer(player);
+
+				if (this.manager.getPhase().isScatterQueueOpen()) {
+						Hardlands.getInstance()
+										.getWorldManager()
+										.getScatterManager()
+										.enqueue(player);
+				}
 		}
 
 		@EventHandler
@@ -26,5 +35,12 @@ public final class GameListener implements Listener {
 				Player player = event.getPlayer();
 
 				this.manager.removeViewer(player);
+
+				if (this.manager.getPhase().isScatterQueueOpen()) {
+						Hardlands.getInstance()
+										.getWorldManager()
+										.getScatterManager()
+										.remove(player);
+				}
 		}
 }

@@ -2,26 +2,31 @@ package team.heather.hardlands.game.world;
 
 import java.util.HashMap;
 import java.util.Map;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import team.heather.hardlands.Hardlands;
-import team.heather.hardlands.ui.inventory.HardlandsInventory;
 import org.popcraft.chunky.api.ChunkyAPI;
 import org.popcraft.chunky.api.event.task.GenerationCompleteEvent;
 import org.popcraft.chunky.api.event.task.GenerationProgressEvent;
+import team.heather.hardlands.Hardlands;
+import team.heather.hardlands.ui.inventory.HardlandsInventory;
 
 public final class PregenerationManager {
 
-    private final Map<String, PregenerationTask> pregenerating = new HashMap<>();
+    private final Map<String, PregenerationTask> pregenerating;
     private final ChunkyAPI chunky;
 
+    private boolean progressUpdatesEnabled;
+
     public PregenerationManager(ChunkyAPI chunky) {
+        this.pregenerating = new HashMap<>();
         this.chunky = chunky;
+
         this.chunky.onGenerationProgress(this::handleGenerationProgress);
         this.chunky.onGenerationComplete(this::handleGenerationComplete);
     }
 
-    public synchronized void reviewAndAccept(PregenerationRequest request) {
+    public synchronized void review(PregenerationRequest request) {
         String worldName = request.worldName();
 
         if (!request.reviewAndStart(this.chunky)) {
@@ -60,6 +65,10 @@ public final class PregenerationManager {
         this.refreshPreparationItem();
     }
 
+    public synchronized void setProgressUpdatesEnabled(boolean enabled) {
+        this.progressUpdatesEnabled = enabled;
+    }
+
     public synchronized State getState() {
         if (this.pregenerating.isEmpty()) return State.IDLE;
 
@@ -85,27 +94,47 @@ public final class PregenerationManager {
 
     private synchronized void handleGenerationProgress(GenerationProgressEvent event) {
         PregenerationTask task = this.pregenerating.get(event.world());
+        if (task == null || task.state() == State.COMPLETED) return;
 
-        if (task == null) return;
+        float progress = Math.clamp(event.progress(), 0.0F, 100.0F);
 
         this.pregenerating.put(
                 event.world(),
-                event.progress() >= 100.0F ? task.completed() : task.withProgress(event.progress()));
+                progress >= 100.0F ? task.completed() : task.withProgress(progress)
+        );
+
+        if (this.progressUpdatesEnabled) this.updateGameProgress();
 
         this.refreshPreparationItem();
     }
 
     private synchronized void handleGenerationComplete(GenerationCompleteEvent event) {
         PregenerationTask task = this.pregenerating.get(event.world());
-
-        if (task == null) return;
+        if (task == null || task.state() == State.COMPLETED) return;
 
         this.pregenerating.put(event.world(), task.completed());
+
+        if (this.progressUpdatesEnabled) this.updateGameProgress();
+
         this.refreshPreparationItem();
     }
 
+    private void updateGameProgress() {
+        float progress = this.getProgress();
+
+        Bukkit.getScheduler().runTask(
+                Hardlands.getInstance(),
+                () -> Hardlands.getInstance()
+                        .getGameManager()
+                        .updatePregenerationProgress(progress)
+        );
+    }
+
     private void refreshPreparationItem() {
-        Bukkit.getScheduler().runTask(Hardlands.getInstance(), HardlandsInventory::refreshPreparationItems);
+        Bukkit.getScheduler().runTask(
+                Hardlands.getInstance(),
+                HardlandsInventory::refreshPreparationItems
+        );
     }
 
     private record PregenerationTask(State state, float progress) {
@@ -137,7 +166,7 @@ public final class PregenerationManager {
         private final String name;
         private final Material material;
 
-        private State(String name, Material material) {
+        State(String name, Material material) {
             this.name = name;
             this.material = material;
         }
@@ -149,5 +178,11 @@ public final class PregenerationManager {
         public Material getMaterial() {
             return this.material;
         }
+    }
+
+    public synchronized boolean isCompleted() {
+        return !this.pregenerating.isEmpty()
+                && this.pregenerating.values().stream()
+                .allMatch(task -> task.state() == State.COMPLETED);
     }
 }

@@ -1,6 +1,7 @@
 package team.heather.hardlands.game;
 
 import java.time.Duration;
+import java.util.function.BooleanSupplier;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -24,67 +25,15 @@ import team.heather.hardlands.game.phase.Phase;
 )
 public final class GameManager extends GameManagerConfiguration {
 
-    private final GameScoreboard scoreboardManager;
     private final GameTimer timerManager;
     private final Hardlands plugin;
 
-    private Phase phase = Phase.IDLE;
+    private Phase phase = Phase.OFF_GAME;
     private boolean initialized;
 
     public GameManager(Hardlands plugin) {
         this.plugin = plugin;
-        this.scoreboardManager = new GameScoreboard(this);
         this.timerManager = new GameTimer(this);
-    }
-
-    public void addViewer(Player player) {
-        this.scoreboardManager.addViewer(player);
-        this.timerManager.addViewer(player);
-        this.scoreboardManager.update();
-    }
-
-    public void removeViewer(Player player) {
-        this.scoreboardManager.removeViewer(player);
-        this.timerManager.removeViewer(player);
-        this.scoreboardManager.update();
-    }
-
-    public void resetChronometer() {
-        this.timerManager.resetChronometer();
-    }
-
-    public void initialize() {
-        if (this.initialized) {
-            throw new IllegalStateException("Game is already initialized");
-        }
-
-        this.scoreboardManager.update();
-        this.timerManager.updateState();
-
-        this.plugin.getSingleThreadScheduler().loop(
-                _ -> this.timerManager.updateProgress(this.plugin),
-                Duration.ofSeconds(1)
-        );
-
-        Bukkit.getPluginManager().registerEvents(new GameListener(this), this.plugin);
-
-        this.initialized = true;
-    }
-
-    public synchronized void changePhase(Phase newPhase) {
-        Phase previousPhase = this.phase;
-
-        previousPhase.onStop();
-
-        this.phase = newPhase;
-        this.timerManager.updateState();
-        this.scoreboardManager.update();
-
-        newPhase.onStart();
-    }
-
-    public Phase getPhase() {
-        return this.phase;
     }
 
     @Override
@@ -109,13 +58,66 @@ public final class GameManager extends GameManagerConfiguration {
                 && finalShrink < deathmatch;
     }
 
-    private void schedulePhase(Phase phase) {
-        Option<Integer> minuteOption = phase.getMinuteOption(this);
-        if (minuteOption == null) return;
+    public void updatePregenerationProgress(float progress) {
+        this.timerManager.setProgress(progress / 100.0F);
+        this.timerManager.setSuffix("%.1f%%".formatted(progress));
+    }
 
-        this.plugin.getSingleThreadScheduler().schedule(
-                () -> this.changePhase(phase),
-                Duration.ofMinutes(minuteOption.getValue())
-        );
+    public void updateScatterProgress(float progress) {
+        this.timerManager.setProgress(progress / 100.0F);
+        this.timerManager.setSuffix("%.1f%%".formatted(progress));
+    }
+
+    public void addViewer(Player player) {
+        this.timerManager.addViewer(player);
+    }
+
+    public void removeViewer(Player player) {
+        this.timerManager.removeViewer(player);
+    }
+
+    public void resetChronometer() {
+        this.timerManager.resetChronometer();
+    }
+
+    public void setTimerTickCondition(BooleanSupplier condition) {
+        this.timerManager.setCondition(condition);
+    }
+
+    public void resetTimerTickCondition() {
+        this.timerManager.resetTickCondition();
+    }
+
+    void updateTimer() {
+        this.timerManager.updateProgress(this.plugin);
+    }
+
+    public void initialize() {
+        if (this.initialized) {
+            throw new IllegalStateException("Game is already initialized");
+        }
+
+        this.timerManager.updateState();
+
+        new GameLoopTask(this.plugin, this).start();
+
+        Bukkit.getPluginManager().registerEvents(new GameListener(this), this.plugin);
+
+        this.initialized = true;
+    }
+
+    public synchronized void changePhase(Phase newPhase) {
+        Phase previousPhase = this.phase;
+
+        previousPhase.onStop();
+
+        this.phase = newPhase;
+        this.timerManager.updateState();
+
+        newPhase.onStart();
+    }
+
+    public Phase getPhase() {
+        return this.phase;
     }
 }

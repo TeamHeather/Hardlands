@@ -26,8 +26,9 @@ import org.popcraft.chunky.api.ChunkyAPI;
 public final class WorldManager extends WorldManagerConfiguration {
 
     private final PregenerationManager pregenerationManager = new PregenerationManager(requireChunkyService());
+    private final ScatterManager scatterManager = new ScatterManager(requireOverworld());
 
-    public void configure() {
+    public void applyConfiguration() {
         this.forEachEnabledWorld((world, centerX, centerZ, survivalSize) -> {
             WorldBorder border = world.getWorldBorder();
             border.setCenter(centerX, centerZ);
@@ -37,7 +38,7 @@ public final class WorldManager extends WorldManagerConfiguration {
 
     public void pregenerate() {
         this.forEachEnabledWorld((world, centerX, centerZ, survivalSize) ->
-                this.pregenerationManager.reviewAndAccept(
+                this.pregenerationManager.review(
                         new PregenerationRequest(world.getName(), centerX, centerZ, survivalSize)));
     }
 
@@ -51,6 +52,10 @@ public final class WorldManager extends WorldManagerConfiguration {
 
     public PregenerationManager getPregenerationManager() {
         return this.pregenerationManager;
+    }
+
+    public ScatterManager getScatterManager() {
+        return this.scatterManager;
     }
 
     @Override
@@ -100,6 +105,13 @@ public final class WorldManager extends WorldManagerConfiguration {
         if (chunky == null) throw new IllegalStateException("This plugin requires Chunky");
 
         return chunky;
+    }
+
+    private static World requireOverworld() {
+        return Bukkit.getWorlds().stream()
+                .filter(world -> world.getEnvironment() == World.Environment.NORMAL)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No Overworld is currently loaded"));
     }
 
     @FunctionalInterface

@@ -178,7 +178,7 @@ public enum InventoryItem {
             case IDLE -> {
                 if (!worldManager.isConfigurationValid()) return false;
 
-                worldManager.configure();
+                worldManager.applyConfiguration();
                 worldManager.pregenerate();
             }
 

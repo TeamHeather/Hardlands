@@ -1,5 +1,9 @@
 package team.heather.hardlands.ui.dialog;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.dialog.DialogResponseView;
 import io.papermc.paper.registry.data.dialog.ActionButton;
@@ -7,11 +11,6 @@ import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.action.DialogAction;
 import io.papermc.paper.registry.data.dialog.input.DialogInput;
 import io.papermc.paper.registry.data.dialog.type.DialogType;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickCallback;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -29,9 +28,9 @@ public final class PhaseConfigurationDialog {
     private static final int INPUT_WIDTH = 320;
     private static final int ACTION_WIDTH = 120;
 
-    private static final float MIN_MINUTE = 0F;
-    private static final float MAX_MINUTE = 180F;
-    private static final float MINUTE_STEP = 1F;
+    private static final float MIN_MINUTE = 0.0F;
+    private static final float MAX_MINUTE = 180.0F;
+    private static final float MINUTE_STEP = 1.0F;
 
     private PhaseConfigurationDialog() {}
 
@@ -55,26 +54,34 @@ public final class PhaseConfigurationDialog {
     }
 
     private static List<PhaseSetting> createSettings(GameManager manager) {
-        List<PhaseSetting> settings = new ArrayList<>();
-
-        settings.add(new PhaseSetting(
-                Phase.WAITING,
-                manager.getWaitingMinuteOption(),
-                inputKey(Phase.WAITING)
-        ));
-
-        for (Phase phase : Phase.values()) {
-            if (phase == Phase.WAITING) continue;
-
-            Option<Integer> option = phase.getMinuteOption(manager);
-            if (option != null) {
-                settings.add(new PhaseSetting(phase, option, inputKey(phase)));
-            }
-        }
-
-        return settings;
+        return List.of(
+                new PhaseSetting(
+                        Phase.WAITING,
+                        manager.getWaitingMinuteOption(),
+                        inputKey(Phase.WAITING)
+                ),
+                new PhaseSetting(
+                        Phase.BORDER_SHRINK,
+                        manager.getBorderShrinkMinuteOption(),
+                        inputKey(Phase.BORDER_SHRINK)
+                ),
+                new PhaseSetting(
+                        Phase.MEETUP,
+                        manager.getMeetupMinuteOption(),
+                        inputKey(Phase.MEETUP)
+                ),
+                new PhaseSetting(
+                        Phase.FINAL_SHRINK,
+                        manager.getFinalShrinkMinuteOption(),
+                        inputKey(Phase.FINAL_SHRINK)
+                ),
+                new PhaseSetting(
+                        Phase.DEATHMATCH,
+                        manager.getDeathmatchMinuteOption(),
+                        inputKey(Phase.DEATHMATCH)
+                )
+        );
     }
-
 
     private static List<DialogInput> createInputs(List<PhaseSetting> settings) {
         List<DialogInput> inputs = new ArrayList<>(settings.size());
@@ -108,6 +115,7 @@ public final class PhaseConfigurationDialog {
 
                             try {
                                 List<PhaseMinute> values = readValues(settings, response);
+
                                 validateValues(values);
                                 applyValues(settings, values);
                             } catch (IllegalArgumentException exception) {
@@ -137,7 +145,10 @@ public final class PhaseConfigurationDialog {
         );
     }
 
-    private static List<PhaseMinute> readValues(List<PhaseSetting> settings, DialogResponseView response) {
+    private static List<PhaseMinute> readValues(
+            List<PhaseSetting> settings,
+            DialogResponseView response
+    ) {
         List<PhaseMinute> values = new ArrayList<>(settings.size());
 
         for (PhaseSetting setting : settings) {
@@ -145,7 +156,8 @@ public final class PhaseConfigurationDialog {
 
             if (value == null) {
                 throw new IllegalArgumentException(
-                        "Debe configurar el minuto de inicio de %s.".formatted(setting.phase().getLabel())
+                        "Debe configurar el minuto de inicio de %s."
+                                .formatted(setting.phase().getLabel())
                 );
             }
 
@@ -163,13 +175,19 @@ public final class PhaseConfigurationDialog {
             if (current.minute() <= previous.minute()) {
                 throw new IllegalArgumentException(
                         "%s debe iniciar después de %s."
-                                .formatted(current.phase().getLabel(), previous.phase().getLabel())
+                                .formatted(
+                                        current.phase().getLabel(),
+                                        previous.phase().getLabel()
+                                )
                 );
             }
         }
     }
 
-    private static void applyValues(List<PhaseSetting> settings, List<PhaseMinute> values) {
+    private static void applyValues(
+            List<PhaseSetting> settings,
+            List<PhaseMinute> values
+    ) {
         for (int index = 0; index < settings.size(); index++) {
             settings.get(index).option().setValue(values.get(index).minute());
         }
@@ -179,7 +197,11 @@ public final class PhaseConfigurationDialog {
         return "phase_" + phase.name().toLowerCase(Locale.ROOT);
     }
 
-    private record PhaseSetting(Phase phase, Option<Integer> option, String inputKey) {}
+    private record PhaseSetting(
+            Phase phase,
+            Option<Integer> option,
+            String inputKey
+    ) {}
 
     private record PhaseMinute(Phase phase, int minute) {}
 }
