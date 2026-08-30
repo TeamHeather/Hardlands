@@ -1,4 +1,4 @@
-package team.heather.hardlands.module.enchantment.processor;
+package team.heather.hardlands.module.enchantment.handler;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -11,7 +11,7 @@ import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 
-public final class DeadEyeProcessor {
+public final class DeadEyeHandler implements EnchantmentHandler<EntityDamageByEntityEvent> {
 
     private static final Sound[] SOUND_FEEDBACK = new Sound[] {
             Sound.ITEM_TRIDENT_HIT_GROUND,
@@ -21,6 +21,7 @@ public final class DeadEyeProcessor {
 
     private final Map<UUID, ComboSnapshot> combos = new HashMap<>();
 
+    @Override
     public void handle(EntityDamageByEntityEvent event, int level) {
         Entity damager = event.getDamager();
 

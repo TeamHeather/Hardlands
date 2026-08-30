@@ -85,9 +85,16 @@ public final class ScenarioInventoryHandler implements InventoryHandler {
             return Optional.of(toggleScenario(event, scenario));
         }
 
-        if (event.isRightClick() && !scenario.getProcessor().getConfigurationOptions().isEmpty()) {
-            showOptionsDialog(player, inventory, scenario);
-            return Optional.of(true);
+        if (event.isRightClick()) {
+            if (scenario == Scenario.ENCHANTIA) {
+                HardlandsInventory.ENCHANTIA.openInventory(player);
+                return Optional.of(true);
+            }
+
+            if (!scenario.getProcessor().getConfigurationOptions().isEmpty()) {
+                showOptionsDialog(player, inventory, scenario);
+                return Optional.of(true);
+            }
         }
 
         return Optional.of(false);
@@ -161,7 +168,7 @@ public final class ScenarioInventoryHandler implements InventoryHandler {
                 Component.text("Cierre sin guardar los cambios."),
                 100,
                 DialogAction.customClick(
-                        (response, audience) -> audience.closeDialog(),
+                        (_, audience) -> audience.closeDialog(),
                         ClickCallback.Options.builder()
                                 .uses(1)
                                 .build()
@@ -272,7 +279,7 @@ public final class ScenarioInventoryHandler implements InventoryHandler {
                     ENCHANTMENT_INPUT_WIDTH,
                     label,
                     true,
-                    formatEnchantmentMap(asEnchantmentMap(option)),
+                    formatEnchantmentMap(option),
                     4096,
                     TextDialogInput.MultilineOptions.create(64, 120)
             );
@@ -302,19 +309,13 @@ public final class ScenarioInventoryHandler implements InventoryHandler {
                 Component.text("Deje un campo vacío para mantenerlo sin configurar.")
         ));
 
-        for (OptionBinding binding : bindings) {
-            if (!isEnchantmentMap(binding.option())) {
-                continue;
-            }
-
+        if (bindings.stream().anyMatch(binding -> isEnchantmentMap(binding.option()))) {
             body.add(DialogBody.plainMessage(
                     Component.text(
                             "Encantamientos: introduzca una entrada por línea. "
                                     + "Ejemplo: minecraft:sharpness=5"
                     )
             ));
-
-            break;
         }
 
         return body;
@@ -424,7 +425,7 @@ public final class ScenarioInventoryHandler implements InventoryHandler {
             if (type == String.class) {
                 return value;
             }
-        } catch (NumberFormatException exception) {
+        } catch (NumberFormatException _) {
             throw new IllegalArgumentException(
                     "\"%s\" debe ser un número válido."
                             .formatted(option.getKey())
@@ -445,65 +446,20 @@ public final class ScenarioInventoryHandler implements InventoryHandler {
 
         Map<Enchantment, Integer> values = new LinkedHashMap<>();
 
-        for (String rawEntry : input.split("\\R|,")) {
+        for (String rawEntry : input.split("[,\\r\\n]+")) {
             String entry = rawEntry.strip();
+            if (entry.isEmpty()) continue;
 
-            if (entry.isEmpty()) {
-                continue;
-            }
+            Map.Entry<Enchantment, Integer> enchantmentEntry =
+                    parseEnchantmentEntry(option, registry, entry);
 
-            String[] parts = entry.split("=", 2);
-
-            if (parts.length != 2) {
-                throw new IllegalArgumentException(
-                        "Formato inválido para \"%s\". Use enchantment=nivel."
-                                .formatted(option.getKey())
-                );
-            }
-
-            String identifier = parts[0].strip();
-
-            if (!identifier.contains(":")) {
-                identifier = "minecraft:" + identifier;
-            }
-
-            NamespacedKey key = NamespacedKey.fromString(identifier);
-
-            if (key == null) {
-                throw new IllegalArgumentException(
-                        "Encantamiento inválido: \"%s\".".formatted(identifier)
-                );
-            }
-
-            Enchantment enchantment = registry.get(key);
-
-            if (enchantment == null) {
-                throw new IllegalArgumentException(
-                        "No existe el encantamiento \"%s\".".formatted(identifier)
-                );
-            }
-
-            int level;
-
-            try {
-                level = Integer.parseInt(parts[1].strip());
-            } catch (NumberFormatException exception) {
-                throw new IllegalArgumentException(
-                        "Nivel inválido para \"%s\".".formatted(identifier)
-                );
-            }
-
-            if (level < 1 || level > 255) {
-                throw new IllegalArgumentException(
-                        "El nivel de \"%s\" debe estar entre 1 y 255."
-                                .formatted(identifier)
-                );
-            }
-
-            if (values.putIfAbsent(enchantment, level) != null) {
+            if (values.putIfAbsent(
+                    enchantmentEntry.getKey(),
+                    enchantmentEntry.getValue()
+            ) != null) {
                 throw new IllegalArgumentException(
                         "El encantamiento \"%s\" está repetido."
-                                .formatted(identifier)
+                                .formatted(enchantmentEntry.getKey().getKey())
                 );
             }
         }
@@ -511,21 +467,79 @@ public final class ScenarioInventoryHandler implements InventoryHandler {
         return values;
     }
 
-    private static String formatEnchantmentMap(
-            Option<Map<Enchantment, Integer>> option
+    private static Map.Entry<Enchantment, Integer> parseEnchantmentEntry(
+            Option<?> option,
+            Registry<Enchantment> registry,
+            String entry
     ) {
-        if (!option.hasValue()) {
-            return "";
+        String[] parts = entry.split("=", 2);
+
+        if (parts.length != 2) {
+            throw new IllegalArgumentException(
+                    "Formato inválido para \"%s\". Use enchantment=nivel."
+                            .formatted(option.getKey())
+            );
         }
+
+        String identifier = parts[0].strip();
+
+        if (!identifier.contains(":")) {
+            identifier = "minecraft:" + identifier;
+        }
+
+        NamespacedKey key = NamespacedKey.fromString(identifier);
+
+        if (key == null) {
+            throw new IllegalArgumentException(
+                    "Encantamiento inválido: \"%s\".".formatted(identifier)
+            );
+        }
+
+        Enchantment enchantment = registry.get(key);
+
+        if (enchantment == null) {
+            throw new IllegalArgumentException(
+                    "No existe el encantamiento \"%s\".".formatted(identifier)
+            );
+        }
+
+        int level = parseEnchantmentLevel(identifier, parts[1]);
+
+        return Map.entry(enchantment, level);
+    }
+
+    private static int parseEnchantmentLevel(String identifier, String value) {
+        int level;
+
+        try {
+            level = Integer.parseInt(value.strip());
+        } catch (NumberFormatException _) {
+            throw new IllegalArgumentException(
+                    "Nivel inválido para \"%s\".".formatted(identifier)
+            );
+        }
+
+        if (level < 1 || level > 255) {
+            throw new IllegalArgumentException(
+                    "El nivel de \"%s\" debe estar entre 1 y 255."
+                            .formatted(identifier)
+            );
+        }
+
+        return level;
+    }
+
+    private static String formatEnchantmentMap(Option<?> option) {
+        if (!(option.getValue() instanceof Map<?, ?> values)) return "";
 
         StringBuilder result = new StringBuilder();
 
-        for (Map.Entry<Enchantment, Integer> entry : option.getValue().entrySet()) {
-            if (!result.isEmpty()) {
-                result.append('\n');
-            }
+        for (Map.Entry<?, ?> entry : values.entrySet()) {
+            Enchantment enchantment = (Enchantment) entry.getKey();
 
-            result.append(entry.getKey().getKey())
+            if (!result.isEmpty()) result.append('\n');
+
+            result.append(enchantment.getKey())
                     .append('=')
                     .append(entry.getValue());
         }
@@ -550,46 +564,33 @@ public final class ScenarioInventoryHandler implements InventoryHandler {
     }
 
     private static String getConstraint(Option<?> option) {
-        if (!(option.getPredicate() instanceof Validator<?> validator)) {
-            return null;
-        }
+        if (!(option.getPredicate() instanceof Validator<?> validator)) return null;
 
         String key = validator.key();
 
-        if (key.equals(Validator.Keys.UNIT_INTERVAL)) {
-            return "entre 0 y 1";
-        }
+        String constraint = switch (key) {
+            case Validator.Keys.UNIT_INTERVAL -> "entre 0 y 1";
+            case Validator.Keys.POSITIVE -> "mayor que 0";
+            case Validator.Keys.NON_NEGATIVE -> "0 o mayor";
+            case Validator.Keys.NEGATIVE -> "menor que 0";
+            case Validator.Keys.NON_POSITIVE -> "0 o menor";
+            default -> null;
+        };
 
-        if (key.equals(Validator.Keys.POSITIVE)) {
-            return "mayor que 0";
-        }
+        if (constraint != null) return constraint;
 
-        if (key.equals(Validator.Keys.NON_NEGATIVE)) {
-            return "0 o mayor";
-        }
-
-        if (key.equals(Validator.Keys.NEGATIVE)) {
-            return "menor que 0";
-        }
-
-        if (key.equals(Validator.Keys.NON_POSITIVE)) {
-            return "0 o menor";
-        }
+        String[] arguments = getValidatorArguments(key);
 
         if (key.startsWith(Validator.Keys.AT_LEAST + ":")) {
-            return "mínimo " + getValidatorArguments(key)[0];
+            return "mínimo " + arguments[0];
         }
 
         if (key.startsWith(Validator.Keys.AT_MOST + ":")) {
-            return "máximo " + getValidatorArguments(key)[0];
+            return "máximo " + arguments[0];
         }
 
-        if (key.startsWith(Validator.Keys.BETWEEN + ":")) {
-            String[] arguments = getValidatorArguments(key);
-
-            if (arguments.length == 2) {
-                return "entre %s y %s".formatted(arguments[0], arguments[1]);
-            }
+        if (key.startsWith(Validator.Keys.BETWEEN + ":") && arguments.length == 2) {
+            return "entre %s y %s".formatted(arguments[0], arguments[1]);
         }
 
         return null;
@@ -633,19 +634,10 @@ public final class ScenarioInventoryHandler implements InventoryHandler {
                 && arguments[1] == Integer.class;
     }
 
-    @SuppressWarnings("unchecked")
-    private static Option<Map<Enchantment, Integer>> asEnchantmentMap(
-            Option<?> option
-    ) {
-        return (Option<Map<Enchantment, Integer>>) option;
-    }
-
-    @SuppressWarnings("unchecked")
     private static boolean isValid(Option<?> option, Object value) {
         return ((Option<Object>) option).getPredicate().test(value);
     }
 
-    @SuppressWarnings("unchecked")
     private static void setValue(Option<?> option, Object value) {
         ((Option<Object>) option).setValue(value);
     }
@@ -659,7 +651,13 @@ public final class ScenarioInventoryHandler implements InventoryHandler {
     }
 
     private static ScenarioManager getScenarioManager() {
-        return Hardlands.getInstance().getScenarioManager();
+        Hardlands plugin = Hardlands.getInstance();
+
+        if (plugin == null) {
+            throw new IllegalStateException("Hardlands has not been initialized.");
+        }
+
+        return plugin.getScenarioManager();
     }
 
     private record OptionBinding(

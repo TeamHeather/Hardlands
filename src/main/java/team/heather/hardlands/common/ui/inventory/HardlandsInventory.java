@@ -12,6 +12,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import team.heather.hardlands.common.item.InventoryItem;
 import team.heather.hardlands.common.item.ItemBuilder;
+import team.heather.hardlands.common.ui.inventory.handler.EnchantiaInventoryHandler;
 import team.heather.hardlands.common.ui.inventory.handler.InventoryHandler;
 import team.heather.hardlands.common.ui.inventory.handler.PresetInventoryHandler;
 import team.heather.hardlands.common.ui.inventory.handler.ScenarioInventoryHandler;
@@ -36,6 +37,8 @@ public enum HardlandsInventory {
     GENERAL("General", Material.PURPLE_STAINED_GLASS_PANE),
     PHASES("Fases", Material.LIME_STAINED_GLASS_PANE),
     PRESETS("Plantillas", Material.PURPLE_STAINED_GLASS_PANE, PresetInventoryHandler::new),
+
+    ENCHANTIA("Enchantia", Material.LIGHT_BLUE_STAINED_GLASS_PANE, EnchantiaInventoryHandler::new),
 
     ;
 

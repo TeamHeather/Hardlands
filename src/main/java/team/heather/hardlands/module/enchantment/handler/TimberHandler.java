@@ -1,4 +1,4 @@
-package team.heather.hardlands.module.enchantment.processor;
+package team.heather.hardlands.module.enchantment.handler;
 
 import org.bukkit.Material;
 import org.bukkit.Tag;
@@ -10,18 +10,19 @@ import team.heather.hardlands.core.event.TimberBreakLeavesEvent;
 import team.heather.hardlands.module.enchantment.HardlandsEnchantment;
 import team.heather.hardlands.util.BlockUtils;
 
-public final class TimberProcessor {
+public final class TimberHandler implements EnchantmentHandler<BlockBreakEvent> {
 
     private static final int LOG_LIMIT = 64;
     private static final int LEAF_LIMIT = 128;
 
-    public boolean handle(BlockBreakEvent event) {
+    @Override
+    public void handle(BlockBreakEvent event, int amplifier) {
         ItemStack tool = event.getPlayer().getInventory().getItemInMainHand();
         Block origin = event.getBlock();
 
-        if (!HardlandsEnchantment.TIMBER.matches(tool, item -> Tag.ITEMS_AXES.isTagged(item.getType()))
-                || !Tag.LOGS.isTagged(origin.getType())) {
-            return false;
+        if (!Tag.LOGS.isTagged(origin.getType())
+                || !HardlandsEnchantment.TIMBER.matches(tool, item -> Tag.ITEMS_AXES.isTagged(item.getType()))) {
+            return;
         }
 
         event.setCancelled(true);
@@ -42,13 +43,12 @@ public final class TimberProcessor {
             if (!Tag.LEAVES.isTagged(material) || !leaves.tryAdvance()) return false;
 
             TimberBreakLeavesEvent leavesEvent = new TimberBreakLeavesEvent(block);
+
             if (leavesEvent.callEvent()) {
                 block.breakNaturally();
             }
 
             return true;
         });
-
-        return true;
     }
 }

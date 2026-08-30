@@ -5,7 +5,7 @@ import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 import team.heather.hardlands.core.config.Configuration;
 
-public final class ConfigChangeEvent extends Event {
+public class ConfigChangeEvent extends Event {
 
     private static final HandlerList HANDLERS = new HandlerList();
 

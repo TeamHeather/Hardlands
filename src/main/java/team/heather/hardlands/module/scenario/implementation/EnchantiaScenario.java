@@ -9,8 +9,10 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.inventory.ItemStack;
 import team.heather.hardlands.config.OptionDef;
 import team.heather.hardlands.config.ScenarioConfigBuilder;
+import team.heather.hardlands.core.event.ConfigChangeEvent;
 import team.heather.hardlands.module.enchantment.HardlandsEnchantment;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @ScenarioConfigBuilder(options = {
@@ -18,6 +20,45 @@ import java.util.Map;
         @OptionDef(type = Map.class, keyType = String.class, valueType = Integer.class, name = "vanillaEnchantments")
 })
 public final class EnchantiaScenario extends EnchantiaScenarioConfiguration {
+
+        public void save() {
+                getPluginOrThrow().getEnchantmentManager().activate(hardlandsEnchantments.getValue().keySet().toArray(HardlandsEnchantment[]::new));
+        }
+
+        public int getLevel(HardlandsEnchantment enchantment) {
+                return hardlandsEnchantments.getValue().getOrDefault(enchantment, 0);
+        }
+
+        public int getLevel(Enchantment enchantment) {
+                return vanillaEnchantments.getValue().getOrDefault(
+                        enchantment.getKey().toString(),
+                        0
+                );
+        }
+
+        public void setLevel(HardlandsEnchantment enchantment, int level) {
+                Map<HardlandsEnchantment, Integer> values =
+                        new LinkedHashMap<>(hardlandsEnchantments.getValue());
+
+                updateLevel(values, enchantment, level);
+                hardlandsEnchantments.setValue(values);
+        }
+
+        public void setLevel(Enchantment enchantment, int level) {
+                Map<String, Integer> values =
+                        new LinkedHashMap<>(vanillaEnchantments.getValue());
+
+                updateLevel(values, enchantment.getKey().toString(), level);
+                vanillaEnchantments.setValue(values);
+        }
+
+        private static <K> void updateLevel(Map<K, Integer> values, K key, int level) {
+                if (level == 0) {
+                        values.remove(key);
+                } else {
+                        values.put(key, level);
+                }
+        }
 
         @EventHandler
         private void onPlayerInventorySlotChange(PlayerInventorySlotChangeEvent event) {
@@ -84,5 +125,9 @@ public final class EnchantiaScenario extends EnchantiaScenarioConfiguration {
 
                 stack.addEnchantment(enchantment, level);
                 return true;
+        }
+
+        private boolean isHardlandsEnchantActive(HardlandsEnchantment enchantment) {
+                return hardlandsEnchantments.getValue().containsKey(enchantment);
         }
 }

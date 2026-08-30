@@ -35,8 +35,8 @@ tasks {
 
     shadowJar {
         archiveClassifier.set("")
-        relocate("co.aikar.commands", "org.heather.hardlands.libs.acf.commands")
-        relocate("co.aikar.locales", "org.heather.hardlands.libs.acf.locales")
+        relocate("co.aikar.commands", "team.heather.hardlands.libs.acf.commands")
+        relocate("co.aikar.locales", "team.heather.hardlands.libs.acf.locales")
     }
 
     assemble {

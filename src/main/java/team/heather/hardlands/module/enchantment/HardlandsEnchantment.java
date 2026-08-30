@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.logging.Handler;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
@@ -14,12 +15,14 @@ import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Tag;
+import org.bukkit.event.Event;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.common.item.ItemBuilder;
 import team.heather.hardlands.core.data.pdc.PersistentData;
+import team.heather.hardlands.module.enchantment.handler.*;
 import team.heather.hardlands.util.RomanNumerals;
 import team.heather.hardlands.util.text.HardlandsColor;
 
@@ -30,7 +33,8 @@ public enum HardlandsEnchantment {
             "Dead Eye",
             "Incrementa el daño de cada golpe crítico consecutivo realizado dentro del mismo combo.",
             Limit.fromLevel(2),
-            Tag.ITEMS_ENCHANTABLE_SHARP_WEAPON
+            Tag.ITEMS_ENCHANTABLE_SHARP_WEAPON,
+            new DeadEyeHandler()
     ),
 
     SMELTING_TOUCH(
@@ -38,7 +42,8 @@ public enum HardlandsEnchantment {
             "Smelting Touch",
             "Funde automáticamente los ítems obtenidos siempre que dispongan de una receta de horno válida.",
             Limit.SINGLE_LEVEL_ENCHANT,
-            Tag.ITEMS_ENCHANTABLE_MINING
+            Tag.ITEMS_ENCHANTABLE_MINING,
+            new SmeltingTouchHandler()
     ),
 
     WISDOM(
@@ -46,7 +51,8 @@ public enum HardlandsEnchantment {
             "Wisdom",
             "Incrementa la experiencia obtenida al extraer bloques.",
             Limit.fromLevel(5),
-            Tag.ITEMS_ENCHANTABLE_MINING
+            Tag.ITEMS_ENCHANTABLE_MINING,
+            new WisdomHandler()
     ),
 
     VEIN_MINER(
@@ -54,7 +60,8 @@ public enum HardlandsEnchantment {
             "Vein Miner",
             "Al extraer una mena, rompe automáticamente todas las menas conectadas que formen parte de la misma veta.",
             Limit.SINGLE_LEVEL_ENCHANT,
-            Tag.ITEMS_ENCHANTABLE_MINING
+            Tag.ITEMS_ENCHANTABLE_MINING,
+            new VeinMinerHandler()
     ),
 
     TIMBER(
@@ -62,7 +69,8 @@ public enum HardlandsEnchantment {
             "Timber",
             "Al talar un tronco, rompe automáticamente todos los troncos conectados que formen parte del mismo árbol.",
             Limit.SINGLE_LEVEL_ENCHANT,
-            Tag.ITEMS_AXES
+            Tag.ITEMS_AXES,
+            new TimberHandler()
     );
 
     private final NamespacedKey namespacedKey;
@@ -70,6 +78,7 @@ public enum HardlandsEnchantment {
     private final String description;
     private final Limit limit;
     private final Tag<Material> tag;
+    private final EnchantmentHandler<?> handler;
 
     HardlandsEnchantment(
             NamespacedKey namespacedKey,
@@ -77,13 +86,42 @@ public enum HardlandsEnchantment {
             String description,
             Limit limit,
             Tag<Material> tag,
-
+            EnchantmentHandler<?> handler
     ) {
         this.namespacedKey = namespacedKey;
         this.label = label;
         this.description = description;
         this.limit = limit;
         this.tag = tag;
+        this.handler = handler;
+    }
+
+    public NamespacedKey getNamespacedKey() {
+        return namespacedKey;
+    }
+
+    public String getLabel() {
+        return label;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public Limit getLimit() {
+        return limit;
+    }
+
+    public Tag<Material> getTag() {
+        return tag;
+    }
+
+    public EnchantmentHandler<?> getHandler() {
+        return handler;
+    }
+
+    public int createMaxLevel() {
+        return this.limit.maxAmplifier() + 1;
     }
 
     public boolean applyIfCompatible(ItemStack stack, int amplifier) {
@@ -159,26 +197,6 @@ public enum HardlandsEnchantment {
     @SafeVarargs
     public final boolean matches(ItemStack stack, Predicate<ItemStack>... predicates) {
         return findMatchingLevel(stack, predicates).isPresent();
-    }
-
-    public NamespacedKey getNamespacedKey() {
-        return namespacedKey;
-    }
-
-    public String getLabel() {
-        return label;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public Tag<Material> getTag() {
-        return tag;
-    }
-
-    public Limit getLimit() {
-        return limit;
     }
 
     public static Optional<HardlandsEnchantment> findByKey(String value) {

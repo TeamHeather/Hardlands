@@ -12,8 +12,9 @@ import team.heather.hardlands.common.command.HardlandsCommand;
 import team.heather.hardlands.common.player.PlayerListener;
 import team.heather.hardlands.common.ui.inventory.InventoryListener;
 import team.heather.hardlands.core.SingleThreadScheduler;
+import team.heather.hardlands.module.enchantment.EnchantmentManager;
 import team.heather.hardlands.module.preset.PresetRepository;
-import team.heather.hardlands.game.GameFlow;
+import team.heather.hardlands.game.GameManager;
 import team.heather.hardlands.module.scenario.ScenarioManager;
 import team.heather.hardlands.module.world.WorldManager;
 import org.jetbrains.annotations.NotNull;
@@ -21,14 +22,18 @@ import org.jetbrains.annotations.Nullable;
 
 public final class Hardlands extends JavaPlugin {
 
-    public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    public static final Gson GSON = new GsonBuilder()
+            .setPrettyPrinting()
+            .create();
 
     @Nullable private static Hardlands instance;
 
     private final SingleThreadScheduler<Hardlands> singleThreadScheduler = new SingleThreadScheduler<>(this);
+
     private final PresetRepository presetRepository = new PresetRepository(this, "presets");
+    private final EnchantmentManager enchantmentManager = new EnchantmentManager(this);
     private final ScenarioManager scenarioManager = new ScenarioManager(this);
-    private final GameFlow gameFlow = new GameFlow(this);
+    private final GameManager gameManager = new GameManager(this);
 
     @Nullable private WorldManager worldManager;
 
@@ -38,17 +43,21 @@ public final class Hardlands extends JavaPlugin {
 
         getLogger().info("Initializing instance and WorldManager...");
         setInstance(this);
-        worldManager = new WorldManager();
+        this.worldManager = new WorldManager();
 
         getLogger().info("Loading default preset...");
-        presetRepository.load("default");
+        this.presetRepository.load("default");
 
         getLogger().info("Registering commands and listeners...");
         registerCommands(new HardlandsCommand());
         registerListeners(
                 new PlayerListener(),
-                new InventoryListener()
+                new InventoryListener(),
+                new GameListener()
         );
+
+        getLogger().info("Initializing tasks...");
+        this.gameManager.initialize();
 
         getLogger().info(System.lineSeparator() + """
              _    _          _____  _____  _               _   _ _____   _____
@@ -66,17 +75,17 @@ public final class Hardlands extends JavaPlugin {
         getLogger().info("Disabling Hardlands...");
 
         getLogger().info("Closing SingleThreadScheduler...");
-        singleThreadScheduler.close();
+        this.singleThreadScheduler.close();
 
         getLogger().info("Plugin successfully disabled.");
     }
 
     public WorldManager getWorldManagerOrThrow() {
-        if (worldManager == null) {
+        if (this.worldManager == null) {
             throw new IllegalStateException("WorldManager has not been initialized.");
         }
 
-        return worldManager;
+        return this.worldManager;
     }
 
     //! Public API
@@ -98,12 +107,16 @@ public final class Hardlands extends JavaPlugin {
         return presetRepository;
     }
 
+    public EnchantmentManager getEnchantmentManager() {
+        return enchantmentManager;
+    }
+
     public ScenarioManager getScenarioManager() {
         return scenarioManager;
     }
 
-    public GameFlow getGameFlow() {
-        return gameFlow;
+    public GameManager getGameFlow() {
+        return gameManager;
     }
 
     //! Internal Class Utilities

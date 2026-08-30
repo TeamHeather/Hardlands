@@ -1,4 +1,4 @@
-package team.heather.hardlands.module.enchantment.processor;
+package team.heather.hardlands.module.enchantment.handler;
 
 import org.bukkit.Material;
 import org.bukkit.Tag;
@@ -8,19 +8,19 @@ import org.bukkit.inventory.ItemStack;
 import team.heather.hardlands.core.data.BoundedCounter;
 import team.heather.hardlands.module.enchantment.HardlandsEnchantment;
 import team.heather.hardlands.util.BlockUtils;
-import team.heather.hardlands.util.SmeltingHelper;
 
-public final class VeinMinerProcessor {
+public final class VeinMinerHandler implements EnchantmentHandler<BlockBreakEvent> {
 
     private static final int BLOCK_LIMIT = 64;
 
-    public boolean handle(BlockBreakEvent event) {
+    @Override
+    public void handle(BlockBreakEvent event, int amplifier) {
         ItemStack tool = event.getPlayer().getInventory().getItemInMainHand();
         Block origin = event.getBlock();
 
-        if (!HardlandsEnchantment.VEIN_MINER.matches(tool, item -> Tag.ITEMS_PICKAXES.isTagged(item.getType()))
-                || !BlockUtils.isOre(origin.getType())) {
-            return false;
+        if (!BlockUtils.isOre(origin.getType())
+                || !HardlandsEnchantment.VEIN_MINER.matches(tool, item -> Tag.ITEMS_PICKAXES.isTagged(item.getType()))) {
+            return;
         }
 
         Material ore = origin.getType();
@@ -32,14 +32,12 @@ public final class VeinMinerProcessor {
             if (block.equals(origin)) return true;
 
             if (smeltingTouch) {
-                SmeltingHelper.breakSmelted(block, tool);
+                SmeltingTouchHandler.breakSmelted(block, tool);
             } else {
                 block.breakNaturally(tool);
             }
 
             return true;
         });
-
-        return true;
     }
 }
