@@ -16,7 +16,6 @@ import team.heather.hardlands.game.timeline.GameTimeline;
                 @OptionDef(name = "startTime", type = LocalTime.class)
         },
         minuteOptions = {
-                @MinuteOptionDef(name = "gracePeriodMinute"),
                 @MinuteOptionDef(name = "pvpMinute"),
                 @MinuteOptionDef(name = "borderShrinkMinute"),
                 @MinuteOptionDef(name = "meetupMinute"),
@@ -27,93 +26,102 @@ import team.heather.hardlands.game.timeline.GameTimeline;
 public final class GameManager extends GameManagerConfiguration {
 
     private final Hardlands plugin;
-    private final GameTimeline timer;
+    private final GameTimeline timeline;
     private final GameLoopTask loopTask;
 
     private Phase phase = Phase.OFF_GAME;
-    private boolean initialized;
+    private boolean running;
 
     public GameManager(Hardlands plugin) {
         this.plugin = plugin;
-        this.timer = new GameTimeline(this);
-        this.loopTask = new GameLoopTask(plugin, this.timer);
+        this.timeline = new GameTimeline(this);
+        this.loopTask = new GameLoopTask(plugin, this.timeline);
     }
 
-    // Lifecycle
-
-    public void initialize() {
-        if (this.initialized) {
-            throw new IllegalStateException("Game is already initialized");
+    public void start() {
+        if (this.running) {
+            throw new IllegalStateException("Game manager is already running");
         }
 
-        this.timer.updateState();
+        this.timeline.syncPhase();
         this.loopTask.start();
-        this.initialized = true;
+
+        this.running = true;
     }
 
-    public void shutdown() {
+    public void stop() {
+        if (!this.running) {
+            return;
+        }
+
         this.loopTask.close();
-        this.initialized = false;
+        this.running = false;
     }
 
-    // Phase
-
-    public void changePhase(Phase phase) {
-        if (phase == null) {
+    public void transitionTo(Phase nextPhase) {
+        if (nextPhase == null) {
             throw new IllegalArgumentException("Phase cannot be null");
         }
 
-        this.phase.onStop(this.plugin);
-        this.phase = phase;
+        if (this.phase == nextPhase) {
+            return;
+        }
 
-        this.timer.updateState();
+        this.phase.onStop(this.plugin);
+        this.phase = nextPhase;
+
+        this.timeline.syncPhase();
         this.phase.onStart(this.plugin);
     }
 
-    public void completeCurrentPhase() {
-        this.timer.completeCurrentPhase();
+    public void completePhase() {
+        this.timeline.completeCurrentPhase();
     }
 
-    // Timer
-
-    public void refreshStartTime() {
-        this.timer.refreshStartTime();
+    public void refreshTimelineStartTime() {
+        this.timeline.refreshStartTime();
     }
 
-    public void setChronometer(int seconds) {
-        this.timer.setCounter(seconds);
+    public void setElapsedSeconds(int seconds) {
+        this.timeline.setCounter(seconds);
     }
 
-    public void resetChronometer() {
-        this.timer.resetChronometer();
+    public void resetElapsedTime() {
+        this.timeline.resetCounter();
     }
 
-    public void updatePreparationProgress(float progress) {
-        this.timer.updatePreparationProgress(progress);
+    public void setPreparationProgress(float progress) {
+        this.timeline.updatePercentageProgress(
+                Phase.PREPARATION,
+                progress
+        );
     }
 
-    public void updateScatterProgress(float progress) {
-        this.timer.updateScatterProgress(progress);
+    public void setScatterProgress(float progress) {
+        this.timeline.updatePercentageProgress(
+                Phase.SCATTER,
+                progress
+        );
     }
 
-    // Boss bar
-
-    public void addViewer(Player player) {
-        this.timer.addViewer(player);
+    public void addTimelineViewer(Player player) {
+        this.timeline.addViewer(player);
     }
 
-    public void removeViewer(Player player) {
-        this.timer.removeViewer(player);
+    public void removeTimelineViewer(Player player) {
+        this.timeline.removeViewer(player);
     }
-
-    // Properties
 
     public Phase getPhase() {
         return this.phase;
     }
 
-    public GameTimeline getTimer() {
-        return this.timer;
+    public GameTimeline getTimeline() {
+        return this.timeline;
+    }
+
+    public boolean isRunning() {
+        return this.running;
     }
 
     @Override
@@ -122,17 +130,16 @@ public final class GameManager extends GameManagerConfiguration {
             return false;
         }
 
-        int gracePeriod = this.getGracePeriodMinuteOption().getValue();
-        int pvp = this.getPvpMinuteOption().getValue();
-        int borderShrink = this.getBorderShrinkMinuteOption().getValue();
-        int meetup = this.getMeetupMinuteOption().getValue();
-        int finalShrink = this.getFinalShrinkMinuteOption().getValue();
-        int deathmatch = this.getDeathmatchMinuteOption().getValue();
+        int pvpMinute = this.getPvpMinuteOption().getValue();
+        int borderShrinkMinute = this.getBorderShrinkMinuteOption().getValue();
+        int meetupMinute = this.getMeetupMinuteOption().getValue();
+        int finalShrinkMinute = this.getFinalShrinkMinuteOption().getValue();
+        int deathmatchMinute = this.getDeathmatchMinuteOption().getValue();
 
-        return gracePeriod < pvp
-                && pvp < borderShrink
-                && borderShrink < meetup
-                && meetup < finalShrink
-                && finalShrink < deathmatch;
+        return pvpMinute > 0
+                && pvpMinute < borderShrinkMinute
+                && borderShrinkMinute < meetupMinute
+                && meetupMinute < finalShrinkMinute
+                && finalShrinkMinute < deathmatchMinute;
     }
 }

@@ -13,108 +13,203 @@ import team.heather.hardlands.ui.inventory.HardlandsInventory;
 
 public final class PregenerationManager {
 
-    private final Map<String, PregenerationTask> pregenerating;
+    private final Map<String, PregenerationTask> pregenerating =
+            new HashMap<>();
+
     private final ChunkyAPI chunky;
 
-    private volatile boolean progressUpdatesEnabled;
+    private boolean progressUpdatesEnabled;
 
     public PregenerationManager(ChunkyAPI chunky) {
-        this.pregenerating = new HashMap<>();
         this.chunky = chunky;
 
-        this.chunky.onGenerationProgress(this::handleGenerationProgress);
-        this.chunky.onGenerationComplete(this::handleGenerationComplete);
+        this.chunky.onGenerationProgress(
+                this::handleGenerationProgress
+        );
+
+        this.chunky.onGenerationComplete(
+                this::handleGenerationComplete
+        );
     }
 
-    public synchronized void review(PregenerationRequest request) {
+    public synchronized void review(
+            PregenerationRequest request
+    ) {
         String worldName = request.worldName();
 
         if (!request.reviewAndStart(this.chunky)) {
-            throw new IllegalStateException("Chunky is already pregenerating world: " + worldName);
+            throw new IllegalStateException(
+                    "Chunky is already pregenerating world: "
+                            + worldName
+            );
         }
 
-        this.pregenerating.put(worldName, PregenerationTask.running());
+        this.pregenerating.put(
+                worldName,
+                PregenerationTask.running()
+        );
+
         this.refreshPreparationItem();
     }
 
     public synchronized void pause() {
-        this.pregenerating.replaceAll((worldName, task) -> {
-            if (task.state() != State.RUNNING) return task;
+        this.pregenerating.replaceAll(
+                (worldName, task) -> {
+                    if (task.state() != State.RUNNING) {
+                        return task;
+                    }
 
-            if (!this.chunky.pauseTask(worldName)) {
-                throw new IllegalStateException("Unable to pause pregeneration for world: " + worldName);
-            }
+                    if (!this.chunky.pauseTask(worldName)) {
+                        throw new IllegalStateException(
+                                "Unable to pause pregeneration for world: "
+                                        + worldName
+                        );
+                    }
 
-            return task.withState(State.PAUSED);
-        });
+                    return task.withState(State.PAUSED);
+                }
+        );
 
         this.refreshPreparationItem();
     }
 
     public synchronized void resume() {
-        this.pregenerating.replaceAll((worldName, task) -> {
-            if (task.state() != State.PAUSED) return task;
+        this.pregenerating.replaceAll(
+                (worldName, task) -> {
+                    if (task.state() != State.PAUSED) {
+                        return task;
+                    }
 
-            if (!this.chunky.continueTask(worldName)) {
-                throw new IllegalStateException("Unable to resume pregeneration for world: " + worldName);
-            }
+                    if (!this.chunky.continueTask(worldName)) {
+                        throw new IllegalStateException(
+                                "Unable to resume pregeneration for world: "
+                                        + worldName
+                        );
+                    }
 
-            return task.withState(State.RUNNING);
-        });
+                    return task.withState(State.RUNNING);
+                }
+        );
 
         this.refreshPreparationItem();
     }
 
-    public synchronized void setProgressUpdatesEnabled(boolean enabled) {
+    public synchronized void setProgressUpdatesEnabled(
+            boolean enabled
+    ) {
         this.progressUpdatesEnabled = enabled;
+
+        if (enabled) {
+            this.updateGameProgress();
+        }
     }
 
     public synchronized State getState() {
-        if (this.pregenerating.isEmpty()) return State.IDLE;
-
-        for (PregenerationTask task : this.pregenerating.values()) {
-            if (task.state() == State.RUNNING) return State.RUNNING;
-            if (task.state() == State.PAUSED) return State.PAUSED;
+        if (this.pregenerating.isEmpty()) {
+            return State.IDLE;
         }
 
-        return State.COMPLETED;
+        boolean paused = false;
+
+        for (PregenerationTask task
+                : this.pregenerating.values()) {
+
+            if (task.state() == State.RUNNING) {
+                return State.RUNNING;
+            }
+
+            if (task.state() == State.PAUSED) {
+                paused = true;
+            }
+        }
+
+        return paused
+                ? State.PAUSED
+                : State.COMPLETED;
     }
 
     public synchronized float getProgress() {
-        if (this.pregenerating.isEmpty()) return 0.0F;
+        if (this.pregenerating.isEmpty()) {
+            return 0.0F;
+        }
 
         float progress = 0.0F;
 
-        for (PregenerationTask task : this.pregenerating.values()) {
+        for (PregenerationTask task
+                : this.pregenerating.values()) {
+
             progress += task.progress();
         }
 
         return progress / this.pregenerating.size();
     }
 
-    private synchronized void handleGenerationProgress(GenerationProgressEvent event) {
-        PregenerationTask task = this.pregenerating.get(event.world());
-        if (task == null || task.state() == State.COMPLETED) return;
+    public synchronized boolean isCompleted() {
+        if (this.pregenerating.isEmpty()) {
+            return false;
+        }
 
-        float progress = Math.clamp(event.progress(), 0.0F, 100.0F);
+        for (PregenerationTask task
+                : this.pregenerating.values()) {
+
+            if (task.state() != State.COMPLETED) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private synchronized void handleGenerationProgress(
+            GenerationProgressEvent event
+    ) {
+        PregenerationTask task =
+                this.pregenerating.get(event.world());
+
+        if (task == null
+                || task.state() == State.COMPLETED) {
+            return;
+        }
+
+        float progress = Math.clamp(
+                event.progress(),
+                0.0F,
+                100.0F
+        );
 
         this.pregenerating.put(
                 event.world(),
-                progress >= 100.0F ? task.completed() : task.withProgress(progress)
+                progress >= 100.0F
+                        ? task.completed()
+                        : task.withProgress(progress)
         );
 
-        if (this.progressUpdatesEnabled) this.updateGameProgress();
+        if (this.progressUpdatesEnabled) {
+            this.updateGameProgress();
+        }
 
         this.refreshPreparationItem();
     }
 
-    private synchronized void handleGenerationComplete(GenerationCompleteEvent event) {
-        PregenerationTask task = this.pregenerating.get(event.world());
-        if (task == null || task.state() == State.COMPLETED) return;
+    private synchronized void handleGenerationComplete(
+            GenerationCompleteEvent event
+    ) {
+        PregenerationTask task =
+                this.pregenerating.get(event.world());
 
-        this.pregenerating.put(event.world(), task.completed());
+        if (task == null
+                || task.state() == State.COMPLETED) {
+            return;
+        }
 
-        if (this.progressUpdatesEnabled) this.updateGameProgress();
+        this.pregenerating.put(
+                event.world(),
+                task.completed()
+        );
+
+        if (this.progressUpdatesEnabled) {
+            this.updateGameProgress();
+        }
 
         this.refreshPreparationItem();
     }
@@ -122,38 +217,64 @@ public final class PregenerationManager {
     private void updateGameProgress() {
         float progress = this.getProgress();
 
-        Bukkit.getScheduler().runTask(
-                Hardlands.getInstance(),
-                () -> Hardlands.getInstance()
+        this.runOnMainThread(() ->
+                Hardlands.getInstance()
                         .getGameManager()
-                        .getTimerManager()
-                        .updatePregenerationProgress(progress)
+                        .setPreparationProgress(progress)
         );
     }
 
     private void refreshPreparationItem() {
-        Bukkit.getScheduler().runTask(
-                Hardlands.getInstance(),
+        this.runOnMainThread(
                 HardlandsInventory::refreshPreparationItems
         );
     }
 
-    private record PregenerationTask(State state, float progress) {
-
-        private PregenerationTask withState(State state) {
-            return new PregenerationTask(state, this.progress);
+    private void runOnMainThread(Runnable action) {
+        if (Bukkit.isPrimaryThread()) {
+            action.run();
+            return;
         }
 
-        private PregenerationTask withProgress(float progress) {
-            return new PregenerationTask(this.state, progress);
+        Bukkit.getScheduler().runTask(
+                Hardlands.getInstance(),
+                action
+        );
+    }
+
+    private record PregenerationTask(
+            State state,
+            float progress
+    ) {
+
+        private PregenerationTask withState(State state) {
+            return new PregenerationTask(
+                    state,
+                    this.progress
+            );
+        }
+
+        private PregenerationTask withProgress(
+                float progress
+        ) {
+            return new PregenerationTask(
+                    this.state,
+                    progress
+            );
         }
 
         private PregenerationTask completed() {
-            return new PregenerationTask(State.COMPLETED, 100.0F);
+            return new PregenerationTask(
+                    State.COMPLETED,
+                    100.0F
+            );
         }
 
         private static PregenerationTask running() {
-            return new PregenerationTask(State.RUNNING, 0.0F);
+            return new PregenerationTask(
+                    State.RUNNING,
+                    0.0F
+            );
         }
     }
 
@@ -179,11 +300,5 @@ public final class PregenerationManager {
         public Material getMaterial() {
             return this.material;
         }
-    }
-
-    public synchronized boolean isCompleted() {
-        return !this.pregenerating.isEmpty()
-                && this.pregenerating.values().stream()
-                .allMatch(task -> task.state() == State.COMPLETED);
     }
 }

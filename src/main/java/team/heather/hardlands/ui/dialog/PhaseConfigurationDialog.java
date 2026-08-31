@@ -20,6 +20,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.core.config.Option;
+import team.heather.hardlands.core.data.json.LocalTimeAdapter;
 import team.heather.hardlands.game.GameManager;
 import team.heather.hardlands.util.HardlandsColor;
 import team.heather.hardlands.util.text.TextFormatter;
@@ -27,58 +28,55 @@ import team.heather.hardlands.util.text.TextFormatter;
 @SuppressWarnings("UnstableApiUsage")
 public final class PhaseConfigurationDialog {
 
-    private static final int INPUT_WIDTH = 320;
-    private static final int ACTION_WIDTH = 120;
+    private static final int INPUT_WIDTH = 240;
+    private static final int ACTION_WIDTH = 100;
 
     private static final float MIN_MINUTE = 0.0F;
     private static final float MAX_MINUTE = 180.0F;
     private static final float MINUTE_STEP = 1.0F;
 
     private static final String START_TIME = "startTime";
-
-    private static final String GRACE_PERIOD = "gracePeriodMinute";
     private static final String PVP = "pvpMinute";
     private static final String BORDER_SHRINK = "borderShrinkMinute";
     private static final String MEETUP = "meetupMinute";
     private static final String FINAL_SHRINK = "finalShrinkMinute";
     private static final String DEATHMATCH = "deathmatchMinute";
 
-    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT);
-    private static final DateTimeFormatter CURRENT_TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.ROOT);
-
+    private static final DateTimeFormatter CURRENT_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("HH:mm:ss", Locale.ROOT);
 
     private PhaseConfigurationDialog() {}
 
     public static void show(Player player) {
         GameManager manager = Hardlands.getInstance().getGameManager();
-        List<MinuteSetting> minuteSettings = createMinuteSettings(manager);
+        List<MinuteSetting> settings = createMinuteSettings(manager);
 
         player.showDialog(Dialog.create(builder -> builder
                 .empty()
-                .base(DialogBase.builder(TextFormatter.tinyCaps("Configuración de fases"))
-                        .externalTitle(Component.text("Fases"))
+                .base(DialogBase.builder(
+                                TextFormatter.tinyCaps("Configuracion de fases")
+                        )
+                        .externalTitle(TextFormatter.tinyCaps("Fases"))
                         .canCloseWithEscape(true)
                         .pause(false)
                         .afterAction(DialogBase.DialogAfterAction.NONE)
-                        .inputs(createInputs(manager, minuteSettings))
+                        .inputs(createInputs(manager, settings))
                         .build())
                 .type(DialogType.confirmation(
-                        createSaveButton(manager, minuteSettings),
+                        createSaveButton(manager, settings),
                         createCancelButton()
                 ))));
     }
 
-    // Inputs
-
     private static List<DialogInput> createInputs(
             GameManager manager,
-            List<MinuteSetting> minuteSettings
+            List<MinuteSetting> settings
     ) {
-        List<DialogInput> inputs = new ArrayList<>(minuteSettings.size() + 1);
+        List<DialogInput> inputs = new ArrayList<>(settings.size() + 1);
 
         inputs.add(createStartTimeInput(manager));
 
-        for (MinuteSetting setting : minuteSettings) {
+        for (MinuteSetting setting : settings) {
             inputs.add(createMinuteInput(setting));
         }
 
@@ -89,17 +87,20 @@ public final class PhaseConfigurationDialog {
         LocalTime startTime = manager.getStartTimeOption().getValue();
         LocalTime currentTime = LocalTime.now();
 
-        Component label = TextFormatter.tinyCaps("Hora de inicio")
+        Component label = TextFormatter.tinyCaps("Hora de inicio (HH:mm)")
                 .color(NamedTextColor.WHITE)
                 .append(Component.newline())
-                .append(Component.text(
-                        "Hora actual: " + CURRENT_TIME_FORMATTER.format(currentTime),
-                        HardlandsColor.LIGHT_GRAY
-                ));
+                .append(TextFormatter.tinyCaps(
+                                "Hora actual: "
+                                        + LocalTimeAdapter.HHMMSS_FORMATTER.format(currentTime)
+                        )
+                        .color(HardlandsColor.LIGHT_GRAY));
 
         return DialogInput.text(START_TIME, label)
                 .width(INPUT_WIDTH)
-                .initial(startTime == null ? "" : TIME_FORMATTER.format(startTime))
+                .initial(startTime == null
+                        ? ""
+                        : LocalTimeAdapter.HHMM_FORMATTER.format(startTime))
                 .maxLength(5)
                 .build();
     }
@@ -120,39 +121,26 @@ public final class PhaseConfigurationDialog {
         );
     }
 
-    // Actions
-
     private static ActionButton createSaveButton(
             GameManager manager,
-            List<MinuteSetting> minuteSettings
+            List<MinuteSetting> settings
     ) {
         return ActionButton.create(
                 TextFormatter.tinyCaps("Guardar")
                         .color(HardlandsColor.PRIMARY),
-                Component.text(
-                        "Aplicar la hora de inicio y los tiempos de la partida.",
-                        HardlandsColor.LIGHT_GRAY
-                ),
+                TextFormatter.tinyCaps("Guardar los cambios.")
+                        .color(HardlandsColor.LIGHT_GRAY),
                 ACTION_WIDTH,
                 DialogAction.customClick(
                         (response, audience) -> {
-                            if (!(audience instanceof Player player)) return;
-
-                            try {
-                                PhaseConfiguration configuration =
-                                        readConfiguration(minuteSettings, response);
-
-                                validateConfiguration(configuration);
-                                applyConfiguration(manager, minuteSettings, configuration);
-                            } catch (IllegalArgumentException exception) {
-                                player.sendRichMessage("<red>" + exception.getMessage());
-                                return;
+                            if (audience instanceof Player player) {
+                                saveConfiguration(
+                                        player,
+                                        manager,
+                                        settings,
+                                        response
+                                );
                             }
-
-                            player.closeDialog();
-                            player.sendRichMessage(
-                                    "<green>Configuración de fases guardada."
-                            );
                         },
                         ClickCallback.Options.builder()
                                 .uses(ClickCallback.UNLIMITED_USES)
@@ -165,10 +153,8 @@ public final class PhaseConfigurationDialog {
         return ActionButton.create(
                 TextFormatter.tinyCaps("Cancelar")
                         .color(NamedTextColor.GRAY),
-                Component.text(
-                        "Cerrar sin guardar.",
-                        HardlandsColor.LIGHT_GRAY
-                ),
+                TextFormatter.tinyCaps("Descartar los cambios.")
+                        .color(HardlandsColor.LIGHT_GRAY),
                 ACTION_WIDTH,
                 DialogAction.customClick(
                         (_, audience) -> audience.closeDialog(),
@@ -179,15 +165,40 @@ public final class PhaseConfigurationDialog {
         );
     }
 
-    // Reading
+    private static void saveConfiguration(
+            Player player,
+            GameManager manager,
+            List<MinuteSetting> settings,
+            DialogResponseView response
+    ) {
+        try {
+            PhaseConfiguration configuration =
+                    readConfiguration(settings, response);
+
+            validateConfiguration(configuration);
+            applyConfiguration(manager, settings, configuration);
+        } catch (IllegalArgumentException exception) {
+            player.sendMessage(
+                    TextFormatter.tinyCaps(exception.getMessage())
+                            .color(NamedTextColor.RED)
+            );
+            return;
+        }
+
+        player.closeDialog();
+        player.sendMessage(
+                TextFormatter.tinyCaps("Configuracion guardada.")
+                        .color(NamedTextColor.GREEN)
+        );
+    }
 
     private static PhaseConfiguration readConfiguration(
-            List<MinuteSetting> minuteSettings,
+            List<MinuteSetting> settings,
             DialogResponseView response
     ) {
         return new PhaseConfiguration(
                 readStartTime(response),
-                readMinutes(minuteSettings, response)
+                readMinutes(settings, response)
         );
     }
 
@@ -196,15 +207,15 @@ public final class PhaseConfigurationDialog {
 
         if (input == null || input.isBlank()) {
             throw new IllegalArgumentException(
-                    "Debe configurar una hora de inicio."
+                    "Configura una hora de inicio."
             );
         }
 
         try {
-            return LocalTime.parse(input.strip(), TIME_FORMATTER);
+            return LocalTime.parse(input.strip(), LocalTimeAdapter.HHMM_FORMATTER);
         } catch (DateTimeParseException exception) {
             throw new IllegalArgumentException(
-                    "La hora de inicio debe usar el formato HH:mm."
+                    "Usa el formato HH:mm."
             );
         }
     }
@@ -220,7 +231,7 @@ public final class PhaseConfigurationDialog {
 
             if (value == null) {
                 throw new IllegalArgumentException(
-                        "Debe configurar el minuto de %s."
+                        "Configura el minuto de %s."
                                 .formatted(setting.label())
                 );
             }
@@ -234,8 +245,6 @@ public final class PhaseConfigurationDialog {
         return values;
     }
 
-    // Validation
-
     private static void validateConfiguration(
             PhaseConfiguration configuration
     ) {
@@ -245,19 +254,19 @@ public final class PhaseConfigurationDialog {
             MinuteValue previous = values.get(index - 1);
             MinuteValue current = values.get(index);
 
-            if (current.minute() <= previous.minute()) {
-                throw new IllegalArgumentException(
-                        "%s debe ocurrir después de %s."
-                                .formatted(
-                                        current.label(),
-                                        previous.label()
-                                )
-                );
+            if (current.minute() > previous.minute()) {
+                continue;
             }
+
+            throw new IllegalArgumentException(
+                    "%s debe ir despues de %s."
+                            .formatted(
+                                    current.label(),
+                                    previous.label()
+                            )
+            );
         }
     }
-
-    // Applying
 
     private static void applyConfiguration(
             GameManager manager,
@@ -276,17 +285,10 @@ public final class PhaseConfigurationDialog {
         }
     }
 
-    // Settings
-
     private static List<MinuteSetting> createMinuteSettings(
             GameManager manager
     ) {
         return List.of(
-                new MinuteSetting(
-                        GRACE_PERIOD,
-                        "Período de gracia",
-                        manager.getGracePeriodMinuteOption()
-                ),
                 new MinuteSetting(
                         PVP,
                         "PvP",
@@ -294,22 +296,22 @@ public final class PhaseConfigurationDialog {
                 ),
                 new MinuteSetting(
                         BORDER_SHRINK,
-                        "Reducción del borde",
+                        "Borde",
                         manager.getBorderShrinkMinuteOption()
                 ),
                 new MinuteSetting(
                         MEETUP,
-                        "Encuentro",
+                        "Meetup",
                         manager.getMeetupMinuteOption()
                 ),
                 new MinuteSetting(
                         FINAL_SHRINK,
-                        "Reducción final",
+                        "Borde final",
                         manager.getFinalShrinkMinuteOption()
                 ),
                 new MinuteSetting(
                         DEATHMATCH,
-                        "Combate a muerte",
+                        "Deathmatch",
                         manager.getDeathmatchMinuteOption()
                 )
         );

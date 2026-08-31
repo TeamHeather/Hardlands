@@ -17,9 +17,9 @@ public final class TimeFormatter {
 
         List<String> parts = new ArrayList<>(3);
 
-        if (hours > 0) parts.add(hours + "h");
-        if (minutes > 0) parts.add(minutes + "m");
-        if (seconds > 0 || parts.isEmpty()) parts.add(seconds + "s");
+        if (hours > 0) parts.add(hours + "ʜ");
+        if (minutes > 0) parts.add(minutes + "ᴍ");
+        if (seconds > 0 || parts.isEmpty()) parts.add(seconds + "ꜱ");
 
         return String.join(" ", parts);
     }

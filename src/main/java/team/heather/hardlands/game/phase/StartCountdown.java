@@ -8,76 +8,120 @@ import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
+import org.jetbrains.annotations.Nullable;
 import team.heather.hardlands.Hardlands;
+import team.heather.hardlands.feature.player.PlayerListener;
 import team.heather.hardlands.game.world.ScatterManager;
+import team.heather.hardlands.util.HardlandsColor;
+import team.heather.hardlands.util.text.TextFormatter;
 
 public final class StartCountdown implements AutoCloseable {
 
     private static final int START_SECONDS = 10;
 
     private static final long INITIAL_DELAY_TICKS = 0L;
-    private static final long PERIOD_TICKS = 20L;
+    private static final long COUNTDOWN_PERIOD_TICKS = 20L;
+    private static final long TYPEWRITER_PERIOD_TICKS = 2L;
 
-    private static final float MIN_SOUND_VOLUME = 0.15F;
-    private static final float MAX_SOUND_VOLUME = 1.0F;
-    private static final float SOUND_PITCH = 1.0F;
+    private static final float MIN_SOUND_VOLUME = 0.20F;
+    private static final float MAX_SOUND_VOLUME = 0.85F;
+
+    private static final float MIN_SOUND_PITCH = 1.00F;
+    private static final float MAX_SOUND_PITCH = 1.08F;
+
+    private static final float ACCENT_VOLUME_MULTIPLIER = 0.25F;
+    private static final float ACCENT_PITCH_OFFSET = 0.05F;
+
+    private static final float TYPEWRITER_VOLUME = 0.12F;
+    private static final float TYPEWRITER_PITCH = 1.45F;
+
+    private static final String HOST_LABEL = "Hosteado por:";
+
+    private static final Component GAME_TITLE = TextFormatter.tinyCaps("Hardlands")
+            .color(HardlandsColor.PRIMARY);
 
     private static final Title.Times COUNTDOWN_TIMES = Title.Times.times(
             Duration.ZERO,
-            Duration.ofSeconds(2),
+            Duration.ofMillis(900),
+            Duration.ofMillis(100)
+    );
+
+    private static final Title.Times TYPEWRITER_TIMES = Title.Times.times(
+            Duration.ZERO,
+            Duration.ofMillis(250),
             Duration.ZERO
     );
 
     private static final Title.Times START_TIMES = Title.Times.times(
             Duration.ZERO,
             Duration.ofSeconds(2),
-            Duration.ZERO
+            Duration.ofMillis(300)
     );
 
     private final Hardlands plugin;
     private final ScatterManager scatterManager;
 
-    private BukkitTask task;
-    private int remainingSeconds;
+    @Nullable
+    private BukkitTask countdownTask;
 
-    public StartCountdown(Hardlands plugin, ScatterManager scatterManager) {
+    @Nullable
+    private BukkitTask typewriterTask;
+
+    @Nullable
+    private Player host;
+
+    private int remainingSeconds;
+    private int typedCharacters;
+
+    public StartCountdown(
+            Hardlands plugin,
+            ScatterManager scatterManager
+    ) {
         this.plugin = plugin;
         this.scatterManager = scatterManager;
     }
 
     public void start() {
-        if (this.task != null) {
-            throw new IllegalStateException("Scatter countdown is already running");
+        if (this.countdownTask != null) {
+            throw new IllegalStateException(
+                    "Scatter countdown is already running"
+            );
         }
 
+        this.host = Bukkit.getOnlinePlayers()
+                .stream()
+                .findFirst()
+                .orElse(null);
+
         this.remainingSeconds = START_SECONDS;
-        this.task = Bukkit.getScheduler().runTaskTimer(
+
+        this.countdownTask = Bukkit.getScheduler().runTaskTimer(
                 this.plugin,
-                this::tick,
+                this::tickCountdown,
                 INITIAL_DELAY_TICKS,
-                PERIOD_TICKS
+                COUNTDOWN_PERIOD_TICKS
         );
     }
 
     @Override
     public void close() {
-        if (this.task == null) return;
-
-        this.task.cancel();
-        this.task = null;
+        this.stopCountdown();
+        this.stopTypewriter();
     }
 
     public boolean isRunning() {
-        return this.task != null;
+        return this.countdownTask != null;
     }
 
-    private void tick() {
+    private void tickCountdown() {
         if (this.plugin.getGameManager().getPhase() != Phase.SCATTER) {
-            this.close();
+            this.stopCountdown();
             return;
         }
 
-        if (!this.scatterManager.isCompleted()) return;
+        if (!this.scatterManager.isCompleted()) {
+            return;
+        }
 
         if (this.remainingSeconds <= 0) {
             this.finish();
@@ -89,48 +133,173 @@ public final class StartCountdown implements AutoCloseable {
     }
 
     private void finish() {
-        this.close();
+        this.stopCountdown();
 
-        Title title = Title.title(
-                Component.text("¡La partida ha comenzado!"),
-                Component.empty(),
-                START_TIMES
-        );
-
-        Bukkit.getOnlinePlayers().forEach(player -> player.showTitle(title));
-
-        this.plugin.getGameManager().changePhase(Phase.SURVIVAL);
+        this.plugin.getGameManager().transitionTo(Phase.SURVIVAL);
+        this.startTypewriter();
     }
 
     private void showCountdown() {
         Title title = Title.title(
-                Component.text(this.remainingSeconds),
-                Component.text("La partida comienza en"),
+                Component.text(
+                        this.remainingSeconds,
+                        HardlandsColor.PRIMARY
+                ),
+                TextFormatter.tinyCaps("La partida comienza en")
+                        .color(HardlandsColor.LIGHT_GRAY),
                 COUNTDOWN_TIMES
         );
 
-        float volume = this.computeSoundVolume();
+        float progress = this.computeProgress();
+        float volume = this.computeSoundVolume(progress);
+        float pitch = this.computeSoundPitch(progress);
 
-        Bukkit.getOnlinePlayers().forEach(player -> {
+        for (Player player : Bukkit.getOnlinePlayers()) {
             player.showTitle(title);
-            this.playCountdownSound(player, volume);
-        });
+            this.playCountdownSounds(player, volume, pitch);
+        }
     }
 
-    private void playCountdownSound(Player player, float volume) {
+    private void startTypewriter() {
+        this.stopTypewriter();
+        this.typedCharacters = 0;
+
+        this.typewriterTask = Bukkit.getScheduler().runTaskTimer(
+                this.plugin,
+                this::tickTypewriter,
+                INITIAL_DELAY_TICKS,
+                TYPEWRITER_PERIOD_TICKS
+        );
+    }
+
+    private void tickTypewriter() {
+        if (this.typedCharacters < HOST_LABEL.length()) {
+            this.typedCharacters++;
+
+            String visibleText = HOST_LABEL.substring(
+                    0,
+                    this.typedCharacters
+            );
+
+            this.showStartTitle(
+                    TextFormatter.tinyCaps(visibleText)
+                            .color(HardlandsColor.LIGHT_GRAY),
+                    TYPEWRITER_TIMES
+            );
+
+            this.playTypewriterSound();
+            return;
+        }
+
+        this.showFinalStartTitle();
+        this.playStartSound();
+        this.stopTypewriter();
+    }
+
+    private void showFinalStartTitle() {
+        Component subtitle = TextFormatter.tinyCaps(HOST_LABEL)
+                .color(HardlandsColor.LIGHT_GRAY);
+
+        if (this.host != null) {
+            Component formattedHost = TextFormatter.parse(
+                            PlayerListener.formatUsername(this.host)
+                    )
+                    .color(HardlandsColor.LIGHT_GRAY);
+
+            subtitle = subtitle
+                    .append(Component.space())
+                    .append(formattedHost);
+        }
+
+        this.showStartTitle(subtitle, START_TIMES);
+    }
+
+    private void showStartTitle(
+            Component subtitle,
+            Title.Times times
+    ) {
+        Title title = Title.title(
+                GAME_TITLE,
+                subtitle,
+                times
+        );
+
+        Bukkit.getOnlinePlayers()
+                .forEach(player -> player.showTitle(title));
+    }
+
+    private void playCountdownSounds(
+            Player player,
+            float volume,
+            float pitch
+    ) {
         player.playSound(
                 player.getLocation(),
                 Sound.UI_BUTTON_CLICK,
                 volume,
-                SOUND_PITCH
+                pitch
+        );
+
+        player.playSound(
+                player.getLocation(),
+                Sound.BLOCK_NOTE_BLOCK_HAT,
+                volume * ACCENT_VOLUME_MULTIPLIER,
+                pitch + ACCENT_PITCH_OFFSET
         );
     }
 
-    private float computeSoundVolume() {
-        float progress = (START_SECONDS - this.remainingSeconds)
-                / (float) (START_SECONDS - 1);
+    private void playTypewriterSound() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            player.playSound(
+                    player.getLocation(),
+                    Sound.UI_BUTTON_CLICK,
+                    TYPEWRITER_VOLUME,
+                    TYPEWRITER_PITCH
+            );
+        }
+    }
 
+    private void playStartSound() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            player.playSound(
+                    player.getLocation(),
+                    Sound.ENTITY_PLAYER_LEVELUP,
+                    0.75F,
+                    1.12F
+            );
+        }
+    }
+
+    private void stopCountdown() {
+        if (this.countdownTask == null) {
+            return;
+        }
+
+        this.countdownTask.cancel();
+        this.countdownTask = null;
+    }
+
+    private void stopTypewriter() {
+        if (this.typewriterTask == null) {
+            return;
+        }
+
+        this.typewriterTask.cancel();
+        this.typewriterTask = null;
+    }
+
+    private float computeProgress() {
+        return (START_SECONDS - this.remainingSeconds)
+                / (float) (START_SECONDS - 1);
+    }
+
+    private float computeSoundVolume(float progress) {
         return MIN_SOUND_VOLUME
                 + (MAX_SOUND_VOLUME - MIN_SOUND_VOLUME) * progress;
+    }
+
+    private float computeSoundPitch(float progress) {
+        return MIN_SOUND_PITCH
+                + (MAX_SOUND_PITCH - MIN_SOUND_PITCH) * progress;
     }
 }

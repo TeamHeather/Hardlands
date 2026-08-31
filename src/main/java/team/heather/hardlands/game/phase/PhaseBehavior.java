@@ -18,25 +18,34 @@ final class PhaseBehavior {
     static final Handler PREPARATION = new Handler() {
 
         @Override
-        public void onStart(Hardlands plugin, Phase phase) {
-            WorldManager worldManager = plugin.getWorldManager();
-            PregenerationManager pregenerationManager = worldManager.getPregenerationManager();
+        public void onStart(
+                Hardlands plugin,
+                Phase phase
+        ) {
+            WorldManager worldManager =
+                    plugin.getWorldManager();
+
+            PregenerationManager pregenerationManager =
+                    worldManager.getPregenerationManager();
 
             pregenerationManager.setProgressUpdatesEnabled(true);
 
             worldManager.applyConfiguration();
             worldManager.pregenerate();
 
-            plugin.getGameManager().updatePreparationProgress(
+            plugin.getGameManager().setPreparationProgress(
                     pregenerationManager.getProgress()
             );
         }
 
         @Override
-        public void onStop(Hardlands plugin, Phase phase) {
-            PregenerationManager pregenerationManager = plugin
-                    .getWorldManager()
-                    .getPregenerationManager();
+        public void onStop(
+                Hardlands plugin,
+                Phase phase
+        ) {
+            PregenerationManager pregenerationManager =
+                    plugin.getWorldManager()
+                            .getPregenerationManager();
 
             pregenerationManager.setProgressUpdatesEnabled(false);
 
@@ -53,56 +62,84 @@ final class PhaseBehavior {
         private StartCountdown countdown;
 
         @Override
-        public void onStart(Hardlands plugin, Phase phase) {
-            GameManager gameManager = plugin.getGameManager();
-            ScatterManager scatterManager = plugin
-                    .getWorldManager()
-                    .getScatterManager();
+        public void onStart(
+                Hardlands plugin,
+                Phase phase
+        ) {
+            GameManager gameManager =
+                    plugin.getGameManager();
 
-            Bukkit.getOnlinePlayers().forEach(scatterManager::enqueue);
+            ScatterManager scatterManager =
+                    plugin.getWorldManager()
+                            .getScatterManager();
+
+            Bukkit.getOnlinePlayers()
+                    .forEach(scatterManager::enqueue);
 
             scatterManager.setProgressUpdatesEnabled(true);
-            gameManager.updateScatterProgress(scatterManager.getScatterPercentage());
+
+            gameManager.setScatterProgress(
+                    scatterManager.getScatterPercentage()
+            );
 
             scatterManager.scatterAll();
 
-            this.countdown = new StartCountdown(plugin, scatterManager);
+            this.countdown = new StartCountdown(
+                    plugin,
+                    scatterManager
+            );
+
             this.countdown.start();
         }
 
         @Override
-        public void onStop(Hardlands plugin, Phase phase) {
+        public void onStop(
+                Hardlands plugin,
+                Phase phase
+        ) {
             if (this.countdown != null) {
                 this.countdown.close();
                 this.countdown = null;
             }
 
-            ScatterManager scatterManager = plugin
-                    .getWorldManager()
-                    .getScatterManager();
+            ScatterManager scatterManager =
+                    plugin.getWorldManager()
+                            .getScatterManager();
 
             scatterManager.setProgressUpdatesEnabled(false);
-            Bukkit.getOnlinePlayers().forEach(LivingEntity::clearActivePotionEffects);
+
+            Bukkit.getOnlinePlayers()
+                    .forEach(LivingEntity::clearActivePotionEffects);
         }
     };
 
     static final Handler SURVIVAL = new Handler() {
 
         @Override
-        public void onStart(Hardlands plugin, Phase phase) {
-            plugin.getGameManager().resetChronometer();
-            ChatMessenger.broadcastFramed("ᴇʟ ᴊᴜᴇɢᴏ ʜᴀ ᴄᴏᴍᴇɴᴢᴀᴅᴏ.");
+        public void onStart(
+                Hardlands plugin,
+                Phase phase
+        ) {
+            ChatMessenger.broadcastFramed(
+                    "ᴇʟ ᴊᴜᴇɢᴏ ʜᴀ ᴄᴏᴍᴇɴᴢᴀᴅᴏ."
+            );
         }
     };
 
     static final Handler BORDER_SHRINK = new Handler() {
 
         @Override
-        public void onStart(Hardlands plugin, Phase phase) {
-            Duration duration = phase.getDuration(plugin.getGameManager());
+        public void onStart(
+                Hardlands plugin,
+                Phase phase
+        ) {
+            Duration duration = phase.getDuration(
+                    plugin.getGameManager()
+            );
 
             if (!duration.isZero()) {
-                plugin.getWorldManager().shrinkForMeetup(duration);
+                plugin.getWorldManager()
+                        .shrinkForMeetup(duration);
             }
         }
     };
@@ -112,11 +149,17 @@ final class PhaseBehavior {
     static final Handler FINAL_SHRINK = new Handler() {
 
         @Override
-        public void onStart(Hardlands plugin, Phase phase) {
-            Duration duration = phase.getDuration(plugin.getGameManager());
+        public void onStart(
+                Hardlands plugin,
+                Phase phase
+        ) {
+            Duration duration = phase.getDuration(
+                    plugin.getGameManager()
+            );
 
             if (!duration.isZero()) {
-                plugin.getWorldManager().shrinkForDeathmatch(duration);
+                plugin.getWorldManager()
+                        .shrinkForDeathmatch(duration);
             }
         }
     };
@@ -127,8 +170,14 @@ final class PhaseBehavior {
 
     interface Handler {
 
-        default void onStart(Hardlands plugin, Phase phase) {}
+        default void onStart(
+                Hardlands plugin,
+                Phase phase
+        ) {}
 
-        default void onStop(Hardlands plugin, Phase phase) {}
+        default void onStop(
+                Hardlands plugin,
+                Phase phase
+        ) {}
     }
 }

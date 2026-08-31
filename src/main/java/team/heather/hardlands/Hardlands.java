@@ -51,7 +51,7 @@ public final class Hardlands extends JavaPlugin {
         this.gameManager = new GameManager(this);
         this.presetRepository = new PresetRepository(this, "presets");
 
-        this.gameManager.initialize();
+        this.gameManager.start();
         this.presetRepository.load("default");
 
 
@@ -73,7 +73,7 @@ public final class Hardlands extends JavaPlugin {
     @Override
     public void onDisable() {
         if (this.gameManager != null) {
-            this.gameManager.shutdown();
+            this.gameManager.stop();
         }
 
         this.singleThreadScheduler.close();

@@ -74,7 +74,7 @@ public final class PlayerListener implements Listener {
         skull.update(true, false);
     }
 
-    private static String formatUsername(Player player) {
+    public static String formatUsername(Player player) {
         return "<white><head:%s></white> %s".formatted(player.getUniqueId(), player.getName());
     }
 

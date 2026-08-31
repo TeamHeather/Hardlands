@@ -1,6 +1,11 @@
 package team.heather.hardlands.game.timeline;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.function.IntUnaryOperator;
 
 import org.bukkit.entity.Player;
@@ -10,112 +15,144 @@ import team.heather.hardlands.game.phase.Phase;
 public final class GameTimeline {
 
     private final GameManager gameManager;
-    private final TimelineCounterTracker counter;
-    private final TimelineClockProgress clockProgress;
-    private final TimelineBossBarManager bossBar;
+    private final TimelineBossBar bossBar;
+    private final Clock clock;
+
+    private int seconds;
+    private float percentageProgress;
+
+    private Instant clockStartedAt;
+    private Instant clockTarget;
 
     public GameTimeline(GameManager gameManager) {
+        this(gameManager, Clock.systemDefaultZone());
+    }
+
+    GameTimeline(GameManager gameManager, Clock clock) {
         this.gameManager = gameManager;
-        this.counter = new TimelineCounterTracker(gameManager);
-        this.clockProgress = new TimelineClockProgress();
-        this.bossBar = new TimelineBossBarManager(gameManager);
+        this.clock = clock;
+        this.bossBar = new TimelineBossBar(gameManager);
     }
 
-    public synchronized void updateProgress() {
+    public synchronized void tick() {
         Phase phase = this.gameManager.getPhase();
 
-        if (phase.isClockProgressionEnabled()) {
-            this.updateClockProgression(phase);
-            return;
-        }
+        switch (phase.getProgressSource()) {
+            case STATIC -> {
+            }
 
-        if (!phase.isCounterAdvanceEnabled()) return;
+            case PERCENTAGE -> {
+                if (phase.isAutomaticAdvanceEnabled()
+                        && this.percentageProgress >= 100.0F) {
+                    this.advance(phase);
+                }
+            }
 
-        this.counter.increment();
-        this.bossBar.updateForTimedProgression(phase, this.counter);
+            case CLOCK -> {
+                if (this.updateClock(phase)
+                        && phase.isAutomaticAdvanceEnabled()) {
+                    this.advance(phase);
+                }
+            }
 
-        if (phase.isAutomaticAdvanceEnabled() && this.counter.hasReachedEnd(phase)) {
-            this.advance(phase);
+            case COUNTER -> {
+                Integer minute = phase.getMinute(this.gameManager);
+
+                this.seconds = minute == null
+                        ? 0
+                        : toSeconds(minute);
+
+                this.bossBar.updateCounter(
+                        phase,
+                        this.seconds
+                );
+            }
         }
     }
 
-    public synchronized void updateState() {
+    public synchronized void syncPhase() {
         Phase phase = this.gameManager.getPhase();
 
-        this.clockProgress.reset();
+        this.percentageProgress = 0.0F;
+        this.clockStartedAt = null;
+        this.clockTarget = null;
+
         this.bossBar.reset(phase);
 
-        if (phase.isCounterResetEnabled()) {
-            this.counter.reset();
-        }
+        switch (phase.getProgressSource()) {
+            case STATIC -> {
+                if (phase == Phase.OFF_GAME) {
+                    this.seconds = 0;
+                }
 
-        if (phase.isClockProgressionEnabled()) {
-            this.applyClockProgression(
-                    phase,
-                    this.clockProgress.initialize(this.getStartTime())
-            );
-            return;
-        }
+                this.bossBar.updateStatic(phase);
+            }
 
-        if (phase.isCounterAdvanceEnabled()) {
-            this.bossBar.updateForTimedProgression(phase, this.counter);
-            return;
-        }
+            case PERCENTAGE ->
+                    this.bossBar.updatePercentage(phase, 0.0F);
 
-        this.bossBar.updateForStaticProgression(phase, this.counter);
+            case CLOCK -> {
+                this.initializeClock();
+                this.updateClock(phase);
+            }
+
+            case COUNTER -> {
+                Integer minute = phase.getMinute(this.gameManager);
+
+                if (minute != null) {
+                    this.seconds = toSeconds(minute);
+                }
+
+                this.bossBar.updateCounter(phase, this.seconds);
+            }
+        }
     }
 
     public synchronized void refreshStartTime() {
         Phase phase = this.gameManager.getPhase();
 
-        if (!phase.isClockProgressionEnabled()) return;
-
-        this.applyClockProgression(
-                phase,
-                this.clockProgress.refresh(this.getStartTime())
-        );
-    }
-
-    public synchronized void updatePreparationProgress(float progress) {
-        Phase phase = this.gameManager.getPhase();
-
-        if (!phase.isPreparationProgressEnabled()) return;
-
-        float percentage = Math.clamp(progress, 0.0F, 100.0F);
-
-        this.bossBar.updateForPercentageProgression(
-                phase,
-                percentage,
-                this.counter
-        );
-
-        if (percentage >= 100.0F) {
-            this.advance(phase);
+        if (phase.getProgressSource() != Phase.ProgressSource.CLOCK) {
+            return;
         }
+
+        Instant now = this.clock.instant();
+
+        if (this.clockStartedAt == null) {
+            this.clockStartedAt = now;
+        }
+
+        this.clockTarget = this.resolveTarget(now, this.getStartTime());
+        this.updateClock(phase);
     }
 
-    public synchronized void updateScatterProgress(float progress) {
+    public synchronized void updatePercentageProgress(
+            Phase expectedPhase,
+            float progress
+    ) {
         Phase phase = this.gameManager.getPhase();
 
-        if (!phase.isScatterProgressEnabled()) return;
+        if (phase != expectedPhase
+                || phase.getProgressSource() != Phase.ProgressSource.PERCENTAGE) {
+            return;
+        }
 
-        this.bossBar.updateForPercentageProgression(
-                phase,
-                Math.clamp(progress, 0.0F, 100.0F),
-                this.counter
-        );
+        this.percentageProgress = Math.clamp(progress, 0.0F, 100.0F);
+        this.bossBar.updatePercentage(phase, this.percentageProgress);
     }
 
     public synchronized void completeCurrentPhase() {
         Phase phase = this.gameManager.getPhase();
 
-        if (!phase.isForcedAdvanceEnabled()) return;
+        if (phase == Phase.SCATTER) {
+            return;
+        }
 
-        if (phase.isCounterAdvanceEnabled()) {
+        if (phase.getProgressSource() == Phase.ProgressSource.COUNTER) {
             Integer endMinute = phase.getNextMinute(this.gameManager);
 
             if (endMinute != null) {
-                this.counter.setFromMinute(endMinute);
+                this.seconds = toSeconds(endMinute);
+                this.bossBar.updateCounter(phase, this.seconds);
             }
         }
 
@@ -123,21 +160,25 @@ public final class GameTimeline {
     }
 
     public synchronized void setCounter(int seconds) {
-        this.counter.set(seconds);
+        this.seconds = Math.max(0, seconds);
 
         Phase phase = this.gameManager.getPhase();
 
-        if (phase.isClockProgressionEnabled()) return;
-
-        if (phase.isCounterAdvanceEnabled()) {
-            this.bossBar.updateForTimedProgression(phase, this.counter);
-        } else {
-            this.bossBar.updateLabel(phase, this.counter);
+        if (phase.getProgressSource() == Phase.ProgressSource.COUNTER) {
+            this.bossBar.updateCounter(phase, this.seconds);
         }
     }
 
     public synchronized void resetCounter() {
-        this.setCounter(0);
+        Phase phase = this.gameManager.getPhase();
+        Integer minute = phase.getMinute(this.gameManager);
+
+        this.setCounter(
+                phase.getProgressSource() == Phase.ProgressSource.COUNTER
+                        && minute != null
+                        ? toSeconds(minute)
+                        : 0
+        );
     }
 
     public synchronized void modifyCounter(IntUnaryOperator operation) {
@@ -145,64 +186,114 @@ public final class GameTimeline {
             throw new IllegalArgumentException("Operation cannot be null");
         }
 
-        this.setCounter(operation.applyAsInt(this.counter.get()));
+        this.setCounter(operation.applyAsInt(this.seconds));
     }
 
-    public synchronized void setLabelPrefix(String labelPrefix) {
-        this.bossBar.setLabelPrefix(
-                labelPrefix,
-                this.gameManager.getPhase(),
-                this.counter
-        );
+    public synchronized int getCounter() {
+        return this.seconds;
     }
 
-    public synchronized void setLabelSuffix(String labelSuffix) {
-        this.bossBar.setLabelSuffix(
-                labelSuffix,
-                this.gameManager.getPhase(),
-                this.counter
-        );
-    }
-
-    public void addViewer(Player player) {
+    public synchronized void addViewer(Player player) {
         this.bossBar.addViewer(player);
     }
 
-    public void removeViewer(Player player) {
+    public synchronized void removeViewer(Player player) {
         this.bossBar.removeViewer(player);
     }
 
-    private void updateClockProgression(Phase phase) {
-        this.applyClockProgression(
-                phase,
-                this.clockProgress.update(this.getStartTime())
-        );
-    }
+    private void tickCounter(Phase phase) {
+        this.seconds++;
+        this.bossBar.updateCounter(phase, this.seconds);
 
-    private void applyClockProgression(
-            Phase phase,
-            TimelineClockProgress.State state
-    ) {
-        this.bossBar.updateForClockProgression(phase, state);
-
-        if (state.complete()) {
+        if (phase.isAutomaticAdvanceEnabled()
+                && this.hasReachedEnd(phase)) {
             this.advance(phase);
         }
     }
 
-    private void advance(Phase phase) {
-        if (this.gameManager.getPhase() != phase) return;
+    private boolean hasReachedEnd(Phase phase) {
+        Integer endMinute = phase.getNextMinute(this.gameManager);
 
-        phase.next().ifPresent(this.gameManager::changePhase);
+        return endMinute != null
+                && this.seconds >= toSeconds(endMinute);
+    }
+
+    private void initializeClock() {
+        Instant now = this.clock.instant();
+
+        this.clockStartedAt = now;
+        this.clockTarget = this.resolveTarget(now, this.getStartTime());
+    }
+
+    private boolean updateClock(Phase phase) {
+        if (this.clockStartedAt == null || this.clockTarget == null) {
+            this.initializeClock();
+        }
+
+        Instant now = this.clock.instant();
+
+        long totalMillis = Duration.between(
+                this.clockStartedAt,
+                this.clockTarget
+        ).toMillis();
+
+        long elapsedMillis = Duration.between(
+                this.clockStartedAt,
+                now
+        ).toMillis();
+
+        boolean complete = !now.isBefore(this.clockTarget);
+
+        float progress = complete || totalMillis <= 0L
+                ? 1.0F
+                : Math.clamp(
+                (float) elapsedMillis / totalMillis,
+                0.0F,
+                1.0F
+        );
+
+        this.bossBar.updateClock(
+                phase,
+                progress,
+                LocalTime.ofInstant(now, this.clock.getZone()),
+                this.getStartTime()
+        );
+
+        return complete;
+    }
+
+    private Instant resolveTarget(Instant reference, LocalTime targetTime) {
+        ZoneId zone = this.clock.getZone();
+        LocalDate date = reference.atZone(zone).toLocalDate();
+
+        return date.atTime(targetTime)
+                .atZone(zone)
+                .toInstant();
     }
 
     private LocalTime getStartTime() {
-        LocalTime startTime = this.gameManager.getStartTimeOption().getValue();
+        LocalTime startTime = this.gameManager
+                .getStartTimeOption()
+                .getValue();
 
         if (startTime == null) {
-            throw new IllegalStateException("Start time has not been configured");
+            throw new IllegalStateException(
+                    "Start time has not been configured"
+            );
         }
 
         return startTime;
+    }
+
+    private void advance(Phase phase) {
+        if (this.gameManager.getPhase() != phase) {
+            return;
+        }
+
+        phase.next().ifPresent(this.gameManager::transitionTo);
+    }
+
+    private static int toSeconds(int minute) {
+        return minute * 60;
     }
 }

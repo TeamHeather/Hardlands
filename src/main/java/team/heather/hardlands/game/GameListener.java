@@ -13,24 +13,21 @@ import team.heather.hardlands.game.world.ScatterManager;
 
 public final class GameListener implements Listener {
 
-		private static final Hardlands PLUGIN = Hardlands.getInstance();
-
 		@EventHandler
 		private void onPlayerJoin(PlayerJoinEvent event) {
-				GameManager gameManager = PLUGIN.getGameManager();
-				ScatterManager scatterManager = PLUGIN.getWorldManager().getScatterManager();
+				GameManager gameManager = Hardlands.getInstance().getGameManager();
+				ScatterManager scatterManager = Hardlands.getInstance().getWorldManager().getScatterManager();
 
 				Player player = event.getPlayer();
 				Phase phase = gameManager.getPhase();
 
-				gameManager.addViewer(player);
+				gameManager.addTimelineViewer(player);
 
-				if (!phase.isScatterQueueOpen()) {
+				if (!phase.isScatterQueueEnabled()) {
 						return;
 				}
 
 				scatterManager.enqueue(player);
-
 				if (phase == Phase.SCATTER) {
 						scatterManager.scatterNext();
 				}
@@ -38,27 +35,32 @@ public final class GameListener implements Listener {
 
 		@EventHandler
 		private void onPlayerQuit(PlayerQuitEvent event) {
-				GameManager gameManager = PLUGIN.getGameManager();
-				ScatterManager scatterManager = PLUGIN.getWorldManager().getScatterManager();
+				GameManager gameManager = Hardlands.getInstance().getGameManager();
+				ScatterManager scatterManager = Hardlands.getInstance().getWorldManager().getScatterManager();
 
 				Player player = event.getPlayer();
 
-				gameManager.removeViewer(player);
+				gameManager.removeTimelineViewer(player);
 
-				if (gameManager.getPhase().isScatterQueueOpen()) {
+				if (gameManager.getPhase().isScatterQueueEnabled()) {
 						scatterManager.remove(player);
 				}
 		}
 
 		@EventHandler
 		private void onConfigurationChange(ConfigChangeEvent event) {
-				GameManager gameManager = PLUGIN.getGameManager();
+				GameManager gameManager = Hardlands.getInstance().getGameManager();
 
 				if (event.getConfiguration() != gameManager
 								|| !event.getOptionKey().equals(gameManager.getStartTimeOption().getKey())) {
 						return;
 				}
 
-				Bukkit.getScheduler().runTask(PLUGIN, gameManager::refreshStartTime);
+				if (Bukkit.isPrimaryThread()) {
+						gameManager.refreshTimelineStartTime();
+						return;
+				}
+
+				Bukkit.getScheduler().runTask(Hardlands.getInstance(), gameManager::refreshTimelineStartTime);
 		}
 }
