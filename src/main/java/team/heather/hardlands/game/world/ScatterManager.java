@@ -128,7 +128,7 @@ public final class ScatterManager {
 				Bukkit.getScheduler().runTask(
 								Hardlands.getInstance(),
 								() -> Hardlands.getInstance()
-												.getGameManager()
+												.getGameManager().getTimerManager()
 												.updateScatterProgress(progress)
 				);
 		}

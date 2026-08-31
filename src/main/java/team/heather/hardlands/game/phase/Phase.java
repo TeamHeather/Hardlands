@@ -5,27 +5,28 @@ import java.util.function.Function;
 import java.util.function.ToIntFunction;
 
 import net.kyori.adventure.bossbar.BossBar;
+import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.core.config.Option;
 import team.heather.hardlands.game.GameManagerConfiguration;
 
 public enum Phase {
 
     OFF_GAME(
-            "Off-Game",
+            "Fuera de partida",
             Stage.OFF_GAME,
             Progression.EMPTY,
-            PhaseHandler.IDLE
+            PhaseHandler.OFF_GAME
     ),
 
     PRE_GENERATION(
-            "Pre-Generation",
+            "Pregeneración",
             Stage.OFF_GAME,
             Progression.FILL,
             PhaseHandler.PRE_GENERATION
     ),
 
     WAITING(
-            "Waiting",
+            "Espera",
             Stage.OFF_GAME,
             Progression.DRAIN,
             PhaseHandler.WAITING,
@@ -33,22 +34,23 @@ public enum Phase {
     ),
 
     SCATTER(
-            "Scatter",
+            "Dispersión",
             Stage.OFF_GAME,
             Progression.FILL,
             PhaseHandler.SCATTER
     ),
 
     SURVIVAL(
-            "Survival",
-            Stage.SURVIVAL,
-            Progression.DRAIN,
-            PhaseHandler.SURVIVAL,
-            Phase::calculateSurvivalDuration
+        "Supervivencia",
+        Stage.SURVIVAL,
+        Progression.DRAIN,
+        PhaseHandler.SURVIVAL,
+        GameManagerConfiguration::getGracePeriodMinuteOption
     ),
 
+
     BORDER_SHRINK(
-            "Border Shrink",
+            "Reducción del borde",
             Stage.MEETUP,
             Progression.FILL,
             PhaseHandler.BORDER_SHRINK,
@@ -56,7 +58,7 @@ public enum Phase {
     ),
 
     MEETUP(
-            "Meetup",
+            "Encuentro",
             Stage.MEETUP,
             Progression.DRAIN,
             PhaseHandler.MEETUP,
@@ -64,7 +66,7 @@ public enum Phase {
     ),
 
     FINAL_SHRINK(
-            "Final Shrink",
+            "Reducción final",
             Stage.MEETUP,
             Progression.FILL,
             PhaseHandler.FINAL_SHRINK,
@@ -72,14 +74,12 @@ public enum Phase {
     ),
 
     DEATHMATCH(
-            "Deathmatch",
+            "Combate a muerte",
             Stage.DEATHMATCH,
             Progression.FULL,
             PhaseHandler.DEATHMATCH,
             GameManagerConfiguration::getDeathmatchMinuteOption
-    )
-
-    ;
+    );
 
     private final String label;
     private final Stage stage;
@@ -127,29 +127,24 @@ public enum Phase {
         this.minute = minute;
     }
 
-    public void onStart() {
-        this.handler.onStart(this);
+    public void onStart(Hardlands plugin) {
+        this.handler.onStart(plugin, this);
     }
 
-    public void onStop() {
-        this.handler.onStop(this);
+    public void onStop(Hardlands plugin) {
+        this.handler.onStop(plugin, this);
     }
 
     public Optional<Phase> previous() {
         int index = this.ordinal() - 1;
-
-        return index >= 0
-                ? Optional.of(values()[index])
-                : Optional.empty();
+        return index >= 0 ? Optional.of(values()[index]) : Optional.empty();
     }
 
     public Optional<Phase> next() {
         int index = this.ordinal() + 1;
         Phase[] phases = values();
 
-        return index < phases.length
-                ? Optional.of(phases[index])
-                : Optional.empty();
+        return index < phases.length ? Optional.of(phases[index]) : Optional.empty();
     }
 
     public String getLabel() {
@@ -165,9 +160,7 @@ public enum Phase {
     }
 
     public Integer getMinute(GameManagerConfiguration configuration) {
-        return this.minute == null
-                ? null
-                : this.minute.applyAsInt(configuration);
+        return this.minute == null ? null : this.minute.applyAsInt(configuration);
     }
 
     public boolean isScatterQueueOpen() {
@@ -194,8 +187,8 @@ public enum Phase {
     public enum Stage {
 
         OFF_GAME(BossBar.Color.WHITE),
-        SURVIVAL(BossBar.Color.PINK),
-        MEETUP(BossBar.Color.RED),
+        SURVIVAL(BossBar.Color.RED),
+        MEETUP(BossBar.Color.PINK),
         DEATHMATCH(BossBar.Color.PURPLE);
 
         private final BossBar.Color bossBarColor;
@@ -214,10 +207,5 @@ public enum Phase {
         FILL,
         DRAIN,
         FULL
-    }
-
-    private static int calculateSurvivalDuration(GameManagerConfiguration configuration) {
-        return configuration.getGracePeriodMinuteOption().getValue()
-                + configuration.getPvpMinuteOption().getValue();
     }
 }

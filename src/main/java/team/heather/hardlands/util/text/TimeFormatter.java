@@ -1,6 +1,8 @@
 package team.heather.hardlands.util.text;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class TimeFormatter {
 
@@ -12,8 +14,12 @@ public final class TimeFormatter {
         long minutes = totalSeconds % 3_600 / 60;
         long seconds = totalSeconds % 60;
 
-        if (hours > 0) return "%dh %dm %ds".formatted(hours, minutes, seconds);
-        if (minutes > 0) return "%dm %ds".formatted(minutes, seconds);
-        return "%ds".formatted(seconds);
+        List<String> parts = new ArrayList<>(3);
+
+        if (hours > 0) parts.add(hours + "h");
+        if (minutes > 0) parts.add(minutes + "m");
+        if (seconds > 0 || parts.isEmpty()) parts.add(seconds + "s");
+
+        return String.join(" ", parts);
     }
 }

@@ -20,7 +20,7 @@ public final class GameListener implements Listener {
 		private void onPlayerJoin(PlayerJoinEvent event) {
 				Player player = event.getPlayer();
 
-				this.manager.addViewer(player);
+				this.manager.getTimerManager().addViewer(player);
 
 				if (this.manager.getPhase().isScatterQueueOpen()) {
 						Hardlands.getInstance()
@@ -34,7 +34,7 @@ public final class GameListener implements Listener {
 		private void onPlayerQuit(PlayerQuitEvent event) {
 				Player player = event.getPlayer();
 
-				this.manager.removeViewer(player);
+				this.manager.getTimerManager().removeViewer(player);
 
 				if (this.manager.getPhase().isScatterQueueOpen()) {
 						Hardlands.getInstance()

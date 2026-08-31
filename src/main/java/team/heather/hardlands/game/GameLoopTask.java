@@ -24,6 +24,6 @@ public final class GameLoopTask {
 		}
 
 		private void tick() {
-				this.gameManager.updateTimer();
+				this.gameManager.getTimerManager().updateProgress();
 		}
 }

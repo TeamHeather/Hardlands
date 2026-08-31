@@ -1,5 +1,7 @@
 package team.heather.hardlands.game.phase;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.LivingEntity;
 import team.heather.hardlands.Hardlands;
@@ -8,29 +10,27 @@ import team.heather.hardlands.game.world.ScatterManager;
 import team.heather.hardlands.game.world.WorldManager;
 import team.heather.hardlands.ui.feedback.ChatMessenger;
 
+import java.time.Duration;
+
 public interface PhaseHandler {
 
-    PhaseHandler IDLE = new PhaseHandler() {
+    PhaseHandler OFF_GAME = new PhaseHandler() {
 
         @Override
-        public void onStart(Phase phase) {
-        }
+        public void onStart(Hardlands plugin, Phase phase) {}
 
         @Override
-        public void onStop(Phase phase) {
-
-        }
+        public void onStop(Hardlands plugin, Phase phase) {}
     };
 
     PhaseHandler PRE_GENERATION = new PhaseHandler() {
 
         @Override
-        public void onStart(Phase phase) {
-            Hardlands plugin = Hardlands.getInstance();
+        public void onStart(Hardlands plugin, Phase phase) {
             WorldManager worldManager = plugin.getWorldManager();
             PregenerationManager pregenerationManager = worldManager.getPregenerationManager();
 
-            plugin.getGameManager().setTimerTickCondition(pregenerationManager::isCompleted);
+            plugin.getGameManager().getTimerManager().setProgressCondition(pregenerationManager::isCompleted);
             pregenerationManager.setProgressUpdatesEnabled(true);
 
             worldManager.applyConfiguration();
@@ -38,14 +38,15 @@ public interface PhaseHandler {
         }
 
         @Override
-        public void onStop(Phase phase) {
-            Hardlands plugin = Hardlands.getInstance();
+        public void onStop(Hardlands plugin, Phase phase) {
             PregenerationManager pregenerationManager = plugin.getWorldManager().getPregenerationManager();
 
-            if (!pregenerationManager.isCompleted()) pregenerationManager.pause();
-
             pregenerationManager.setProgressUpdatesEnabled(false);
-            plugin.getGameManager().resetTimerTickCondition();
+            plugin.getGameManager().getTimerManager().resetProgressCondition();
+
+            if (!pregenerationManager.isCompleted()) {
+                pregenerationManager.pause();
+            }
         }
     };
 
@@ -53,43 +54,77 @@ public interface PhaseHandler {
 
     PhaseHandler SCATTER = new PhaseHandler() {
 
+        private static final int START_DELAY_SECONDS = 10;
+
         @Override
-        public void onStart(Phase phase) {
-            Hardlands plugin = Hardlands.getInstance();
+        public void onStart(Hardlands plugin, Phase phase) {
             ScatterManager scatterManager = plugin.getWorldManager().getScatterManager();
 
             Bukkit.getOnlinePlayers().forEach(scatterManager::enqueue);
 
-            plugin.getGameManager().setTimerTickCondition(scatterManager::isCompleted);
             scatterManager.setProgressUpdatesEnabled(true);
-
             scatterManager.scatterAll();
+
+            startCountdown(plugin, scatterManager);
         }
 
         @Override
-        public void onStop(Phase phase) {
-            Hardlands plugin = Hardlands.getInstance();
+        public void onStop(Hardlands plugin, Phase phase) {
             ScatterManager scatterManager = plugin.getWorldManager().getScatterManager();
 
-            Bukkit.getOnlinePlayers().forEach(LivingEntity::clearActivePotionEffects);
-
             scatterManager.setProgressUpdatesEnabled(false);
-            plugin.getGameManager().resetTimerTickCondition();
+
+            Bukkit.getOnlinePlayers().forEach(LivingEntity::clearActivePotionEffects);
+        }
+
+        private static void startCountdown(Hardlands plugin, ScatterManager scatterManager) {
+            for (int seconds = START_DELAY_SECONDS; seconds >= 1; seconds--) {
+                int remaining = seconds;
+                long delay = (START_DELAY_SECONDS - seconds) * 20L;
+
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (plugin.getGameManager().getPhase() != Phase.SCATTER) return;
+                    if (!scatterManager.isCompleted()) return;
+
+                    Component title = Component.text(remaining);
+                    Component subtitle = Component.text("La partida comienza en");
+
+                    Bukkit.getOnlinePlayers().forEach(player ->
+                            player.showTitle(Title.title(
+                                    title,
+                                    subtitle,
+                                    Title.Times.times(
+                                            Duration.ZERO,
+                                            Duration.ofSeconds(2),
+                                            Duration.ZERO
+                                    )
+                            ))
+                    );
+                }, delay);
+            }
+
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (plugin.getGameManager().getPhase() != Phase.SCATTER) return;
+                if (!scatterManager.isCompleted()) return;
+
+                plugin.getGameManager().changePhase(Phase.SURVIVAL);
+            }, START_DELAY_SECONDS * 20L);
         }
     };
 
     PhaseHandler SURVIVAL = new PhaseHandler() {
 
         @Override
-        public void onStart(Phase phase) {
+        public void onStart(Hardlands plugin, Phase phase) {
+            plugin.getGameManager().getTimerManager().resetChronometer();
+
             ChatMessenger.broadcastFramed("ᴇʟ ᴊᴜᴇɢᴏ ʜᴀ ᴄᴏᴍᴇɴᴢᴀᴅᴏ.");
         }
 
         @Override
-        public void onStop(Phase phase) {
-
-        }
+        public void onStop(Hardlands plugin, Phase phase) {}
     };
+
 
     PhaseHandler BORDER_SHRINK = debug("BORDER_SHRINK");
 
@@ -99,23 +134,25 @@ public interface PhaseHandler {
 
     PhaseHandler DEATHMATCH = debug("DEATHMATCH");
 
-    PhaseHandler POST_GAME = debug("POST_GAME");
+    void onStart(Hardlands plugin, Phase phase);
 
-    void onStart(Phase phase);
-
-    void onStop(Phase phase);
+    void onStop(Hardlands plugin, Phase phase);
 
     private static PhaseHandler debug(String name) {
         return new PhaseHandler() {
 
             @Override
-            public void onStart(Phase phase) {
-                Bukkit.getServer().getConsoleSender().sendMessage("[Hardlands] " + name + " phase started.");
+            public void onStart(Hardlands plugin, Phase phase) {
+                Bukkit.getServer()
+                        .getConsoleSender()
+                        .sendMessage("[Hardlands] " + name + " phase started.");
             }
 
             @Override
-            public void onStop(Phase phase) {
-                Bukkit.getServer().getConsoleSender().sendMessage("[Hardlands] " + name + " phase stopped.");
+            public void onStop(Hardlands plugin, Phase phase) {
+                Bukkit.getServer()
+                        .getConsoleSender()
+                        .sendMessage("[Hardlands] " + name + " phase stopped.");
             }
         };
     }

@@ -16,7 +16,7 @@ public final class PregenerationManager {
     private final Map<String, PregenerationTask> pregenerating;
     private final ChunkyAPI chunky;
 
-    private boolean progressUpdatesEnabled;
+    private volatile boolean progressUpdatesEnabled;
 
     public PregenerationManager(ChunkyAPI chunky) {
         this.pregenerating = new HashMap<>();
@@ -126,6 +126,7 @@ public final class PregenerationManager {
                 Hardlands.getInstance(),
                 () -> Hardlands.getInstance()
                         .getGameManager()
+                        .getTimerManager()
                         .updatePregenerationProgress(progress)
         );
     }

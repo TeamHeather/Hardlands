@@ -23,20 +23,23 @@ public final class PhaseCommand extends BaseCommand {
 
     @Subcommand("start")
     public void onStart(CommandSender sender) {
-        gameManager.changePhase(Phase.PRE_GENERATION);
+        this.gameManager.changePhase(Phase.PRE_GENERATION);
     }
 
     @Subcommand("next")
     public void onNext(CommandSender sender) {
-        gameManager.getPhase()
-                .next()
-                .ifPresent(gameManager::changePhase);
+        this.gameManager.getTimerManager().completeCurrentPhase();
     }
 
     @Subcommand("previous")
     public void onPrevious(CommandSender sender) {
-        gameManager.getPhase()
+        this.gameManager.getPhase()
                 .previous()
-                .ifPresent(gameManager::changePhase);
+                .ifPresent(this.gameManager::changePhase);
+    }
+
+    @Subcommand("time")
+    public void onTime(CommandSender sender, int seconds) {
+        this.gameManager.getTimerManager().setChronometer(seconds);
     }
 }

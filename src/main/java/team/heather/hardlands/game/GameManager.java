@@ -1,6 +1,5 @@
 package team.heather.hardlands.game;
 
-import java.time.Duration;
 import java.util.function.BooleanSupplier;
 
 import org.bukkit.Bukkit;
@@ -8,7 +7,6 @@ import org.bukkit.entity.Player;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.config.ConfigBuilder;
 import team.heather.hardlands.config.MinuteOptionDef;
-import team.heather.hardlands.core.config.Option;
 import team.heather.hardlands.game.phase.Phase;
 
 @ConfigBuilder(
@@ -58,40 +56,6 @@ public final class GameManager extends GameManagerConfiguration {
                 && finalShrink < deathmatch;
     }
 
-    public void updatePregenerationProgress(float progress) {
-        this.timerManager.setProgress(progress / 100.0F);
-        this.timerManager.setSuffix("%.1f%%".formatted(progress));
-    }
-
-    public void updateScatterProgress(float progress) {
-        this.timerManager.setProgress(progress / 100.0F);
-        this.timerManager.setSuffix("%.1f%%".formatted(progress));
-    }
-
-    public void addViewer(Player player) {
-        this.timerManager.addViewer(player);
-    }
-
-    public void removeViewer(Player player) {
-        this.timerManager.removeViewer(player);
-    }
-
-    public void resetChronometer() {
-        this.timerManager.resetChronometer();
-    }
-
-    public void setTimerTickCondition(BooleanSupplier condition) {
-        this.timerManager.setCondition(condition);
-    }
-
-    public void resetTimerTickCondition() {
-        this.timerManager.resetTickCondition();
-    }
-
-    void updateTimer() {
-        this.timerManager.updateProgress(this.plugin);
-    }
-
     public void initialize() {
         if (this.initialized) {
             throw new IllegalStateException("Game is already initialized");
@@ -109,15 +73,19 @@ public final class GameManager extends GameManagerConfiguration {
     public synchronized void changePhase(Phase newPhase) {
         Phase previousPhase = this.phase;
 
-        previousPhase.onStop();
+        previousPhase.onStop(this.plugin);
 
         this.phase = newPhase;
         this.timerManager.updateState();
 
-        newPhase.onStart();
+        newPhase.onStart(this.plugin);
     }
 
     public Phase getPhase() {
         return this.phase;
+    }
+
+    public GameTimer getTimerManager() {
+        return this.timerManager;
     }
 }
