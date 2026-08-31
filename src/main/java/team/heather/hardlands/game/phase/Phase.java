@@ -13,37 +13,37 @@ public enum Phase {
 
     OFF_GAME(
             "Fuera de partida",
-            Stage.OFF_GAME,
+            Stage.LOBBY,
             Progression.EMPTY,
-            PhaseHandlers.OFF_GAME
+            PhaseBehavior.OFF_GAME
     ),
 
-    PRE_GENERATION(
-            "Pregeneración",
-            Stage.OFF_GAME,
+    PREPARATION(
+            "Preparación",
+            Stage.LOBBY,
             Progression.FILL,
-            PhaseHandlers.PRE_GENERATION
+            PhaseBehavior.PREPARATION
     ),
 
     WAITING(
             "Esperando",
-            Stage.OFF_GAME,
+            Stage.LOBBY,
             Progression.DRAIN,
-            PhaseHandlers.WAITING
+            PhaseBehavior.WAITING
     ),
 
     SCATTER(
             "Dispersión",
-            Stage.OFF_GAME,
+            Stage.LOBBY,
             Progression.FILL,
-            PhaseHandlers.SCATTER
+            PhaseBehavior.SCATTER
     ),
 
     SURVIVAL(
             "Supervivencia",
             Stage.SURVIVAL,
             Progression.DRAIN,
-            PhaseHandlers.SURVIVAL,
+            PhaseBehavior.SURVIVAL,
             GameManagerConfiguration::getGracePeriodMinuteOption
     ),
 
@@ -51,7 +51,7 @@ public enum Phase {
             "Reducción del borde",
             Stage.MEETUP,
             Progression.FILL,
-            PhaseHandlers.BORDER_SHRINK,
+            PhaseBehavior.BORDER_SHRINK,
             GameManagerConfiguration::getBorderShrinkMinuteOption
     ),
 
@@ -59,15 +59,15 @@ public enum Phase {
             "Encuentro",
             Stage.MEETUP,
             Progression.DRAIN,
-            PhaseHandlers.MEETUP,
+            PhaseBehavior.MEETUP,
             GameManagerConfiguration::getMeetupMinuteOption
     ),
 
     FINAL_SHRINK(
             "Reducción final",
-            Stage.MEETUP,
+            Stage.DEATHMATCH,
             Progression.FILL,
-            PhaseHandlers.FINAL_SHRINK,
+            PhaseBehavior.FINAL_SHRINK,
             GameManagerConfiguration::getFinalShrinkMinuteOption
     ),
 
@@ -75,7 +75,7 @@ public enum Phase {
             "Combate a muerte",
             Stage.DEATHMATCH,
             Progression.FULL,
-            PhaseHandlers.DEATHMATCH,
+            PhaseBehavior.DEATHMATCH,
             GameManagerConfiguration::getDeathmatchMinuteOption
     );
 
@@ -141,8 +141,9 @@ public enum Phase {
     // Timing
 
     public Integer getMinute(GameManagerConfiguration configuration) {
-        if (this.minuteOption == null) return null;
-        return this.minuteOption.apply(configuration).getValue();
+        return this.minuteOption != null
+                ? this.minuteOption.apply(configuration).getValue()
+                : null;
     }
 
     public Integer getNextMinute(GameManagerConfiguration configuration) {
@@ -163,26 +164,40 @@ public enum Phase {
             return Duration.ZERO;
         }
 
-        int durationMinutes = endMinute - startMinute;
-
-        return durationMinutes > 0
-                ? Duration.ofMinutes(durationMinutes)
-                : Duration.ZERO;
+        return Duration.ofMinutes(Math.max(0, endMinute - startMinute));
     }
 
     // Behavior
 
-    public boolean advancesChronometer() {
-        return switch (this) {
-            case OFF_GAME,
-                 PRE_GENERATION,
-                 WAITING,
-                 SCATTER -> false;
-            default -> true;
-        };
+    public boolean isCounterAdvanceEnabled() {
+        return this.stage != Stage.LOBBY;
     }
 
-    public boolean advancesAutomatically() {
+    public boolean isCounterResetEnabled() {
+        return this == OFF_GAME;
+    }
+
+    public boolean isClockProgressionEnabled() {
+        return this == WAITING;
+    }
+
+    public boolean isPercentageProgressionEnabled() {
+        return this == PREPARATION || this == SCATTER;
+    }
+
+    public boolean isPreparationProgressEnabled() {
+        return this == PREPARATION;
+    }
+
+    public boolean isScatterProgressEnabled() {
+        return this == SCATTER;
+    }
+
+    public boolean isPvpTransitionEnabled() {
+        return this == SURVIVAL;
+    }
+
+    public boolean isAutomaticAdvanceEnabled() {
         return switch (this) {
             case OFF_GAME,
                  SCATTER,
@@ -191,39 +206,20 @@ public enum Phase {
         };
     }
 
-    public boolean allowsForcedAdvance() {
+    public boolean isForcedAdvanceEnabled() {
         return this != SCATTER;
     }
 
-    public boolean showsTargetMinute() {
-        return this != WAITING
-                && (this.progression == Progression.DRAIN
-                || this == BORDER_SHRINK
-                || this == FINAL_SHRINK);
+    public boolean isTargetMinuteDisplayEnabled() {
+        return this.stage != Stage.LOBBY
+                && this.progression != Progression.FULL;
     }
 
-    public boolean isScatterQueueOpen() {
-        return switch (this) {
-            case OFF_GAME,
-                 PRE_GENERATION,
-                 WAITING,
-                 SCATTER -> true;
-            default -> false;
-        };
+    public boolean isScatterQueueEnabled() {
+        return this.stage == Stage.LOBBY;
     }
 
-    public boolean isRunning() {
-        return switch (this) {
-            case SURVIVAL,
-                 BORDER_SHRINK,
-                 MEETUP,
-                 FINAL_SHRINK,
-                 DEATHMATCH -> true;
-            default -> false;
-        };
-    }
-
-    // Getters
+    // Properties
 
     public String getLabel() {
         return this.label;
@@ -239,7 +235,7 @@ public enum Phase {
 
     public enum Stage {
 
-        OFF_GAME(BossBar.Color.WHITE),
+        LOBBY(BossBar.Color.WHITE),
         SURVIVAL(BossBar.Color.RED),
         MEETUP(BossBar.Color.PINK),
         DEATHMATCH(BossBar.Color.PURPLE);

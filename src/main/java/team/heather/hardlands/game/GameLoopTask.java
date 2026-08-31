@@ -3,6 +3,7 @@ package team.heather.hardlands.game;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
+import team.heather.hardlands.game.timeline.GameTimeline;
 
 public final class GameLoopTask implements AutoCloseable {
 
@@ -10,11 +11,11 @@ public final class GameLoopTask implements AutoCloseable {
 		private static final long PERIOD_TICKS = 20L;
 
 		private final Plugin plugin;
-		private final GameTimer timer;
+		private final GameTimeline timer;
 
 		private BukkitTask task;
 
-		public GameLoopTask(Plugin plugin, GameTimer timer) {
+		public GameLoopTask(Plugin plugin, GameTimeline timer) {
 				this.plugin = plugin;
 				this.timer = timer;
 		}

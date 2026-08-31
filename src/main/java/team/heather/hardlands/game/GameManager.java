@@ -1,7 +1,6 @@
 package team.heather.hardlands.game;
 
 import java.time.LocalTime;
-import java.util.function.BooleanSupplier;
 
 import org.bukkit.entity.Player;
 import team.heather.hardlands.Hardlands;
@@ -9,6 +8,7 @@ import team.heather.hardlands.config.ConfigBuilder;
 import team.heather.hardlands.config.MinuteOptionDef;
 import team.heather.hardlands.config.OptionDef;
 import team.heather.hardlands.game.phase.Phase;
+import team.heather.hardlands.game.timeline.GameTimeline;
 
 @ConfigBuilder(
         identifier = "game",
@@ -27,7 +27,7 @@ import team.heather.hardlands.game.phase.Phase;
 public final class GameManager extends GameManagerConfiguration {
 
     private final Hardlands plugin;
-    private final GameTimer timer;
+    private final GameTimeline timer;
     private final GameLoopTask loopTask;
 
     private Phase phase = Phase.OFF_GAME;
@@ -35,9 +35,11 @@ public final class GameManager extends GameManagerConfiguration {
 
     public GameManager(Hardlands plugin) {
         this.plugin = plugin;
-        this.timer = new GameTimer(this);
+        this.timer = new GameTimeline(this);
         this.loopTask = new GameLoopTask(plugin, this.timer);
     }
+
+    // Lifecycle
 
     public void initialize() {
         if (this.initialized) {
@@ -46,7 +48,6 @@ public final class GameManager extends GameManagerConfiguration {
 
         this.timer.updateState();
         this.loopTask.start();
-
         this.initialized = true;
     }
 
@@ -55,52 +56,47 @@ public final class GameManager extends GameManagerConfiguration {
         this.initialized = false;
     }
 
-    public void changePhase(Phase newPhase) {
-        if (newPhase == null) {
+    // Phase
+
+    public void changePhase(Phase phase) {
+        if (phase == null) {
             throw new IllegalArgumentException("Phase cannot be null");
         }
 
-        Phase previousPhase = this.phase;
+        this.phase.onStop(this.plugin);
+        this.phase = phase;
 
-        previousPhase.onStop(this.plugin);
-
-        this.phase = newPhase;
         this.timer.updateState();
-
-        newPhase.onStart(this.plugin);
+        this.phase.onStart(this.plugin);
     }
 
     public void completeCurrentPhase() {
         this.timer.completeCurrentPhase();
     }
 
+    // Timer
+
     public void refreshStartTime() {
         this.timer.refreshStartTime();
     }
 
     public void setChronometer(int seconds) {
-        this.timer.setChronometer(seconds);
+        this.timer.setCounter(seconds);
     }
 
     public void resetChronometer() {
         this.timer.resetChronometer();
     }
 
-    public void setTimerProgressCondition(BooleanSupplier condition) {
-        this.timer.setProgressCondition(condition);
-    }
-
-    public void resetTimerProgressCondition() {
-        this.timer.resetProgressCondition();
-    }
-
-    public void updatePregenerationProgress(float progress) {
-        this.timer.updatePregenerationProgress(progress);
+    public void updatePreparationProgress(float progress) {
+        this.timer.updatePreparationProgress(progress);
     }
 
     public void updateScatterProgress(float progress) {
         this.timer.updateScatterProgress(progress);
     }
+
+    // Boss bar
 
     public void addViewer(Player player) {
         this.timer.addViewer(player);
@@ -110,24 +106,28 @@ public final class GameManager extends GameManagerConfiguration {
         this.timer.removeViewer(player);
     }
 
+    // Properties
+
     public Phase getPhase() {
         return this.phase;
     }
 
-    public GameTimer getTimerManager() {
+    public GameTimeline getTimer() {
         return this.timer;
     }
 
     @Override
     public boolean isConfigurationValid() {
-        if (!super.isConfigurationValid()) return false;
+        if (!super.isConfigurationValid()) {
+            return false;
+        }
 
-        int gracePeriod = super.gracePeriodMinute.getValue();
-        int pvp = super.pvpMinute.getValue();
-        int borderShrink = super.borderShrinkMinute.getValue();
-        int meetup = super.meetupMinute.getValue();
-        int finalShrink = super.finalShrinkMinute.getValue();
-        int deathmatch = super.deathmatchMinute.getValue();
+        int gracePeriod = this.getGracePeriodMinuteOption().getValue();
+        int pvp = this.getPvpMinuteOption().getValue();
+        int borderShrink = this.getBorderShrinkMinuteOption().getValue();
+        int meetup = this.getMeetupMinuteOption().getValue();
+        int finalShrink = this.getFinalShrinkMinuteOption().getValue();
+        int deathmatch = this.getDeathmatchMinuteOption().getValue();
 
         return gracePeriod < pvp
                 && pvp < borderShrink

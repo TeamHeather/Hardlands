@@ -11,11 +11,16 @@ import com.google.gson.stream.JsonWriter;
 
 public final class LocalTimeAdapter extends TypeAdapter<LocalTime> {
 
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT);
+    private static final DateTimeFormatter FORMATTER =
+            DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT);
+
+    public static String format(LocalTime value) {
+        return FORMATTER.format(value);
+    }
 
     @Override
     public void write(JsonWriter writer, LocalTime value) throws IOException {
-        writer.value(FORMATTER.format(value));
+        writer.value(format(value));
     }
 
     @Override

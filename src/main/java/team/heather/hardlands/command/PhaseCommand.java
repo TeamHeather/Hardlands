@@ -18,7 +18,7 @@ public final class PhaseCommand extends BaseCommand {
 
     @Subcommand("start")
     public void onStart(CommandSender sender) {
-        this.gameManager.changePhase(Phase.PRE_GENERATION);
+        this.gameManager.changePhase(Phase.PREPARATION);
     }
 
     @Subcommand("next")

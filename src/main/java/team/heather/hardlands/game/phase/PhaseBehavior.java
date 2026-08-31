@@ -11,36 +11,34 @@ import team.heather.hardlands.game.world.ScatterManager;
 import team.heather.hardlands.game.world.WorldManager;
 import team.heather.hardlands.ui.chat.ChatMessenger;
 
-final class PhaseHandlers {
+final class PhaseBehavior {
 
-    static final PhaseHandler OFF_GAME = new PhaseHandler() {};
+    static final Handler OFF_GAME = new Handler() {};
 
-    static final PhaseHandler PRE_GENERATION = new PhaseHandler() {
+    static final Handler PREPARATION = new Handler() {
 
         @Override
         public void onStart(Hardlands plugin, Phase phase) {
-            GameManager gameManager = plugin.getGameManager();
             WorldManager worldManager = plugin.getWorldManager();
             PregenerationManager pregenerationManager = worldManager.getPregenerationManager();
 
-            gameManager.setTimerProgressCondition(pregenerationManager::isCompleted);
-
             pregenerationManager.setProgressUpdatesEnabled(true);
-            gameManager.updatePregenerationProgress(pregenerationManager.getProgress());
 
             worldManager.applyConfiguration();
             worldManager.pregenerate();
+
+            plugin.getGameManager().updatePreparationProgress(
+                    pregenerationManager.getProgress()
+            );
         }
 
         @Override
         public void onStop(Hardlands plugin, Phase phase) {
-            GameManager gameManager = plugin.getGameManager();
             PregenerationManager pregenerationManager = plugin
                     .getWorldManager()
                     .getPregenerationManager();
 
             pregenerationManager.setProgressUpdatesEnabled(false);
-            gameManager.resetTimerProgressCondition();
 
             if (!pregenerationManager.isCompleted()) {
                 pregenerationManager.pause();
@@ -48,16 +46,18 @@ final class PhaseHandlers {
         }
     };
 
-    static final PhaseHandler WAITING = new PhaseHandler() {};
+    static final Handler WAITING = new Handler() {};
 
-    static final PhaseHandler SCATTER = new PhaseHandler() {
+    static final Handler SCATTER = new Handler() {
 
         private StartCountdown countdown;
 
         @Override
         public void onStart(Hardlands plugin, Phase phase) {
             GameManager gameManager = plugin.getGameManager();
-            ScatterManager scatterManager = plugin.getWorldManager().getScatterManager();
+            ScatterManager scatterManager = plugin
+                    .getWorldManager()
+                    .getScatterManager();
 
             Bukkit.getOnlinePlayers().forEach(scatterManager::enqueue);
 
@@ -77,48 +77,58 @@ final class PhaseHandlers {
                 this.countdown = null;
             }
 
-            ScatterManager scatterManager = plugin.getWorldManager().getScatterManager();
+            ScatterManager scatterManager = plugin
+                    .getWorldManager()
+                    .getScatterManager();
 
             scatterManager.setProgressUpdatesEnabled(false);
             Bukkit.getOnlinePlayers().forEach(LivingEntity::clearActivePotionEffects);
         }
     };
 
-    static final PhaseHandler SURVIVAL = new PhaseHandler() {
+    static final Handler SURVIVAL = new Handler() {
 
         @Override
         public void onStart(Hardlands plugin, Phase phase) {
             plugin.getGameManager().resetChronometer();
-
             ChatMessenger.broadcastFramed("ᴇʟ ᴊᴜᴇɢᴏ ʜᴀ ᴄᴏᴍᴇɴᴢᴀᴅᴏ.");
         }
     };
 
-    static final PhaseHandler BORDER_SHRINK = new PhaseHandler() {
+    static final Handler BORDER_SHRINK = new Handler() {
 
         @Override
         public void onStart(Hardlands plugin, Phase phase) {
             Duration duration = phase.getDuration(plugin.getGameManager());
-            if (duration.isZero()) return;
 
-            plugin.getWorldManager().shrinkForMeetup(duration);
+            if (!duration.isZero()) {
+                plugin.getWorldManager().shrinkForMeetup(duration);
+            }
         }
     };
 
-    static final PhaseHandler MEETUP = new PhaseHandler() {};
+    static final Handler MEETUP = new Handler() {};
 
-    static final PhaseHandler FINAL_SHRINK = new PhaseHandler() {
+    static final Handler FINAL_SHRINK = new Handler() {
 
         @Override
         public void onStart(Hardlands plugin, Phase phase) {
             Duration duration = phase.getDuration(plugin.getGameManager());
-            if (duration.isZero()) return;
 
-            plugin.getWorldManager().shrinkForDeathmatch(duration);
+            if (!duration.isZero()) {
+                plugin.getWorldManager().shrinkForDeathmatch(duration);
+            }
         }
     };
 
-    static final PhaseHandler DEATHMATCH = new PhaseHandler() {};
+    static final Handler DEATHMATCH = new Handler() {};
 
-    private PhaseHandlers() {}
+    private PhaseBehavior() {}
+
+    interface Handler {
+
+        default void onStart(Hardlands plugin, Phase phase) {}
+
+        default void onStop(Hardlands plugin, Phase phase) {}
+    }
 }

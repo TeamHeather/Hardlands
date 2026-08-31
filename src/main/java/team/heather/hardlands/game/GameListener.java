@@ -13,18 +13,21 @@ import team.heather.hardlands.game.world.ScatterManager;
 
 public final class GameListener implements Listener {
 
+		private static final Hardlands PLUGIN = Hardlands.getInstance();
+
 		@EventHandler
 		private void onPlayerJoin(PlayerJoinEvent event) {
-				Hardlands plugin = Hardlands.getInstance();
-				GameManager gameManager = plugin.getGameManager();
-				ScatterManager scatterManager = plugin.getWorldManager().getScatterManager();
+				GameManager gameManager = PLUGIN.getGameManager();
+				ScatterManager scatterManager = PLUGIN.getWorldManager().getScatterManager();
 
 				Player player = event.getPlayer();
 				Phase phase = gameManager.getPhase();
 
 				gameManager.addViewer(player);
 
-				if (!phase.isScatterQueueOpen()) return;
+				if (!phase.isScatterQueueOpen()) {
+						return;
+				}
 
 				scatterManager.enqueue(player);
 
@@ -35,9 +38,8 @@ public final class GameListener implements Listener {
 
 		@EventHandler
 		private void onPlayerQuit(PlayerQuitEvent event) {
-				Hardlands plugin = Hardlands.getInstance();
-				GameManager gameManager = plugin.getGameManager();
-				ScatterManager scatterManager = plugin.getWorldManager().getScatterManager();
+				GameManager gameManager = PLUGIN.getGameManager();
+				ScatterManager scatterManager = PLUGIN.getWorldManager().getScatterManager();
 
 				Player player = event.getPlayer();
 
@@ -50,17 +52,13 @@ public final class GameListener implements Listener {
 
 		@EventHandler
 		private void onConfigurationChange(ConfigChangeEvent event) {
-				Hardlands plugin = Hardlands.getInstance();
-				GameManager gameManager = plugin.getGameManager();
+				GameManager gameManager = PLUGIN.getGameManager();
 
-				if (event.getConfiguration() != gameManager) return;
-				if (!event.getOptionKey().equals(gameManager.getStartTimeOption().getKey())) return;
-
-				if (Bukkit.isPrimaryThread()) {
-						gameManager.refreshStartTime();
+				if (event.getConfiguration() != gameManager
+								|| !event.getOptionKey().equals(gameManager.getStartTimeOption().getKey())) {
 						return;
 				}
 
-				Bukkit.getScheduler().runTask(plugin, gameManager::refreshStartTime);
+				Bukkit.getScheduler().runTask(PLUGIN, gameManager::refreshStartTime);
 		}
 }

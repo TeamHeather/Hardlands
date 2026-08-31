@@ -32,36 +32,28 @@ public final class Hardlands extends JavaPlugin {
             .registerTypeAdapter(LocalTime.class, new LocalTimeAdapter().nullSafe())
             .setPrettyPrinting()
             .create();
-
     public static final String LABEL = HardlandsColor.PRIMARY + "ʜᴀʀᴅʟᴀɴᴅꜱ";
 
-    @Nullable
-    private static Hardlands instance;
+    private final SingleThreadScheduler<Hardlands> singleThreadScheduler = new SingleThreadScheduler<>(this);
 
-    private final SingleThreadScheduler<Hardlands> singleThreadScheduler =
-            new SingleThreadScheduler<>(this);
-
-    @Nullable
-    private PresetRepository presetRepository;
-
-    @Nullable
-    private EnchantmentManager enchantmentManager;
-
-    @Nullable
-    private ScenarioManager scenarioManager;
-
-    @Nullable
-    private WorldManager worldManager;
-
-    @Nullable
-    private GameManager gameManager;
+    @Nullable private EnchantmentManager enchantmentManager;
+    @Nullable private ScenarioManager scenarioManager;
+    @Nullable private WorldManager worldManager;
+    @Nullable private GameManager gameManager;
+    @Nullable private PresetRepository presetRepository;
 
     @Override
     public void onEnable() {
-        instance = this;
 
-        this.initializeManagers();
-        this.getPresetRepository().load("default");
+        this.enchantmentManager = new EnchantmentManager(this);
+        this.scenarioManager = new ScenarioManager(this);
+        this.worldManager = new WorldManager();
+        this.gameManager = new GameManager(this);
+        this.presetRepository = new PresetRepository(this, "presets");
+
+        this.gameManager.initialize();
+        this.presetRepository.load("default");
+
 
         this.registerCommands(
                 new HardlandsCommand(),
@@ -75,9 +67,7 @@ public final class Hardlands extends JavaPlugin {
                 new GameListener()
         );
 
-        this.getGameManager().initialize();
-
-        this.getLogger().info("Hardlands successfully enabled.");
+        super.getLogger().info("Hardlands successfully enabled.");
     }
 
     @Override
@@ -87,9 +77,8 @@ public final class Hardlands extends JavaPlugin {
         }
 
         this.singleThreadScheduler.close();
-        instance = null;
 
-        this.getLogger().info("Hardlands successfully disabled.");
+        super.getLogger().info("Hardlands successfully disabled.");
     }
 
     public static NamespacedKey createKey(String path) {
@@ -97,7 +86,7 @@ public final class Hardlands extends JavaPlugin {
     }
 
     public static Hardlands getInstance() {
-        return requireInitialized(instance, "Hardlands");
+        return JavaPlugin.getPlugin(Hardlands.class);
     }
 
     public SingleThreadScheduler<Hardlands> getSingleThreadScheduler() {
@@ -124,14 +113,6 @@ public final class Hardlands extends JavaPlugin {
         return requireInitialized(this.gameManager, "GameManager");
     }
 
-    private void initializeManagers() {
-        this.presetRepository = new PresetRepository(this, "presets");
-        this.enchantmentManager = new EnchantmentManager(this);
-        this.scenarioManager = new ScenarioManager(this);
-        this.worldManager = new WorldManager();
-        this.gameManager = new GameManager(this);
-    }
-
     private void registerCommands(BaseCommand... commands) {
         PaperCommandManager commandManager = new PaperCommandManager(this);
 
@@ -148,7 +129,7 @@ public final class Hardlands extends JavaPlugin {
 
     private static <T> T requireInitialized(@Nullable T value, String name) {
         if (value == null) {
-            throw new IllegalStateException(name + " has not been initialized.");
+            throw new IllegalStateException(name + " has not been initialized yet.");
         }
 
         return value;
