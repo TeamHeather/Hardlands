@@ -13,74 +13,63 @@ import org.bukkit.entity.Player;
 import team.heather.hardlands.game.phase.Phase;
 import team.heather.hardlands.util.HardlandsColor;
 import team.heather.hardlands.util.text.TimeFormatter;
-import team.heather.hardlands.util.text.TinyCaps;
 
 public final class GameTimer {
 
-    private final GameManager gameManager;
-    private final BossBar bossBar = BossBar.bossBar(
-            Component.empty(),
-            1.0F,
-            BossBar.Color.WHITE,
-            BossBar.Overlay.PROGRESS
-    );
+    private static final BooleanSupplier ALWAYS_TRUE = () -> true;
+    private static final String SEPARATOR = " » ";
+    private static final String TRANSITION_SEPARATOR = " → ";
 
-    private BooleanSupplier progressCondition = () -> true;
+    private final GameManager gameManager;
+    private final BossBar bossBar;
+
+    private BooleanSupplier progressCondition = ALWAYS_TRUE;
     private String prefix = "";
     private String suffix = "";
+
     private double progressDelta;
     private int chronometer;
     private boolean progressEnded;
 
     public GameTimer(GameManager gameManager) {
         this.gameManager = gameManager;
+        this.bossBar = BossBar.bossBar(
+                Component.empty(),
+                1.0F,
+                BossBar.Color.WHITE,
+                BossBar.Overlay.PROGRESS
+        );
     }
 
-    private void tryAdvance(Phase phase) {
-        if (!this.isProgressComplete(phase)) return;
-        if (this.gameManager.getPhase() != phase) return;
+    // Lifecycle
 
-        this.progressEnded = true;
-        phase.next().ifPresent(this.gameManager::changePhase);
-    }
-
-    public synchronized void updateProgress() {
+    public void updateProgress() {
         Phase phase = this.gameManager.getPhase();
 
-        if (this.shouldUpdateChronometer(phase)) {
+        if (phase.advancesChronometer()) {
             this.chronometer++;
         }
 
-        this.updateName(phase);
-
-        if (this.progressEnded || !this.progressCondition.getAsBoolean()) return;
-
-        if (this.progressDelta != 0.0D) {
+        if (!this.progressEnded
+                && this.progressCondition.getAsBoolean()
+                && this.progressDelta != 0.0D) {
             this.modifyProgress(progress -> progress + this.progressDelta);
         }
 
+        this.updateName(phase);
         this.tryAdvance(phase);
     }
 
-    private boolean shouldUpdateChronometer(Phase phase) {
-        return switch (phase) {
-            case OFF_GAME,
-                 PRE_GENERATION,
-                 SCATTER -> false;
-            default -> true;
-        };
-    }
-
-    public synchronized void updateState() {
+    public void updateState() {
         Phase phase = this.gameManager.getPhase();
 
         if (phase == Phase.OFF_GAME) {
             this.chronometer = 0;
         }
 
-        this.progressEnded = false;
-        this.progressCondition = () -> true;
+        this.progressCondition = ALWAYS_TRUE;
         this.progressDelta = 0.0D;
+        this.progressEnded = false;
         this.prefix = "";
         this.suffix = "";
 
@@ -101,169 +90,134 @@ public final class GameTimer {
             }
         }
 
+        if (phase == Phase.PRE_GENERATION || phase == Phase.SCATTER) {
+            this.suffix = "0.0%";
+        }
+
         this.updateName(phase);
     }
 
-    public synchronized void updatePregenerationProgress(float progress) {
+    // External progress
+
+    public void updatePregenerationProgress(float progress) {
         if (this.gameManager.getPhase() != Phase.PRE_GENERATION) return;
 
-        this.setProgress(progress / 100.0F);
-        this.suffix = "%.1f%%".formatted(progress);
+        float clampedProgress = Math.clamp(progress, 0.0F, 100.0F);
+
+        this.setProgress(clampedProgress / 100.0F);
+        this.suffix = "%.1f%%".formatted(clampedProgress);
         this.updateName(Phase.PRE_GENERATION);
+
+        this.tryAdvance(Phase.PRE_GENERATION);
     }
 
-    public synchronized void updateScatterProgress(float progress) {
+    public void updateScatterProgress(float progress) {
         if (this.gameManager.getPhase() != Phase.SCATTER) return;
 
-        this.setProgress(progress / 100.0F);
-        this.suffix = "%.1f%%".formatted(progress);
+        float clampedProgress = Math.clamp(progress, 0.0F, 100.0F);
+
+        this.setProgress(clampedProgress / 100.0F);
+        this.suffix = "%.1f%%".formatted(clampedProgress);
         this.updateName(Phase.SCATTER);
     }
 
-    public synchronized void addViewer(Player player) {
-        this.bossBar.addViewer(player);
+    // Control API
+
+    public void completeCurrentPhase() {
+        Phase phase = this.gameManager.getPhase();
+
+        this.progressCondition = ALWAYS_TRUE;
+
+        switch (phase.getProgression()) {
+            case FILL -> this.setProgress(1.0F);
+            case DRAIN -> this.setProgress(0.0F);
+
+            case EMPTY, FULL -> {
+                if (phase.allowsForcedAdvance()) {
+                    this.advance(phase);
+                }
+
+                return;
+            }
+        }
+
+        this.updateName(phase);
+
+        if (phase.allowsForcedAdvance()) {
+            this.tryAdvance(phase, true);
+        }
     }
 
-    public synchronized void removeViewer(Player player) {
-        this.bossBar.removeViewer(player);
-    }
-
-    public synchronized void modifyChronometer(IntUnaryOperator operation) {
-        this.chronometer = operation.applyAsInt(this.chronometer);
+    public void setChronometer(int seconds) {
+        this.chronometer = Math.max(0, seconds);
         this.updateName(this.gameManager.getPhase());
     }
 
-    public synchronized void modifyProgress(DoubleUnaryOperator operation) {
-        this.setProgress((float) operation.applyAsDouble(this.bossBar.progress()));
+    public void resetChronometer() {
+        this.setChronometer(0);
     }
 
-    public synchronized void resetChronometer() {
-        this.chronometer = 0;
-        this.updateName(this.gameManager.getPhase());
+    public void modifyChronometer(IntUnaryOperator operation) {
+        this.setChronometer(operation.applyAsInt(this.chronometer));
     }
 
-    public synchronized void setProgress(float progress) {
+    public void setProgress(float progress) {
         this.bossBar.progress(Math.clamp(progress, 0.0F, 1.0F));
     }
 
-    public synchronized void setPrefix(String prefix) {
+    public void modifyProgress(DoubleUnaryOperator operation) {
+        this.setProgress((float) operation.applyAsDouble(this.bossBar.progress()));
+    }
+
+    public void setPrefix(String prefix) {
         this.prefix = prefix;
         this.updateName(this.gameManager.getPhase());
     }
 
-    public synchronized void setSuffix(String suffix) {
+    public void setSuffix(String suffix) {
         this.suffix = suffix;
         this.updateName(this.gameManager.getPhase());
     }
 
-    public synchronized void setProgressCondition(BooleanSupplier condition) {
+    public void setProgressCondition(BooleanSupplier condition) {
         this.progressCondition = condition;
     }
 
-    public synchronized void resetProgressCondition() {
-        this.progressCondition = () -> true;
+    public void resetProgressCondition() {
+        this.progressCondition = ALWAYS_TRUE;
     }
 
-    private void updateName(Phase phase) {
-        if (phase == Phase.OFF_GAME) {
-            this.bossBar.name(Component.text(phase.getLabel(), HardlandsColor.LIGHT_GRAY));
-            return;
-        }
+    // Viewers
 
-        String label = this.prefix.isEmpty() ? phase.getLabel() : this.prefix;
-
-        Component content = Component.text(label, HardlandsColor.LIGHT_GRAY)
-                .append(Component.text(" » ", HardlandsColor.LIGHT_GRAY))
-                .append(Component.text(this.computeSuffix(), HardlandsColor.LIGHT_GRAY))
-                .append(Component.text(this.computeTransitionSuffix(phase), HardlandsColor.LIGHT_GRAY));
-
-        if (phase != Phase.SURVIVAL) {
-            this.bossBar.name(content);
-            return;
-        }
-
-        TextColor swordColor = this.isPvpEnabled()
-                ? HardlandsColor.PRIMARY
-                : NamedTextColor.WHITE;
-
-        this.bossBar.name(
-                Component.text("☠ ", swordColor)
-                        .append(content)
-                        .append(Component.text(" ☠", swordColor))
-        );
+    public void addViewer(Player player) {
+        this.bossBar.addViewer(player);
     }
 
-    private String computePrefix(Phase phase) {
-        return this.prefix.isEmpty()
-                ? phase.getLabel()
-                : this.prefix;
+    public void removeViewer(Player player) {
+        this.bossBar.removeViewer(player);
     }
 
-    private Component computePrefixComponent(Phase phase) {
-        String label = this.prefix.isEmpty() ? phase.getLabel() : this.prefix;
-        if (phase != Phase.SURVIVAL) return Component.text(label);
+    // Phase progression
 
-        TextColor swordColor = this.isPvpEnabled()
-                ? HardlandsColor.PRIMARY
-                : HardlandsColor.LIGHT_GRAY;
-
-        return Component.text("⚔ ", swordColor)
-                .append(Component.text(label))
-                .append(Component.text(" ⚔", swordColor));
+    private void tryAdvance(Phase phase) {
+        this.tryAdvance(phase, false);
     }
 
-    private boolean isPvpEnabled() {
-        int gracePeriodMinute = this.gameManager.getGracePeriodMinuteOption().getValue();
-        int pvpMinute = this.gameManager.getPvpMinuteOption().getValue();
-        int pvpStartSeconds = (pvpMinute - gracePeriodMinute) * 60;
+    private void tryAdvance(Phase phase, boolean forced) {
+        if (this.progressEnded) return;
+        if (this.gameManager.getPhase() != phase) return;
+        if (!forced && !phase.advancesAutomatically()) return;
+        if (!this.progressCondition.getAsBoolean()) return;
+        if (!this.isProgressComplete(phase)) return;
 
-        return this.chronometer >= pvpStartSeconds;
+        this.advance(phase);
     }
 
-    private String computeSuffix() {
-        return this.suffix.isEmpty()
-                ? TimeFormatter.format(Duration.ofSeconds(this.chronometer))
-                : this.suffix;
-    }
+    private void advance(Phase phase) {
+        if (this.gameManager.getPhase() != phase) return;
 
-    private String computeTransitionSuffix(Phase phase) {
-        if (phase == Phase.SURVIVAL) {
-            return " » " + TimeFormatter.format(Duration.ofMinutes(this.getSurvivalTargetMinute()));
-        }
-
-        boolean showsTargetMinute = phase.getProgression() == Phase.Progression.DRAIN
-                || phase == Phase.BORDER_SHRINK
-                || phase == Phase.FINAL_SHRINK;
-
-        if (!showsTargetMinute) return "";
-
-        Integer minute = this.findNextMinute(phase);
-        return minute == null
-                ? ""
-                : " » " + TimeFormatter.format(Duration.ofMinutes(minute));
-    }
-
-    private int getSurvivalTargetMinute() {
-        int survivalMinute = this.gameManager.getGracePeriodMinuteOption().getValue();
-        int pvpMinute = this.gameManager.getPvpMinuteOption().getValue();
-        int borderShrinkMinute = this.gameManager.getBorderShrinkMinuteOption().getValue();
-
-        int pvpStartSeconds = (pvpMinute - survivalMinute) * 60;
-
-        return this.chronometer < pvpStartSeconds
-                ? pvpMinute
-                : borderShrinkMinute;
-    }
-
-    private Integer findNextMinute(Phase phase) {
-        Phase[] phases = Phase.values();
-
-        for (int index = phase.ordinal() + 1; index < phases.length; index++) {
-            Integer minute = phases[index].getMinute(this.gameManager);
-            if (minute != null) return minute;
-        }
-
-        return null;
+        this.progressEnded = true;
+        phase.next().ifPresent(this.gameManager::changePhase);
     }
 
     private boolean isProgressComplete(Phase phase) {
@@ -275,36 +229,77 @@ public final class GameTimer {
     }
 
     private double calculateProgressDelta(Phase phase) {
-        Integer startMinute = phase.getMinute(this.gameManager);
-        if (startMinute == null) return 0.0D;
-
-        Integer nextMinute = this.findNextMinute(phase);
-        if (nextMinute == null) return 0.0D;
-
-        int duration = (nextMinute - startMinute) * 60;
-        return duration > 0 ? 1.0D / duration : 0.0D;
+        long durationSeconds = phase.getDuration(this.gameManager).toSeconds();
+        return durationSeconds > 0L ? 1.0D / durationSeconds : 0.0D;
     }
 
-    public synchronized void completeCurrentPhase() {
-        Phase phase = this.gameManager.getPhase();
+    // Bossbar rendering
 
-        this.progressCondition = () -> true;
-
-        switch (phase.getProgression()) {
-            case FILL -> this.setProgress(1.0F);
-            case DRAIN -> this.setProgress(0.0F);
-
-            case EMPTY, FULL -> {
-                phase.next().ifPresent(this.gameManager::changePhase);
-                return;
-            }
+    private void updateName(Phase phase) {
+        if (phase == Phase.OFF_GAME) {
+            this.bossBar.name(Component.text(phase.getLabel(), NamedTextColor.WHITE));
+            return;
         }
 
-        this.tryAdvance(phase);
+        String label = this.prefix.isEmpty()
+                ? phase.getLabel()
+                : this.prefix;
+
+        Component content = Component.text(label, NamedTextColor.WHITE)
+                .append(Component.text(SEPARATOR, NamedTextColor.WHITE))
+                .append(Component.text(this.computeSuffix(), NamedTextColor.WHITE))
+                .append(Component.text(this.computeTransitionSuffix(phase), NamedTextColor.WHITE));
+
+        if (phase != Phase.SURVIVAL) {
+            this.bossBar.name(content);
+            return;
+        }
+
+        TextColor skullColor = this.isPvpEnabled()
+                ? HardlandsColor.PRIMARY
+                : HardlandsColor.LIGHT_GRAY;
+
+        this.bossBar.name(
+                Component.text("☠ ", skullColor)
+                        .append(content)
+                        .append(Component.text(" ☠", skullColor))
+        );
     }
 
-    public synchronized void setChronometer(int seconds) {
-        this.chronometer = Math.max(0, seconds);
-        this.updateName(this.gameManager.getPhase());
+    private String computeSuffix() {
+        return this.suffix.isEmpty()
+                ? TimeFormatter.format(Duration.ofSeconds(this.chronometer))
+                : this.suffix;
+    }
+
+    private String computeTransitionSuffix(Phase phase) {
+        if (phase == Phase.SURVIVAL) {
+            return TRANSITION_SEPARATOR
+                    + TimeFormatter.format(Duration.ofMinutes(this.getSurvivalTargetMinute()));
+        }
+
+        if (!phase.showsTargetMinute()) return "";
+
+        Integer minute = phase.getNextMinute(this.gameManager);
+
+        return minute == null
+                ? ""
+                : TRANSITION_SEPARATOR + TimeFormatter.format(Duration.ofMinutes(minute));
+    }
+
+    // Survival state
+
+    private boolean isPvpEnabled() {
+        int gracePeriodMinute = this.gameManager.getGracePeriodMinuteOption().getValue();
+        int pvpMinute = this.gameManager.getPvpMinuteOption().getValue();
+        int pvpStartSeconds = (pvpMinute - gracePeriodMinute) * 60;
+
+        return this.chronometer >= pvpStartSeconds;
+    }
+
+    private int getSurvivalTargetMinute() {
+        return this.isPvpEnabled()
+                ? this.gameManager.getBorderShrinkMinuteOption().getValue()
+                : this.gameManager.getPvpMinuteOption().getValue();
     }
 }

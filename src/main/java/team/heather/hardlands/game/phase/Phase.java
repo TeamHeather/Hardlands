@@ -1,8 +1,8 @@
 package team.heather.hardlands.game.phase;
 
+import java.time.Duration;
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.function.ToIntFunction;
 
 import net.kyori.adventure.bossbar.BossBar;
 import team.heather.hardlands.Hardlands;
@@ -15,21 +15,21 @@ public enum Phase {
             "Fuera de partida",
             Stage.OFF_GAME,
             Progression.EMPTY,
-            PhaseHandler.OFF_GAME
+            PhaseHandlers.OFF_GAME
     ),
 
     PRE_GENERATION(
             "Pregeneración",
             Stage.OFF_GAME,
             Progression.FILL,
-            PhaseHandler.PRE_GENERATION
+            PhaseHandlers.PRE_GENERATION
     ),
 
     WAITING(
             "Espera",
             Stage.OFF_GAME,
             Progression.DRAIN,
-            PhaseHandler.WAITING,
+            PhaseHandlers.WAITING,
             GameManagerConfiguration::getWaitingMinuteOption
     ),
 
@@ -37,23 +37,22 @@ public enum Phase {
             "Dispersión",
             Stage.OFF_GAME,
             Progression.FILL,
-            PhaseHandler.SCATTER
+            PhaseHandlers.SCATTER
     ),
 
     SURVIVAL(
-        "Supervivencia",
-        Stage.SURVIVAL,
-        Progression.DRAIN,
-        PhaseHandler.SURVIVAL,
-        GameManagerConfiguration::getGracePeriodMinuteOption
+            "Supervivencia",
+            Stage.SURVIVAL,
+            Progression.DRAIN,
+            PhaseHandlers.SURVIVAL,
+            GameManagerConfiguration::getGracePeriodMinuteOption
     ),
-
 
     BORDER_SHRINK(
             "Reducción del borde",
             Stage.MEETUP,
             Progression.FILL,
-            PhaseHandler.BORDER_SHRINK,
+            PhaseHandlers.BORDER_SHRINK,
             GameManagerConfiguration::getBorderShrinkMinuteOption
     ),
 
@@ -61,7 +60,7 @@ public enum Phase {
             "Encuentro",
             Stage.MEETUP,
             Progression.DRAIN,
-            PhaseHandler.MEETUP,
+            PhaseHandlers.MEETUP,
             GameManagerConfiguration::getMeetupMinuteOption
     ),
 
@@ -69,7 +68,7 @@ public enum Phase {
             "Reducción final",
             Stage.MEETUP,
             Progression.FILL,
-            PhaseHandler.FINAL_SHRINK,
+            PhaseHandlers.FINAL_SHRINK,
             GameManagerConfiguration::getFinalShrinkMinuteOption
     ),
 
@@ -77,15 +76,17 @@ public enum Phase {
             "Combate a muerte",
             Stage.DEATHMATCH,
             Progression.FULL,
-            PhaseHandler.DEATHMATCH,
+            PhaseHandlers.DEATHMATCH,
             GameManagerConfiguration::getDeathmatchMinuteOption
     );
+
+    private static final Phase[] VALUES = values();
 
     private final String label;
     private final Stage stage;
     private final Progression progression;
     private final PhaseHandler handler;
-    private final ToIntFunction<GameManagerConfiguration> minute;
+    private final Function<GameManagerConfiguration, Option<Integer>> minuteOption;
 
     Phase(
             String label,
@@ -93,7 +94,7 @@ public enum Phase {
             Progression progression,
             PhaseHandler handler
     ) {
-        this(label, stage, progression, handler, (ToIntFunction<GameManagerConfiguration>) null);
+        this(label, stage, progression, handler, null);
     }
 
     Phase(
@@ -103,29 +104,14 @@ public enum Phase {
             PhaseHandler handler,
             Function<GameManagerConfiguration, Option<Integer>> minuteOption
     ) {
-        this(
-                label,
-                stage,
-                progression,
-                handler,
-                (ToIntFunction<GameManagerConfiguration>)
-                        configuration -> minuteOption.apply(configuration).getValue()
-        );
-    }
-
-    Phase(
-            String label,
-            Stage stage,
-            Progression progression,
-            PhaseHandler handler,
-            ToIntFunction<GameManagerConfiguration> minute
-    ) {
         this.label = label;
         this.stage = stage;
         this.progression = progression;
         this.handler = handler;
-        this.minute = minute;
+        this.minuteOption = minuteOption;
     }
+
+    // Lifecycle
 
     public void onStart(Hardlands plugin) {
         this.handler.onStart(plugin, this);
@@ -135,32 +121,83 @@ public enum Phase {
         this.handler.onStop(plugin, this);
     }
 
+    // Navigation
+
     public Optional<Phase> previous() {
         int index = this.ordinal() - 1;
-        return index >= 0 ? Optional.of(values()[index]) : Optional.empty();
+
+        return index >= 0
+                ? Optional.of(VALUES[index])
+                : Optional.empty();
     }
 
     public Optional<Phase> next() {
         int index = this.ordinal() + 1;
-        Phase[] phases = values();
 
-        return index < phases.length ? Optional.of(phases[index]) : Optional.empty();
+        return index < VALUES.length
+                ? Optional.of(VALUES[index])
+                : Optional.empty();
     }
 
-    public String getLabel() {
-        return this.label;
-    }
-
-    public Stage getStage() {
-        return this.stage;
-    }
-
-    public Progression getProgression() {
-        return this.progression;
-    }
+    // Timing
 
     public Integer getMinute(GameManagerConfiguration configuration) {
-        return this.minute == null ? null : this.minute.applyAsInt(configuration);
+        if (this.minuteOption == null) return null;
+        return this.minuteOption.apply(configuration).getValue();
+    }
+
+    public Integer getNextMinute(GameManagerConfiguration configuration) {
+        for (int index = this.ordinal() + 1; index < VALUES.length; index++) {
+            Integer minute = VALUES[index].getMinute(configuration);
+            if (minute != null) return minute;
+        }
+
+        return null;
+    }
+
+    public Duration getDuration(GameManagerConfiguration configuration) {
+        Integer startMinute = this.getMinute(configuration);
+        Integer endMinute = this.getNextMinute(configuration);
+
+        if (startMinute == null || endMinute == null) {
+            return Duration.ZERO;
+        }
+
+        int durationMinutes = endMinute - startMinute;
+
+        return durationMinutes > 0
+                ? Duration.ofMinutes(durationMinutes)
+                : Duration.ZERO;
+    }
+
+    // Behavior
+
+    public boolean advancesChronometer() {
+        return switch (this) {
+            case OFF_GAME,
+                 PRE_GENERATION,
+                 SCATTER -> false;
+            default -> true;
+        };
+    }
+
+    public boolean advancesAutomatically() {
+        return switch (this) {
+            case OFF_GAME,
+                 SCATTER,
+                 DEATHMATCH -> false;
+            default -> true;
+        };
+    }
+
+    public boolean allowsForcedAdvance() {
+        return this != SCATTER;
+    }
+
+    public boolean showsTargetMinute() {
+        return this.progression == Progression.DRAIN
+                || this == BORDER_SHRINK
+                || this == FINAL_SHRINK;
     }
 
     public boolean isScatterQueueOpen() {
@@ -182,6 +219,20 @@ public enum Phase {
                  DEATHMATCH -> true;
             default -> false;
         };
+    }
+
+    // Getters
+
+    public String getLabel() {
+        return this.label;
+    }
+
+    public Stage getStage() {
+        return this.stage;
+    }
+
+    public Progression getProgression() {
+        return this.progression;
     }
 
     public enum Stage {

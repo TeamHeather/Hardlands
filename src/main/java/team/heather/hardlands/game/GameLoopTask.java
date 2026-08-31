@@ -1,29 +1,46 @@
 package team.heather.hardlands.game;
 
-import java.time.Duration;
+import org.bukkit.Bukkit;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.scheduler.BukkitTask;
 
-import team.heather.hardlands.Hardlands;
+public final class GameLoopTask implements AutoCloseable {
 
-public final class GameLoopTask {
+		private static final long INITIAL_DELAY_TICKS = 20L;
+		private static final long PERIOD_TICKS = 20L;
 
-		private static final Duration TICK_INTERVAL = Duration.ofSeconds(1);
+		private final Plugin plugin;
+		private final GameTimer timer;
 
-		private final Hardlands plugin;
-		private final GameManager gameManager;
+		private BukkitTask task;
 
-		public GameLoopTask(Hardlands plugin, GameManager gameManager) {
+		public GameLoopTask(Plugin plugin, GameTimer timer) {
 				this.plugin = plugin;
-				this.gameManager = gameManager;
+				this.timer = timer;
 		}
 
 		public void start() {
-				this.plugin.getSingleThreadScheduler().loop(
-								_ -> this.tick(),
-								TICK_INTERVAL
+				if (this.task != null) {
+						throw new IllegalStateException("Game loop is already running");
+				}
+
+				this.task = Bukkit.getScheduler().runTaskTimer(
+								this.plugin,
+								this.timer::updateProgress,
+								INITIAL_DELAY_TICKS,
+								PERIOD_TICKS
 				);
 		}
 
-		private void tick() {
-				this.gameManager.getTimerManager().updateProgress();
+		@Override
+		public void close() {
+				if (this.task == null) return;
+
+				this.task.cancel();
+				this.task = null;
+		}
+
+		public boolean isRunning() {
+				return this.task != null;
 		}
 }

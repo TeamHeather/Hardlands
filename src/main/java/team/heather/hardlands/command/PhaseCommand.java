@@ -4,7 +4,6 @@ import co.aikar.commands.BaseCommand;
 import co.aikar.commands.annotation.CommandAlias;
 import co.aikar.commands.annotation.Subcommand;
 import org.bukkit.command.CommandSender;
-import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.game.GameManager;
 import team.heather.hardlands.game.phase.Phase;
 
@@ -12,10 +11,6 @@ import team.heather.hardlands.game.phase.Phase;
 public final class PhaseCommand extends BaseCommand {
 
     private final GameManager gameManager;
-
-    public PhaseCommand() {
-        this(Hardlands.getInstance().getGameManager());
-    }
 
     public PhaseCommand(GameManager gameManager) {
         this.gameManager = gameManager;
@@ -28,7 +23,7 @@ public final class PhaseCommand extends BaseCommand {
 
     @Subcommand("next")
     public void onNext(CommandSender sender) {
-        this.gameManager.getTimerManager().completeCurrentPhase();
+        this.gameManager.completeCurrentPhase();
     }
 
     @Subcommand("previous")
@@ -40,6 +35,6 @@ public final class PhaseCommand extends BaseCommand {
 
     @Subcommand("time")
     public void onTime(CommandSender sender, int seconds) {
-        this.gameManager.getTimerManager().setChronometer(seconds);
+        this.gameManager.setChronometer(seconds);
     }
 }

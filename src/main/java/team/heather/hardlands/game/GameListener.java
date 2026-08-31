@@ -5,28 +5,32 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.game.phase.Phase;
+import team.heather.hardlands.game.world.ScatterManager;
 
 public final class GameListener implements Listener {
 
-		private final GameManager manager;
+		private final GameManager gameManager;
+		private final ScatterManager scatterManager;
 
-		public GameListener(GameManager manager) {
-				this.manager = manager;
+		public GameListener(GameManager gameManager, ScatterManager scatterManager) {
+				this.gameManager = gameManager;
+				this.scatterManager = scatterManager;
 		}
 
 		@EventHandler
 		private void onPlayerJoin(PlayerJoinEvent event) {
 				Player player = event.getPlayer();
+				Phase phase = this.gameManager.getPhase();
 
-				this.manager.getTimerManager().addViewer(player);
+				this.gameManager.addViewer(player);
 
-				if (this.manager.getPhase().isScatterQueueOpen()) {
-						Hardlands.getInstance()
-										.getWorldManager()
-										.getScatterManager()
-										.enqueue(player);
+				if (!phase.isScatterQueueOpen()) return;
+
+				this.scatterManager.enqueue(player);
+
+				if (phase == Phase.SCATTER) {
+						this.scatterManager.scatterNext();
 				}
 		}
 
@@ -34,13 +38,10 @@ public final class GameListener implements Listener {
 		private void onPlayerQuit(PlayerQuitEvent event) {
 				Player player = event.getPlayer();
 
-				this.manager.getTimerManager().removeViewer(player);
+				this.gameManager.removeViewer(player);
 
-				if (this.manager.getPhase().isScatterQueueOpen()) {
-						Hardlands.getInstance()
-										.getWorldManager()
-										.getScatterManager()
-										.remove(player);
+				if (this.gameManager.getPhase().isScatterQueueOpen()) {
+						this.scatterManager.remove(player);
 				}
 		}
 }

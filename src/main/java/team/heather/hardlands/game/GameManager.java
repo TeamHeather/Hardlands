@@ -2,7 +2,6 @@ package team.heather.hardlands.game;
 
 import java.util.function.BooleanSupplier;
 
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.config.ConfigBuilder;
@@ -23,22 +22,109 @@ import team.heather.hardlands.game.phase.Phase;
 )
 public final class GameManager extends GameManagerConfiguration {
 
-    private final GameTimer timerManager;
     private final Hardlands plugin;
+    private final GameTimer timer;
+    private final GameLoopTask loopTask;
 
     private Phase phase = Phase.OFF_GAME;
     private boolean initialized;
 
     public GameManager(Hardlands plugin) {
         this.plugin = plugin;
-        this.timerManager = new GameTimer(this);
+        this.timer = new GameTimer(this);
+        this.loopTask = new GameLoopTask(plugin, this.timer);
     }
+
+    // Lifecycle
+
+    public void initialize() {
+        if (this.initialized) {
+            throw new IllegalStateException("Game is already initialized");
+        }
+
+        this.timer.updateState();
+        this.loopTask.start();
+
+        this.initialized = true;
+    }
+
+    public void shutdown() {
+        this.loopTask.close();
+        this.initialized = false;
+    }
+
+    // Phase API
+
+    public void changePhase(Phase newPhase) {
+        if (newPhase == null) {
+            throw new IllegalArgumentException("Phase cannot be null");
+        }
+
+        Phase previousPhase = this.phase;
+
+        previousPhase.onStop(this.plugin);
+
+        this.phase = newPhase;
+        this.timer.updateState();
+
+        newPhase.onStart(this.plugin);
+    }
+
+    public void completeCurrentPhase() {
+        this.timer.completeCurrentPhase();
+    }
+
+    // Timer API
+
+    public void setChronometer(int seconds) {
+        this.timer.setChronometer(seconds);
+    }
+
+    public void resetChronometer() {
+        this.timer.resetChronometer();
+    }
+
+    public void setTimerProgressCondition(BooleanSupplier condition) {
+        this.timer.setProgressCondition(condition);
+    }
+
+    public void resetTimerProgressCondition() {
+        this.timer.resetProgressCondition();
+    }
+
+    public void updatePregenerationProgress(float progress) {
+        this.timer.updatePregenerationProgress(progress);
+    }
+
+    public void updateScatterProgress(float progress) {
+        this.timer.updateScatterProgress(progress);
+    }
+
+    // Viewer API
+
+    public void addViewer(Player player) {
+        this.timer.addViewer(player);
+    }
+
+    public void removeViewer(Player player) {
+        this.timer.removeViewer(player);
+    }
+
+    // Getters
+
+    public Phase getPhase() {
+        return this.phase;
+    }
+
+    public GameTimer getTimerManager() {
+        return this.timer;
+    }
+
+    // Configuration
 
     @Override
     public boolean isConfigurationValid() {
-        if (!super.isConfigurationValid()) {
-            return false;
-        }
+        if (!super.isConfigurationValid()) return false;
 
         int waiting = super.waitingMinute.getValue();
         int gracePeriod = super.gracePeriodMinute.getValue();
@@ -54,38 +140,5 @@ public final class GameManager extends GameManagerConfiguration {
                 && borderShrink < meetup
                 && meetup < finalShrink
                 && finalShrink < deathmatch;
-    }
-
-    public void initialize() {
-        if (this.initialized) {
-            throw new IllegalStateException("Game is already initialized");
-        }
-
-        this.timerManager.updateState();
-
-        new GameLoopTask(this.plugin, this).start();
-
-        Bukkit.getPluginManager().registerEvents(new GameListener(this), this.plugin);
-
-        this.initialized = true;
-    }
-
-    public synchronized void changePhase(Phase newPhase) {
-        Phase previousPhase = this.phase;
-
-        previousPhase.onStop(this.plugin);
-
-        this.phase = newPhase;
-        this.timerManager.updateState();
-
-        newPhase.onStart(this.plugin);
-    }
-
-    public Phase getPhase() {
-        return this.phase;
-    }
-
-    public GameTimer getTimerManager() {
-        return this.timerManager;
     }
 }

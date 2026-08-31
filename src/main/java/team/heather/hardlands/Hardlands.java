@@ -10,17 +10,17 @@ import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 import team.heather.hardlands.command.HardlandsCommand;
-import team.heather.hardlands.core.SingleThreadScheduler;
 import team.heather.hardlands.command.PhaseCommand;
+import team.heather.hardlands.core.SingleThreadScheduler;
 import team.heather.hardlands.feature.item.ItemListener;
 import team.heather.hardlands.feature.player.PlayerListener;
-import team.heather.hardlands.ui.inventory.InventoryListener;
 import team.heather.hardlands.game.GameListener;
 import team.heather.hardlands.game.GameManager;
 import team.heather.hardlands.game.preset.PresetRepository;
 import team.heather.hardlands.game.world.WorldManager;
 import team.heather.hardlands.module.enchantment.EnchantmentManager;
 import team.heather.hardlands.module.scenario.ScenarioManager;
+import team.heather.hardlands.ui.inventory.InventoryListener;
 import team.heather.hardlands.util.HardlandsColor;
 
 public final class Hardlands extends JavaPlugin {
@@ -42,48 +42,42 @@ public final class Hardlands extends JavaPlugin {
     public void onEnable() {
         instance = this;
 
-        this.presetRepository = new PresetRepository(this, "presets");
-        this.enchantmentManager = new EnchantmentManager(this);
-        this.scenarioManager = new ScenarioManager(this);
-        this.gameManager = new GameManager(this);
-        this.worldManager = new WorldManager();
-
-        this.presetRepository.load("default");
+        this.initializeManagers();
+        this.getPresetRepository().load("default");
 
         this.registerCommands(
                 new HardlandsCommand(),
-                new PhaseCommand()
+                new PhaseCommand(this.getGameManager())
         );
+
         this.registerListeners(
                 new PlayerListener(),
                 new InventoryListener(),
                 new ItemListener(),
-                new GameListener(this.gameManager)
+                new GameListener(
+                        this.getGameManager(),
+                        this.getWorldManager().getScatterManager()
+                )
         );
 
-        this.gameManager.initialize();
-
-        getLogger().info(System.lineSeparator() + """
-             _    _          _____  _____  _               _   _ _____   _____
-            | |  | |   /\\   |  __ \\|  __ \\| |        /\\   | \\ | |  __ \\ / ____|
-            | |__| |  /  \\  | |__) | |  | | |       /  \\  |  \\| | |  | | (___
-            |  __  | / /\\ \\ |  _  /| |  | | |      / /\\ \\ | . ` | |  | |\\___ \\
-            | |  | |/ ____ \\| | \\ \\| |__| | |____ / ____ \\| |\\  | |__| |____) |
-            |_|  |_/_/    \\_\\_|  \\_\\_____/|______/_/    \\_\\_| \\_|_____/|_____/
-            """);
+        this.getGameManager().initialize();
 
         getLogger().info("Hardlands successfully enabled.");
     }
 
     @Override
     public void onDisable() {
+        if (this.gameManager != null) {
+            this.gameManager.shutdown();
+        }
+
         this.singleThreadScheduler.close();
         instance = null;
 
         getLogger().info("Hardlands successfully disabled.");
     }
 
-    //* Public API
+    // Public API
 
     public static NamespacedKey createKey(String path) {
         return NamespacedKey.fromString(path, getInstance());
@@ -117,19 +111,37 @@ public final class Hardlands extends JavaPlugin {
         return requireInitialized(this.worldManager, "WorldManager");
     }
 
-    //* Registration
+    // Initialization
+
+    private void initializeManagers() {
+        this.presetRepository = new PresetRepository(this, "presets");
+        this.enchantmentManager = new EnchantmentManager(this);
+        this.scenarioManager = new ScenarioManager(this);
+        this.gameManager = new GameManager(this);
+        this.worldManager = new WorldManager();
+    }
 
     private void registerCommands(BaseCommand... commands) {
         PaperCommandManager commandManager = new PaperCommandManager(this);
-        for (BaseCommand command : commands) commandManager.registerCommand(command);
+
+        for (BaseCommand command : commands) {
+            commandManager.registerCommand(command);
+        }
     }
 
     private void registerListeners(Listener... listeners) {
-        for (Listener listener : listeners) Bukkit.getPluginManager().registerEvents(listener, this);
+        for (Listener listener : listeners) {
+            Bukkit.getPluginManager().registerEvents(listener, this);
+        }
     }
 
+    // Internal utility
+
     private static <T> T requireInitialized(@Nullable T value, String name) {
-        if (value == null) throw new IllegalStateException(name + " has not been initialized.");
+        if (value == null) {
+            throw new IllegalStateException(name + " has not been initialized.");
+        }
+
         return value;
     }
 }
