@@ -1,5 +1,8 @@
 package team.heather.hardlands.ui.dialog;
 
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -18,7 +21,6 @@ import org.bukkit.entity.Player;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.core.config.Option;
 import team.heather.hardlands.game.GameManager;
-import team.heather.hardlands.game.phase.Phase;
 import team.heather.hardlands.util.HardlandsColor;
 import team.heather.hardlands.util.text.TextFormatter;
 
@@ -32,11 +34,24 @@ public final class PhaseConfigurationDialog {
     private static final float MAX_MINUTE = 180.0F;
     private static final float MINUTE_STEP = 1.0F;
 
+    private static final String START_TIME = "startTime";
+
+    private static final String GRACE_PERIOD = "gracePeriodMinute";
+    private static final String PVP = "pvpMinute";
+    private static final String BORDER_SHRINK = "borderShrinkMinute";
+    private static final String MEETUP = "meetupMinute";
+    private static final String FINAL_SHRINK = "finalShrinkMinute";
+    private static final String DEATHMATCH = "deathmatchMinute";
+
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT);
+    private static final DateTimeFormatter CURRENT_TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.ROOT);
+
+
     private PhaseConfigurationDialog() {}
 
     public static void show(Player player) {
         GameManager manager = Hardlands.getInstance().getGameManager();
-        List<PhaseSetting> settings = createSettings(manager);
+        List<MinuteSetting> minuteSettings = createMinuteSettings(manager);
 
         player.showDialog(Dialog.create(builder -> builder
                 .empty()
@@ -45,86 +60,99 @@ public final class PhaseConfigurationDialog {
                         .canCloseWithEscape(true)
                         .pause(false)
                         .afterAction(DialogBase.DialogAfterAction.NONE)
-                        .inputs(createInputs(settings))
+                        .inputs(createInputs(manager, minuteSettings))
                         .build())
                 .type(DialogType.confirmation(
-                        createSaveButton(settings),
+                        createSaveButton(manager, minuteSettings),
                         createCancelButton()
                 ))));
     }
 
-    private static List<PhaseSetting> createSettings(GameManager manager) {
-        return List.of(
-                new PhaseSetting(
-                        Phase.WAITING,
-                        manager.getWaitingMinuteOption(),
-                        inputKey(Phase.WAITING)
-                ),
-                new PhaseSetting(
-                        Phase.BORDER_SHRINK,
-                        manager.getBorderShrinkMinuteOption(),
-                        inputKey(Phase.BORDER_SHRINK)
-                ),
-                new PhaseSetting(
-                        Phase.MEETUP,
-                        manager.getMeetupMinuteOption(),
-                        inputKey(Phase.MEETUP)
-                ),
-                new PhaseSetting(
-                        Phase.FINAL_SHRINK,
-                        manager.getFinalShrinkMinuteOption(),
-                        inputKey(Phase.FINAL_SHRINK)
-                ),
-                new PhaseSetting(
-                        Phase.DEATHMATCH,
-                        manager.getDeathmatchMinuteOption(),
-                        inputKey(Phase.DEATHMATCH)
-                )
-        );
-    }
+    // Inputs
 
-    private static List<DialogInput> createInputs(List<PhaseSetting> settings) {
-        List<DialogInput> inputs = new ArrayList<>(settings.size());
+    private static List<DialogInput> createInputs(
+            GameManager manager,
+            List<MinuteSetting> minuteSettings
+    ) {
+        List<DialogInput> inputs = new ArrayList<>(minuteSettings.size() + 1);
 
-        for (PhaseSetting setting : settings) {
-            Integer value = setting.option().getValue();
+        inputs.add(createStartTimeInput(manager));
 
-            inputs.add(DialogInput.numberRange(
-                    setting.inputKey(),
-                    INPUT_WIDTH,
-                    TextFormatter.tinyCaps(setting.phase().getLabel()).color(NamedTextColor.WHITE),
-                    "%1$s: %2$s min",
-                    MIN_MINUTE,
-                    MAX_MINUTE,
-                    value == null ? null : value.floatValue(),
-                    MINUTE_STEP
-            ));
+        for (MinuteSetting setting : minuteSettings) {
+            inputs.add(createMinuteInput(setting));
         }
 
         return inputs;
     }
 
-    private static ActionButton createSaveButton(List<PhaseSetting> settings) {
+    private static DialogInput createStartTimeInput(GameManager manager) {
+        LocalTime startTime = manager.getStartTimeOption().getValue();
+        LocalTime currentTime = LocalTime.now();
+
+        Component label = TextFormatter.tinyCaps("Hora de inicio")
+                .color(NamedTextColor.WHITE)
+                .append(Component.newline())
+                .append(Component.text(
+                        "Hora actual: " + CURRENT_TIME_FORMATTER.format(currentTime),
+                        HardlandsColor.LIGHT_GRAY
+                ));
+
+        return DialogInput.text(START_TIME, label)
+                .width(INPUT_WIDTH)
+                .initial(startTime == null ? "" : TIME_FORMATTER.format(startTime))
+                .maxLength(5)
+                .build();
+    }
+
+    private static DialogInput createMinuteInput(MinuteSetting setting) {
+        Integer value = setting.option().getValue();
+
+        return DialogInput.numberRange(
+                setting.key(),
+                INPUT_WIDTH,
+                TextFormatter.tinyCaps(setting.label())
+                        .color(NamedTextColor.WHITE),
+                "%1$s: %2$s min",
+                MIN_MINUTE,
+                MAX_MINUTE,
+                value == null ? null : value.floatValue(),
+                MINUTE_STEP
+        );
+    }
+
+    // Actions
+
+    private static ActionButton createSaveButton(
+            GameManager manager,
+            List<MinuteSetting> minuteSettings
+    ) {
         return ActionButton.create(
-                TextFormatter.tinyCaps("Guardar").color(HardlandsColor.PRIMARY),
-                Component.text("Aplicar los minutos de inicio.", HardlandsColor.LIGHT_GRAY),
+                TextFormatter.tinyCaps("Guardar")
+                        .color(HardlandsColor.PRIMARY),
+                Component.text(
+                        "Aplicar la hora de inicio y los tiempos de la partida.",
+                        HardlandsColor.LIGHT_GRAY
+                ),
                 ACTION_WIDTH,
                 DialogAction.customClick(
                         (response, audience) -> {
                             if (!(audience instanceof Player player)) return;
 
                             try {
-                                List<PhaseMinute> values = readValues(settings, response);
+                                PhaseConfiguration configuration =
+                                        readConfiguration(minuteSettings, response);
 
-                                validateValues(values);
-                                applyValues(settings, values);
+                                validateConfiguration(configuration);
+                                applyConfiguration(manager, minuteSettings, configuration);
                             } catch (IllegalArgumentException exception) {
                                 player.sendRichMessage("<red>" + exception.getMessage());
                                 return;
                             }
 
                             player.closeDialog();
-                            player.sendRichMessage("<green>Configuración de fases guardada.");
+                            player.sendRichMessage(
+                                    "<green>Configuración de fases guardada."
+                            );
                         },
                         ClickCallback.Options.builder()
                                 .uses(ClickCallback.UNLIMITED_USES)
@@ -135,73 +163,171 @@ public final class PhaseConfigurationDialog {
 
     private static ActionButton createCancelButton() {
         return ActionButton.create(
-                TextFormatter.tinyCaps("Cancelar").color(NamedTextColor.GRAY),
-                Component.text("Cerrar sin guardar.", HardlandsColor.LIGHT_GRAY),
+                TextFormatter.tinyCaps("Cancelar")
+                        .color(NamedTextColor.GRAY),
+                Component.text(
+                        "Cerrar sin guardar.",
+                        HardlandsColor.LIGHT_GRAY
+                ),
                 ACTION_WIDTH,
                 DialogAction.customClick(
                         (_, audience) -> audience.closeDialog(),
-                        ClickCallback.Options.builder().uses(1).build()
+                        ClickCallback.Options.builder()
+                                .uses(1)
+                                .build()
                 )
         );
     }
 
-    private static List<PhaseMinute> readValues(
-            List<PhaseSetting> settings,
+    // Reading
+
+    private static PhaseConfiguration readConfiguration(
+            List<MinuteSetting> minuteSettings,
             DialogResponseView response
     ) {
-        List<PhaseMinute> values = new ArrayList<>(settings.size());
+        return new PhaseConfiguration(
+                readStartTime(response),
+                readMinutes(minuteSettings, response)
+        );
+    }
 
-        for (PhaseSetting setting : settings) {
-            Float value = response.getFloat(setting.inputKey());
+    private static LocalTime readStartTime(DialogResponseView response) {
+        String input = response.getText(START_TIME);
+
+        if (input == null || input.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Debe configurar una hora de inicio."
+            );
+        }
+
+        try {
+            return LocalTime.parse(input.strip(), TIME_FORMATTER);
+        } catch (DateTimeParseException exception) {
+            throw new IllegalArgumentException(
+                    "La hora de inicio debe usar el formato HH:mm."
+            );
+        }
+    }
+
+    private static List<MinuteValue> readMinutes(
+            List<MinuteSetting> settings,
+            DialogResponseView response
+    ) {
+        List<MinuteValue> values = new ArrayList<>(settings.size());
+
+        for (MinuteSetting setting : settings) {
+            Float value = response.getFloat(setting.key());
 
             if (value == null) {
                 throw new IllegalArgumentException(
-                        "Debe configurar el minuto de inicio de %s."
-                                .formatted(setting.phase().getLabel())
+                        "Debe configurar el minuto de %s."
+                                .formatted(setting.label())
                 );
             }
 
-            values.add(new PhaseMinute(setting.phase(), Math.round(value)));
+            values.add(new MinuteValue(
+                    setting.label(),
+                    Math.round(value)
+            ));
         }
 
         return values;
     }
 
-    private static void validateValues(List<PhaseMinute> values) {
+    // Validation
+
+    private static void validateConfiguration(
+            PhaseConfiguration configuration
+    ) {
+        List<MinuteValue> values = configuration.minuteValues();
+
         for (int index = 1; index < values.size(); index++) {
-            PhaseMinute previous = values.get(index - 1);
-            PhaseMinute current = values.get(index);
+            MinuteValue previous = values.get(index - 1);
+            MinuteValue current = values.get(index);
 
             if (current.minute() <= previous.minute()) {
                 throw new IllegalArgumentException(
-                        "%s debe iniciar después de %s."
+                        "%s debe ocurrir después de %s."
                                 .formatted(
-                                        current.phase().getLabel(),
-                                        previous.phase().getLabel()
+                                        current.label(),
+                                        previous.label()
                                 )
                 );
             }
         }
     }
 
-    private static void applyValues(
-            List<PhaseSetting> settings,
-            List<PhaseMinute> values
+    // Applying
+
+    private static void applyConfiguration(
+            GameManager manager,
+            List<MinuteSetting> settings,
+            PhaseConfiguration configuration
     ) {
+        manager.getStartTimeOption()
+                .setValue(configuration.startTime());
+
+        List<MinuteValue> values = configuration.minuteValues();
+
         for (int index = 0; index < settings.size(); index++) {
-            settings.get(index).option().setValue(values.get(index).minute());
+            settings.get(index)
+                    .option()
+                    .setValue(values.get(index).minute());
         }
     }
 
-    private static String inputKey(Phase phase) {
-        return "phase_" + phase.name().toLowerCase(Locale.ROOT);
+    // Settings
+
+    private static List<MinuteSetting> createMinuteSettings(
+            GameManager manager
+    ) {
+        return List.of(
+                new MinuteSetting(
+                        GRACE_PERIOD,
+                        "Período de gracia",
+                        manager.getGracePeriodMinuteOption()
+                ),
+                new MinuteSetting(
+                        PVP,
+                        "PvP",
+                        manager.getPvpMinuteOption()
+                ),
+                new MinuteSetting(
+                        BORDER_SHRINK,
+                        "Reducción del borde",
+                        manager.getBorderShrinkMinuteOption()
+                ),
+                new MinuteSetting(
+                        MEETUP,
+                        "Encuentro",
+                        manager.getMeetupMinuteOption()
+                ),
+                new MinuteSetting(
+                        FINAL_SHRINK,
+                        "Reducción final",
+                        manager.getFinalShrinkMinuteOption()
+                ),
+                new MinuteSetting(
+                        DEATHMATCH,
+                        "Combate a muerte",
+                        manager.getDeathmatchMinuteOption()
+                )
+        );
     }
 
-    private record PhaseSetting(
-            Phase phase,
-            Option<Integer> option,
-            String inputKey
+    private record PhaseConfiguration(
+            LocalTime startTime,
+            List<MinuteValue> minuteValues
     ) {}
 
-    private record PhaseMinute(Phase phase, int minute) {}
+    private record MinuteSetting(
+            String key,
+            String label,
+            Option<Integer> option
+    ) {}
+
+    private record MinuteValue(
+            String label,
+            int minute
+    ) {}
 }

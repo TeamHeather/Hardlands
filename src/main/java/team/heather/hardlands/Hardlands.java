@@ -1,5 +1,7 @@
 package team.heather.hardlands;
 
+import java.time.LocalTime;
+
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.PaperCommandManager;
 import com.google.gson.Gson;
@@ -12,6 +14,7 @@ import org.jetbrains.annotations.Nullable;
 import team.heather.hardlands.command.HardlandsCommand;
 import team.heather.hardlands.command.PhaseCommand;
 import team.heather.hardlands.core.SingleThreadScheduler;
+import team.heather.hardlands.core.data.json.LocalTimeAdapter;
 import team.heather.hardlands.feature.item.ItemListener;
 import team.heather.hardlands.feature.player.PlayerListener;
 import team.heather.hardlands.game.GameListener;
@@ -25,18 +28,33 @@ import team.heather.hardlands.util.HardlandsColor;
 
 public final class Hardlands extends JavaPlugin {
 
-    public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    public static final Gson GSON = new GsonBuilder()
+            .registerTypeAdapter(LocalTime.class, new LocalTimeAdapter().nullSafe())
+            .setPrettyPrinting()
+            .create();
+
     public static final String LABEL = HardlandsColor.PRIMARY + "ʜᴀʀᴅʟᴀɴᴅꜱ";
 
-    @Nullable private static Hardlands instance;
+    @Nullable
+    private static Hardlands instance;
 
-    private final SingleThreadScheduler<Hardlands> singleThreadScheduler = new SingleThreadScheduler<>(this);
+    private final SingleThreadScheduler<Hardlands> singleThreadScheduler =
+            new SingleThreadScheduler<>(this);
 
-    @Nullable private PresetRepository presetRepository;
-    @Nullable private EnchantmentManager enchantmentManager;
-    @Nullable private ScenarioManager scenarioManager;
-    @Nullable private GameManager gameManager;
-    @Nullable private WorldManager worldManager;
+    @Nullable
+    private PresetRepository presetRepository;
+
+    @Nullable
+    private EnchantmentManager enchantmentManager;
+
+    @Nullable
+    private ScenarioManager scenarioManager;
+
+    @Nullable
+    private WorldManager worldManager;
+
+    @Nullable
+    private GameManager gameManager;
 
     @Override
     public void onEnable() {
@@ -54,15 +72,12 @@ public final class Hardlands extends JavaPlugin {
                 new PlayerListener(),
                 new InventoryListener(),
                 new ItemListener(),
-                new GameListener(
-                        this.getGameManager(),
-                        this.getWorldManager().getScatterManager()
-                )
+                new GameListener()
         );
 
         this.getGameManager().initialize();
 
-        getLogger().info("Hardlands successfully enabled.");
+        this.getLogger().info("Hardlands successfully enabled.");
     }
 
     @Override
@@ -74,10 +89,8 @@ public final class Hardlands extends JavaPlugin {
         this.singleThreadScheduler.close();
         instance = null;
 
-        getLogger().info("Hardlands successfully disabled.");
+        this.getLogger().info("Hardlands successfully disabled.");
     }
-
-    // Public API
 
     public static NamespacedKey createKey(String path) {
         return NamespacedKey.fromString(path, getInstance());
@@ -103,22 +116,20 @@ public final class Hardlands extends JavaPlugin {
         return requireInitialized(this.scenarioManager, "ScenarioManager");
     }
 
-    public GameManager getGameManager() {
-        return requireInitialized(this.gameManager, "GameManager");
-    }
-
     public WorldManager getWorldManager() {
         return requireInitialized(this.worldManager, "WorldManager");
     }
 
-    // Initialization
+    public GameManager getGameManager() {
+        return requireInitialized(this.gameManager, "GameManager");
+    }
 
     private void initializeManagers() {
         this.presetRepository = new PresetRepository(this, "presets");
         this.enchantmentManager = new EnchantmentManager(this);
         this.scenarioManager = new ScenarioManager(this);
-        this.gameManager = new GameManager(this);
         this.worldManager = new WorldManager();
+        this.gameManager = new GameManager(this);
     }
 
     private void registerCommands(BaseCommand... commands) {
@@ -134,8 +145,6 @@ public final class Hardlands extends JavaPlugin {
             Bukkit.getPluginManager().registerEvents(listener, this);
         }
     }
-
-    // Internal utility
 
     private static <T> T requireInitialized(@Nullable T value, String name) {
         if (value == null) {

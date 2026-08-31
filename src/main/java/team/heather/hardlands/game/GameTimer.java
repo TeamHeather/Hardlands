@@ -1,6 +1,13 @@
 package team.heather.hardlands.game;
 
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleUnaryOperator;
 import java.util.function.IntUnaryOperator;
@@ -17,22 +24,35 @@ import team.heather.hardlands.util.text.TimeFormatter;
 public final class GameTimer {
 
     private static final BooleanSupplier ALWAYS_TRUE = () -> true;
+
     private static final String SEPARATOR = " » ";
     private static final String TRANSITION_SEPARATOR = " → ";
 
+    private static final DateTimeFormatter CURRENT_TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.ROOT);
+    private static final DateTimeFormatter START_TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT);
+
     private final GameManager gameManager;
     private final BossBar bossBar;
+    private final Clock clock;
 
     private BooleanSupplier progressCondition = ALWAYS_TRUE;
     private String prefix = "";
     private String suffix = "";
+
+    private Instant waitingStartedAt;
+    private Instant waitingTarget;
 
     private double progressDelta;
     private int chronometer;
     private boolean progressEnded;
 
     public GameTimer(GameManager gameManager) {
+        this(gameManager, Clock.systemDefaultZone());
+    }
+
+    GameTimer(GameManager gameManager, Clock clock) {
         this.gameManager = gameManager;
+        this.clock = clock;
         this.bossBar = BossBar.bossBar(
                 Component.empty(),
                 1.0F,
@@ -45,6 +65,11 @@ public final class GameTimer {
 
     public void updateProgress() {
         Phase phase = this.gameManager.getPhase();
+
+        if (phase == Phase.WAITING) {
+            this.updateWaiting();
+            return;
+        }
 
         if (phase.advancesChronometer()) {
             this.chronometer++;
@@ -73,7 +98,15 @@ public final class GameTimer {
         this.prefix = "";
         this.suffix = "";
 
+        this.waitingStartedAt = null;
+        this.waitingTarget = null;
+
         this.bossBar.color(phase.getStage().getBossBarColor());
+
+        if (phase == Phase.WAITING) {
+            this.initializeWaiting();
+            return;
+        }
 
         switch (phase.getProgression()) {
             case EMPTY -> this.bossBar.progress(0.0F);
@@ -95,6 +128,21 @@ public final class GameTimer {
         }
 
         this.updateName(phase);
+    }
+
+    // Waiting
+
+    public void refreshStartTime() {
+        if (this.gameManager.getPhase() != Phase.WAITING) return;
+
+        Instant now = this.clock.instant();
+
+        if (this.waitingStartedAt == null) {
+            this.waitingStartedAt = now;
+        }
+
+        this.waitingTarget = this.resolveWaitingTarget(now);
+        this.updateWaiting(now);
     }
 
     // External progress
@@ -197,6 +245,96 @@ public final class GameTimer {
         this.bossBar.removeViewer(player);
     }
 
+    // Waiting internals
+
+    private void initializeWaiting() {
+        Instant now = this.clock.instant();
+
+        this.waitingStartedAt = now;
+        this.waitingTarget = this.resolveWaitingTarget(now);
+        this.bossBar.progress(1.0F);
+
+        this.updateWaiting(now);
+    }
+
+    private void updateWaiting() {
+        this.updateWaiting(this.clock.instant());
+    }
+
+    private void updateWaiting(Instant now) {
+        if (this.waitingStartedAt == null || this.waitingTarget == null) {
+            this.initializeWaiting();
+            return;
+        }
+
+        if (!now.isBefore(this.waitingTarget)) {
+            this.bossBar.progress(0.0F);
+            this.updateWaitingName(now);
+            this.advance(Phase.WAITING);
+            return;
+        }
+
+        Duration total = Duration.between(
+                this.waitingStartedAt,
+                this.waitingTarget
+        );
+
+        Duration remaining = Duration.between(
+                now,
+                this.waitingTarget
+        );
+
+        double totalMillis = total.toMillis();
+        double remainingMillis = remaining.toMillis();
+
+        float progress = totalMillis > 0.0D
+                ? (float) (remainingMillis / totalMillis)
+                : 0.0F;
+
+        this.setProgress(progress);
+        this.updateWaitingName(now);
+    }
+
+    private Instant resolveWaitingTarget(Instant reference) {
+        LocalTime startTime = this.gameManager.getStartTimeOption().getValue();
+
+        if (startTime == null) {
+            throw new IllegalStateException("Start time has not been configured");
+        }
+
+        ZoneId zone = this.clock.getZone();
+        LocalDate date = reference.atZone(zone).toLocalDate();
+
+        return date
+                .atTime(startTime)
+                .atZone(zone)
+                .toInstant();
+    }
+
+    private void updateWaitingName(Instant now) {
+        LocalTime currentTime = LocalTime.ofInstant(now, this.clock.getZone());
+        LocalTime startTime = this.gameManager.getStartTimeOption().getValue();
+
+        if (startTime == null) return;
+
+        this.bossBar.name(
+                Component.text(Phase.WAITING.getLabel(), NamedTextColor.WHITE)
+                        .append(Component.text(SEPARATOR, NamedTextColor.WHITE))
+                        .append(Component.text(
+                                CURRENT_TIME_FORMATTER.format(currentTime),
+                                NamedTextColor.WHITE
+                        ))
+                        .append(Component.text(
+                                TRANSITION_SEPARATOR,
+                                NamedTextColor.WHITE
+                        ))
+                        .append(Component.text(
+                                START_TIME_FORMATTER.format(startTime),
+                                NamedTextColor.WHITE
+                        ))
+        );
+    }
+
     // Phase progression
 
     private void tryAdvance(Phase phase) {
@@ -230,14 +368,23 @@ public final class GameTimer {
 
     private double calculateProgressDelta(Phase phase) {
         long durationSeconds = phase.getDuration(this.gameManager).toSeconds();
-        return durationSeconds > 0L ? 1.0D / durationSeconds : 0.0D;
+        return durationSeconds > 0L
+                ? 1.0D / durationSeconds
+                : 0.0D;
     }
 
     // Bossbar rendering
 
     private void updateName(Phase phase) {
+        if (phase == Phase.WAITING) {
+            this.updateWaitingName(this.clock.instant());
+            return;
+        }
+
         if (phase == Phase.OFF_GAME) {
-            this.bossBar.name(Component.text(phase.getLabel(), NamedTextColor.WHITE));
+            this.bossBar.name(
+                    Component.text(phase.getLabel(), NamedTextColor.WHITE)
+            );
             return;
         }
 
@@ -247,8 +394,14 @@ public final class GameTimer {
 
         Component content = Component.text(label, NamedTextColor.WHITE)
                 .append(Component.text(SEPARATOR, NamedTextColor.WHITE))
-                .append(Component.text(this.computeSuffix(), NamedTextColor.WHITE))
-                .append(Component.text(this.computeTransitionSuffix(phase), NamedTextColor.WHITE));
+                .append(Component.text(
+                        this.computeSuffix(),
+                        NamedTextColor.WHITE
+                ))
+                .append(Component.text(
+                        this.computeTransitionSuffix(phase),
+                        NamedTextColor.WHITE
+                ));
 
         if (phase != Phase.SURVIVAL) {
             this.bossBar.name(content);
@@ -275,7 +428,9 @@ public final class GameTimer {
     private String computeTransitionSuffix(Phase phase) {
         if (phase == Phase.SURVIVAL) {
             return TRANSITION_SEPARATOR
-                    + TimeFormatter.format(Duration.ofMinutes(this.getSurvivalTargetMinute()));
+                    + TimeFormatter.format(
+                    Duration.ofMinutes(this.getSurvivalTargetMinute())
+            );
         }
 
         if (!phase.showsTargetMinute()) return "";
@@ -284,15 +439,21 @@ public final class GameTimer {
 
         return minute == null
                 ? ""
-                : TRANSITION_SEPARATOR + TimeFormatter.format(Duration.ofMinutes(minute));
+                : TRANSITION_SEPARATOR
+                  + TimeFormatter.format(Duration.ofMinutes(minute));
     }
 
-    // Survival state
+    // Survival
 
     private boolean isPvpEnabled() {
-        int gracePeriodMinute = this.gameManager.getGracePeriodMinuteOption().getValue();
-        int pvpMinute = this.gameManager.getPvpMinuteOption().getValue();
-        int pvpStartSeconds = (pvpMinute - gracePeriodMinute) * 60;
+        int gracePeriodMinute =
+                this.gameManager.getGracePeriodMinuteOption().getValue();
+
+        int pvpMinute =
+                this.gameManager.getPvpMinuteOption().getValue();
+
+        int pvpStartSeconds =
+                (pvpMinute - gracePeriodMinute) * 60;
 
         return this.chronometer >= pvpStartSeconds;
     }

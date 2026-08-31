@@ -1,47 +1,66 @@
 package team.heather.hardlands.game;
 
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import team.heather.hardlands.Hardlands;
+import team.heather.hardlands.core.event.ConfigChangeEvent;
 import team.heather.hardlands.game.phase.Phase;
 import team.heather.hardlands.game.world.ScatterManager;
 
 public final class GameListener implements Listener {
 
-		private final GameManager gameManager;
-		private final ScatterManager scatterManager;
-
-		public GameListener(GameManager gameManager, ScatterManager scatterManager) {
-				this.gameManager = gameManager;
-				this.scatterManager = scatterManager;
-		}
-
 		@EventHandler
 		private void onPlayerJoin(PlayerJoinEvent event) {
-				Player player = event.getPlayer();
-				Phase phase = this.gameManager.getPhase();
+				Hardlands plugin = Hardlands.getInstance();
+				GameManager gameManager = plugin.getGameManager();
+				ScatterManager scatterManager = plugin.getWorldManager().getScatterManager();
 
-				this.gameManager.addViewer(player);
+				Player player = event.getPlayer();
+				Phase phase = gameManager.getPhase();
+
+				gameManager.addViewer(player);
 
 				if (!phase.isScatterQueueOpen()) return;
 
-				this.scatterManager.enqueue(player);
+				scatterManager.enqueue(player);
 
 				if (phase == Phase.SCATTER) {
-						this.scatterManager.scatterNext();
+						scatterManager.scatterNext();
 				}
 		}
 
 		@EventHandler
 		private void onPlayerQuit(PlayerQuitEvent event) {
+				Hardlands plugin = Hardlands.getInstance();
+				GameManager gameManager = plugin.getGameManager();
+				ScatterManager scatterManager = plugin.getWorldManager().getScatterManager();
+
 				Player player = event.getPlayer();
 
-				this.gameManager.removeViewer(player);
+				gameManager.removeViewer(player);
 
-				if (this.gameManager.getPhase().isScatterQueueOpen()) {
-						this.scatterManager.remove(player);
+				if (gameManager.getPhase().isScatterQueueOpen()) {
+						scatterManager.remove(player);
 				}
+		}
+
+		@EventHandler
+		private void onConfigurationChange(ConfigChangeEvent event) {
+				Hardlands plugin = Hardlands.getInstance();
+				GameManager gameManager = plugin.getGameManager();
+
+				if (event.getConfiguration() != gameManager) return;
+				if (!event.getOptionKey().equals(gameManager.getStartTimeOption().getKey())) return;
+
+				if (Bukkit.isPrimaryThread()) {
+						gameManager.refreshStartTime();
+						return;
+				}
+
+				Bukkit.getScheduler().runTask(plugin, gameManager::refreshStartTime);
 		}
 }

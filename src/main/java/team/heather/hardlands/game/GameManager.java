@@ -1,17 +1,21 @@
 package team.heather.hardlands.game;
 
+import java.time.LocalTime;
 import java.util.function.BooleanSupplier;
 
 import org.bukkit.entity.Player;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.config.ConfigBuilder;
 import team.heather.hardlands.config.MinuteOptionDef;
+import team.heather.hardlands.config.OptionDef;
 import team.heather.hardlands.game.phase.Phase;
 
 @ConfigBuilder(
         identifier = "game",
+        options = {
+                @OptionDef(name = "startTime", type = LocalTime.class)
+        },
         minuteOptions = {
-                @MinuteOptionDef(name = "waitingMinute"),
                 @MinuteOptionDef(name = "gracePeriodMinute"),
                 @MinuteOptionDef(name = "pvpMinute"),
                 @MinuteOptionDef(name = "borderShrinkMinute"),
@@ -35,8 +39,6 @@ public final class GameManager extends GameManagerConfiguration {
         this.loopTask = new GameLoopTask(plugin, this.timer);
     }
 
-    // Lifecycle
-
     public void initialize() {
         if (this.initialized) {
             throw new IllegalStateException("Game is already initialized");
@@ -52,8 +54,6 @@ public final class GameManager extends GameManagerConfiguration {
         this.loopTask.close();
         this.initialized = false;
     }
-
-    // Phase API
 
     public void changePhase(Phase newPhase) {
         if (newPhase == null) {
@@ -74,7 +74,9 @@ public final class GameManager extends GameManagerConfiguration {
         this.timer.completeCurrentPhase();
     }
 
-    // Timer API
+    public void refreshStartTime() {
+        this.timer.refreshStartTime();
+    }
 
     public void setChronometer(int seconds) {
         this.timer.setChronometer(seconds);
@@ -100,8 +102,6 @@ public final class GameManager extends GameManagerConfiguration {
         this.timer.updateScatterProgress(progress);
     }
 
-    // Viewer API
-
     public void addViewer(Player player) {
         this.timer.addViewer(player);
     }
@@ -109,8 +109,6 @@ public final class GameManager extends GameManagerConfiguration {
     public void removeViewer(Player player) {
         this.timer.removeViewer(player);
     }
-
-    // Getters
 
     public Phase getPhase() {
         return this.phase;
@@ -120,13 +118,10 @@ public final class GameManager extends GameManagerConfiguration {
         return this.timer;
     }
 
-    // Configuration
-
     @Override
     public boolean isConfigurationValid() {
         if (!super.isConfigurationValid()) return false;
 
-        int waiting = super.waitingMinute.getValue();
         int gracePeriod = super.gracePeriodMinute.getValue();
         int pvp = super.pvpMinute.getValue();
         int borderShrink = super.borderShrinkMinute.getValue();
@@ -134,8 +129,7 @@ public final class GameManager extends GameManagerConfiguration {
         int finalShrink = super.finalShrinkMinute.getValue();
         int deathmatch = super.deathmatchMinute.getValue();
 
-        return waiting < gracePeriod
-                && gracePeriod < pvp
+        return gracePeriod < pvp
                 && pvp < borderShrink
                 && borderShrink < meetup
                 && meetup < finalShrink

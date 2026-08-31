@@ -26,11 +26,10 @@ public enum Phase {
     ),
 
     WAITING(
-            "Espera",
+            "Esperando",
             Stage.OFF_GAME,
             Progression.DRAIN,
-            PhaseHandlers.WAITING,
-            GameManagerConfiguration::getWaitingMinuteOption
+            PhaseHandlers.WAITING
     ),
 
     SCATTER(
@@ -149,6 +148,7 @@ public enum Phase {
     public Integer getNextMinute(GameManagerConfiguration configuration) {
         for (int index = this.ordinal() + 1; index < VALUES.length; index++) {
             Integer minute = VALUES[index].getMinute(configuration);
+
             if (minute != null) return minute;
         }
 
@@ -176,6 +176,7 @@ public enum Phase {
         return switch (this) {
             case OFF_GAME,
                  PRE_GENERATION,
+                 WAITING,
                  SCATTER -> false;
             default -> true;
         };
@@ -195,9 +196,10 @@ public enum Phase {
     }
 
     public boolean showsTargetMinute() {
-        return this.progression == Progression.DRAIN
+        return this != WAITING
+                && (this.progression == Progression.DRAIN
                 || this == BORDER_SHRINK
-                || this == FINAL_SHRINK;
+                || this == FINAL_SHRINK);
     }
 
     public boolean isScatterQueueOpen() {
