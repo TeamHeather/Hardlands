@@ -1,4 +1,4 @@
-package team.heather.hardlands.feature.ui.chat;
+package team.heather.hardlands.common.ui.chat;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
@@ -7,7 +7,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import team.heather.hardlands.Hardlands;
-import team.heather.hardlands.feature.ui.HardlandsColor;
+import team.heather.hardlands.common.ui.HardlandsColor;
 
 public final class ChatMessenger {
 

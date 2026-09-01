@@ -1,4 +1,4 @@
-package team.heather.hardlands.feature.command;
+package team.heather.hardlands.common.command;
 
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.annotation.CommandAlias;

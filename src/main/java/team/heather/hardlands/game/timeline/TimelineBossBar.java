@@ -8,10 +8,9 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.entity.Player;
-import team.heather.hardlands.internal.data.json.LocalTimeAdapter;
 import team.heather.hardlands.game.GameManager;
 import team.heather.hardlands.game.phase.Phase;
-import team.heather.hardlands.feature.ui.HardlandsColor;
+import team.heather.hardlands.common.ui.HardlandsColor;
 import team.heather.hardlands.util.TextFormatters;
 
 final class TimelineBossBar {

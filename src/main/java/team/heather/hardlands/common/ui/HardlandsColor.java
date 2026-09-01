@@ -1,4 +1,4 @@
-package team.heather.hardlands.feature.ui;
+package team.heather.hardlands.common.ui;
 
 import net.kyori.adventure.text.format.TextColor;
 

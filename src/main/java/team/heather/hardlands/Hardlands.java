@@ -8,25 +8,24 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
-import org.bukkit.block.Biome;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
-import team.heather.hardlands.feature.command.HardlandsCommand;
-import team.heather.hardlands.feature.command.PhaseCommand;
+import team.heather.hardlands.common.command.HardlandsCommand;
+import team.heather.hardlands.common.command.PhaseCommand;
 import team.heather.hardlands.internal.InternalDefinitions;
 import team.heather.hardlands.internal.ThreadScheduler;
 import team.heather.hardlands.internal.data.json.LocalTimeAdapter;
-import team.heather.hardlands.feature.item.ItemListener;
-import team.heather.hardlands.feature.player.PlayerListener;
+import team.heather.hardlands.common.item.ItemListener;
+import team.heather.hardlands.common.player.PlayerListener;
 import team.heather.hardlands.game.GameListener;
 import team.heather.hardlands.game.GameManager;
 import team.heather.hardlands.game.preset.PresetRepository;
 import team.heather.hardlands.game.world.WorldManager;
 import team.heather.hardlands.module.enchantment.EnchantmentManager;
 import team.heather.hardlands.module.scenario.ScenarioManager;
-import team.heather.hardlands.feature.ui.inventory.InventoryListener;
-import team.heather.hardlands.feature.ui.HardlandsColor;
+import team.heather.hardlands.common.ui.inventory.InventoryListener;
+import team.heather.hardlands.common.ui.HardlandsColor;
 
 public final class Hardlands extends JavaPlugin {
 

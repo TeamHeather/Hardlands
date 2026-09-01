@@ -11,7 +11,7 @@ import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.Nullable;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.game.world.ScatterManager;
-import team.heather.hardlands.feature.ui.HardlandsColor;
+import team.heather.hardlands.common.ui.HardlandsColor;
 
 public final class StartCountdown implements AutoCloseable {
 

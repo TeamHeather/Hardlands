@@ -1,4 +1,4 @@
-package team.heather.hardlands.feature.ui.dialog;
+package team.heather.hardlands.common.ui.dialog;
 
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.dialog.DialogResponseView;
@@ -23,9 +23,9 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.internal.config.Option;
-import team.heather.hardlands.feature.ui.inventory.HardlandsInventory;
+import team.heather.hardlands.common.ui.inventory.HardlandsInventory;
 import team.heather.hardlands.game.world.WorldManager;
-import team.heather.hardlands.feature.ui.HardlandsColor;
+import team.heather.hardlands.common.ui.HardlandsColor;
 
 @SuppressWarnings("UnstableApiUsage")
 public final class WorldConfigurationDialog {

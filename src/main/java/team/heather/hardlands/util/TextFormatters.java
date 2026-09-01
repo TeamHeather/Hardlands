@@ -12,10 +12,11 @@ import java.util.regex.Pattern;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
-import team.heather.hardlands.feature.ui.HardlandsColor;
+import team.heather.hardlands.common.ui.HardlandsColor;
 
 public final class TextFormatters {
 
@@ -73,6 +74,10 @@ public final class TextFormatters {
 
         @Override
         public Component format(String text) {
+            return this.format(text, HardlandsColor.HARDLANDS);
+        }
+
+        public Component format(String text, TextColor highlightColor) {
             TextComponent.Builder result = Component.text().color(HardlandsColor.LIGHT_GRAY);
 
             Matcher matcher = HIGHLIGHT_PATTERN.matcher(text);
@@ -89,8 +94,9 @@ public final class TextFormatters {
                 result.append(Component.text(
                         highlighted,
                         primary != null
-                                ? HardlandsColor.HARDLANDS
-                                : NamedTextColor.WHITE));
+                                ? highlightColor
+                                : NamedTextColor.WHITE
+                ));
 
                 position = matcher.end();
             }

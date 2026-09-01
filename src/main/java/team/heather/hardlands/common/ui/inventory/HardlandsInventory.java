@@ -1,4 +1,4 @@
-package team.heather.hardlands.feature.ui.inventory;
+package team.heather.hardlands.common.ui.inventory;
 
 import java.util.List;
 import java.util.Map;
@@ -10,12 +10,12 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import team.heather.hardlands.feature.item.InventoryItem;
-import team.heather.hardlands.feature.item.ItemBuilder;
-import team.heather.hardlands.feature.ui.inventory.handler.EnchantiaInventoryHandler;
-import team.heather.hardlands.feature.ui.inventory.handler.InventoryHandler;
-import team.heather.hardlands.feature.ui.inventory.handler.PresetInventoryHandler;
-import team.heather.hardlands.feature.ui.inventory.handler.ScenarioInventoryHandler;
+import team.heather.hardlands.common.item.InventoryItem;
+import team.heather.hardlands.common.item.ItemBuilder;
+import team.heather.hardlands.common.ui.inventory.handler.EnchantiaInventoryHandler;
+import team.heather.hardlands.common.ui.inventory.handler.InventoryHandler;
+import team.heather.hardlands.common.ui.inventory.handler.PresetInventoryHandler;
+import team.heather.hardlands.common.ui.inventory.handler.ScenarioInventoryHandler;
 
 public enum HardlandsInventory {
 

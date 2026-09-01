@@ -1,9 +1,9 @@
-package team.heather.hardlands.feature.ui.chat;
+package team.heather.hardlands.common.ui.chat;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
-import team.heather.hardlands.feature.ui.HardlandsColor;
+import team.heather.hardlands.common.ui.HardlandsColor;
 
 import java.util.List;
 

@@ -1,4 +1,4 @@
-package team.heather.hardlands.feature.ui.dialog;
+package team.heather.hardlands.common.ui.dialog;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -22,7 +22,7 @@ import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.internal.config.Option;
 import team.heather.hardlands.internal.data.json.LocalTimeAdapter;
 import team.heather.hardlands.game.GameManager;
-import team.heather.hardlands.feature.ui.HardlandsColor;
+import team.heather.hardlands.common.ui.HardlandsColor;
 
 @SuppressWarnings("UnstableApiUsage")
 public final class PhaseConfigurationDialog {

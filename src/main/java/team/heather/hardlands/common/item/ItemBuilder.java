@@ -1,10 +1,6 @@
-package team.heather.hardlands.feature.item;
+package team.heather.hardlands.common.item;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
@@ -15,7 +11,9 @@ import io.papermc.paper.datacomponent.item.TooltipDisplay;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.flattener.ComponentFlattener;
 import net.kyori.adventure.text.flattener.FlattenerListener;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.Style;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -27,12 +25,11 @@ import org.bukkit.persistence.PersistentDataType;
 import team.heather.hardlands.internal.data.PersistentDataAccess;
 import team.heather.hardlands.util.TextFormatters;
 
+// Vaya puta mierda
 public final class ItemBuilder {
 
-    private static final ComponentFlattener COMPONENT_FLATTENER =
-            ComponentFlattener.basic();
-    private static final NamespacedKey ID_KEY =
-            new NamespacedKey("hardlands", "id");
+    private static final ComponentFlattener COMPONENT_FLATTENER = ComponentFlattener.basic();
+    private static final NamespacedKey ID_KEY = new NamespacedKey("hardlands", "id");
     private static final int MAX_LORE_LINE_LENGTH = 40;
 
     private final ItemStack item;
@@ -120,6 +117,32 @@ public final class ItemBuilder {
                 lines,
                 TextFormatters.HIGHLIGHT::format
         );
+    }
+
+    public ItemBuilder formattedLore(
+            TextColor highlightColor,
+            String... lines
+    ) {
+        return this.setLore(
+                lines,
+                line -> TextFormatters.HIGHLIGHT.format(
+                        line,
+                        highlightColor
+                )
+        );
+    }
+
+    public ItemBuilder footerLore(String... lines) {
+        List<Component> lore = this.currentLore();
+
+        for (String line : lines) {
+            lore.add(Component.text(
+                    line.toLowerCase(Locale.ROOT),
+                    NamedTextColor.GRAY
+            ));
+        }
+
+        return this.setLore(lore);
     }
 
     public <P, C> Optional<C> getData(

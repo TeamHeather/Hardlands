@@ -1,4 +1,4 @@
-package team.heather.hardlands.feature.player;
+package team.heather.hardlands.common.player;
 
 import io.papermc.paper.datacomponent.item.ResolvableProfile;
 import net.kyori.adventure.text.Component;

@@ -1,13 +1,12 @@
 package team.heather.hardlands.module.scenario;
 
-import java.util.List;
 import java.util.Optional;
 
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
 import team.heather.hardlands.Hardlands;
-import team.heather.hardlands.feature.item.ScenarioItemFactory;
+import team.heather.hardlands.common.item.ScenarioItemFactory;
 import team.heather.hardlands.module.scenario.implementation.AppleGroveScenario;
 import team.heather.hardlands.module.scenario.implementation.BonanzaScenario;
 import team.heather.hardlands.module.scenario.implementation.EnchantiaScenario;

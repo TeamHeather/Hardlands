@@ -1,4 +1,4 @@
-package team.heather.hardlands.feature.item;
+package team.heather.hardlands.common.item;
 
 import org.bukkit.Material;
 import org.bukkit.entity.Player;

@@ -18,10 +18,10 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import team.heather.hardlands.Hardlands;
-import team.heather.hardlands.feature.item.ItemBuilder;
+import team.heather.hardlands.common.item.ItemBuilder;
 import team.heather.hardlands.internal.data.PersistentDataAccess;
 import team.heather.hardlands.module.enchantment.handler.*;
-import team.heather.hardlands.feature.ui.HardlandsColor;
+import team.heather.hardlands.common.ui.HardlandsColor;
 import team.heather.hardlands.util.TextFormatters;
 
 public enum HardlandsEnchantment {

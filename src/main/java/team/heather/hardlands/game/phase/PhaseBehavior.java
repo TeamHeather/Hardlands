@@ -10,13 +10,12 @@ import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.entity.LivingEntity;
 import team.heather.hardlands.Hardlands;
-import team.heather.hardlands.internal.data.json.LocalTimeAdapter;
 import team.heather.hardlands.game.GameManager;
 import team.heather.hardlands.game.world.PregenerationManager;
 import team.heather.hardlands.game.world.ScatterManager;
 import team.heather.hardlands.game.world.WorldManager;
-import team.heather.hardlands.feature.ui.HardlandsColor;
-import team.heather.hardlands.feature.ui.chat.AnnouncementType;
+import team.heather.hardlands.common.ui.HardlandsColor;
+import team.heather.hardlands.common.ui.chat.AnnouncementType;
 import team.heather.hardlands.util.TextFormatters;
 
 final class PhaseBehavior {

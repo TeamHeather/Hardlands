@@ -9,7 +9,7 @@ import org.popcraft.chunky.api.ChunkyAPI;
 import org.popcraft.chunky.api.event.task.GenerationCompleteEvent;
 import org.popcraft.chunky.api.event.task.GenerationProgressEvent;
 import team.heather.hardlands.Hardlands;
-import team.heather.hardlands.feature.ui.inventory.HardlandsInventory;
+import team.heather.hardlands.common.ui.inventory.HardlandsInventory;
 
 public final class PregenerationManager {
 

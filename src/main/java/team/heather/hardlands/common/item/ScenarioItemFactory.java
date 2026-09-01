@@ -1,4 +1,4 @@
-package team.heather.hardlands.feature.item;
+package team.heather.hardlands.common.item;
 
 import java.util.Locale;
 import java.util.Map;
@@ -9,7 +9,7 @@ import org.bukkit.inventory.ItemStack;
 import team.heather.hardlands.module.enchantment.HardlandsEnchantment;
 import team.heather.hardlands.module.scenario.Scenario;
 import team.heather.hardlands.module.scenario.ScenarioProcessor;
-import team.heather.hardlands.feature.ui.HardlandsColor;
+import team.heather.hardlands.common.ui.HardlandsColor;
 
 public final class ScenarioItemFactory {
 

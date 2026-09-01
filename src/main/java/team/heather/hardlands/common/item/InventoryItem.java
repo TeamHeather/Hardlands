@@ -1,4 +1,4 @@
-package team.heather.hardlands.feature.item;
+package team.heather.hardlands.common.item;
 
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -18,11 +18,12 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.profile.PlayerTextures;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.internal.config.Option;
-import team.heather.hardlands.feature.ui.dialog.PhaseConfigurationDialog;
-import team.heather.hardlands.feature.ui.dialog.WorldConfigurationDialog;
-import team.heather.hardlands.feature.ui.inventory.HardlandsInventory;
+import team.heather.hardlands.common.ui.dialog.PhaseConfigurationDialog;
+import team.heather.hardlands.common.ui.dialog.WorldConfigurationDialog;
+import team.heather.hardlands.common.ui.inventory.HardlandsInventory;
 import team.heather.hardlands.game.world.PregenerationManager;
 import team.heather.hardlands.game.world.WorldManager;
+import team.heather.hardlands.util.TextFormatters;
 
 public enum InventoryItem {
 
@@ -30,52 +31,50 @@ public enum InventoryItem {
             () -> createHeadItem(
                     HeadTexture.ARROW_LEFT,
                     "Anterior",
-                    "Regresa al [menú anterior]."),
+                    "Regresa al menú anterior."),
             openInventory(() -> HardlandsInventory.MAIN)),
 
     NEXT(() -> createHeadItem(
             HeadTexture.ARROW_RIGHT,
             "Siguiente",
-            "Avanza a la [página siguiente].")),
+            "Avanza a la página siguiente.")),
 
-    PREPARATION(
-            InventoryItem::createPreparationItem,
-            InventoryItem::onClickPreparation),
+    PREPARATION(InventoryItem::createPreparationItem, InventoryItem::onClickPreparation),
 
     SCENARIOS(
             Material.CHERRY_SAPLING,
             "Escenarios",
-            "Administra los [escenarios] de la partida.",
+            "Administra los escenarios de la partida.",
             openInventory(() -> HardlandsInventory.SCENARIOS)),
 
     PLAYERS(
             Material.PLAYER_HEAD,
             "Jugadores",
-            "Administra los [jugadores] participantes.",
+            "Administra los jugadores participantes.",
             openInventory(() -> HardlandsInventory.PLAYERS)),
 
     GENERAL(
             Material.COMPARATOR,
             "General",
-            "Define las [reglas generales] de la partida.",
+            "Define las reglas generales de la partida.",
             openInventory(() -> HardlandsInventory.GENERAL)),
 
-    PHASES(
+    TIMELINE(
             Material.CLOCK,
-            "Fases",
-            "Define la [progresión] de la partida.",
+            "Línea de Tiempo",
+            "Configura los eventos y tiempos de la partida.",
             openDialog(PhaseConfigurationDialog::show)),
 
     WORLD(
             HeadTexture.WORLD,
             "Mundo",
-            "Configura los [mundos], sus [límites] y reglas.",
+            "Configura los mundos, sus límites y reglas.",
             openDialog(WorldConfigurationDialog::show)),
 
     PRESETS(
             Material.WRITABLE_BOOK,
             "Plantillas",
-            "Administra las [plantillas] disponibles.",
+            "Administra las plantillas disponibles.",
             openInventory(() -> HardlandsInventory.PRESETS));
 
     private final Supplier<ItemStack> stackSupplier;
@@ -119,7 +118,7 @@ public enum InventoryItem {
 
     public static ItemStack createDisplayStack(ItemBuilder builder, String name, String... lore) {
         return builder
-                .name(TextFormatter.tinyCaps(name))
+                .name(TextFormatters.TINY_CAPS.format(name))
                 .formattedLore(lore)
                 .build();
     }
@@ -146,7 +145,7 @@ public enum InventoryItem {
                 : "Sin configurar";
 
         ItemBuilder builder = new ItemBuilder(state.getMaterial())
-                .name(TextFormatter.tinyCaps("Preparación"))
+                .name(TextFormatters.TINY_CAPS.format("Preparación"))
                 .formattedLore(
                         "Aplica los [World Borders] e inicia la [pregeneración].",
                         "",
