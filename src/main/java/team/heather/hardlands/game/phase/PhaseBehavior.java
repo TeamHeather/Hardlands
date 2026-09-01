@@ -2,7 +2,10 @@ package team.heather.hardlands.game.phase;
 
 import java.time.Duration;
 import java.time.LocalTime;
+import java.util.List;
+import java.util.concurrent.ScheduledFuture;
 
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.entity.LivingEntity;
@@ -13,7 +16,7 @@ import team.heather.hardlands.game.world.PregenerationManager;
 import team.heather.hardlands.game.world.ScatterManager;
 import team.heather.hardlands.game.world.WorldManager;
 import team.heather.hardlands.ui.HardlandsColor;
-import team.heather.hardlands.ui.chat.ChatMessenger;
+import team.heather.hardlands.ui.chat.AnnouncementType;
 import team.heather.hardlands.util.text.TimeFormatter;
 
 final class PhaseBehavior {
@@ -22,12 +25,9 @@ final class PhaseBehavior {
 
         @Override
         public void onStart(Hardlands plugin, Phase phase) {
-            announce(
-                    "☠",
-                    HardlandsColor.NEUTRAL,
+            AnnouncementType.NEUTRAL.broadcast(
                     "La partida ha terminado. El servidor ha vuelto al estado fuera de partida.",
-                    Sound.BLOCK_BEACON_DEACTIVATE,
-                    0.8F
+                    List.of(Sound.BLOCK_BEACON_DEACTIVATE)
             );
         }
     };
@@ -36,20 +36,18 @@ final class PhaseBehavior {
 
         @Override
         public void onStart(Hardlands plugin, Phase phase) {
-            announce(
-                    "✦",
-                    HardlandsColor.INFO,
-                    "La preparación de la partida ha comenzado. Se aplicará la configuración del mundo y se pregenerarán "
-                            + "los chunks necesarios; el progreso aparecerá en la barra superior.",
-                    Sound.BLOCK_BEACON_ACTIVATE,
-                    1.0F
+            AnnouncementType.NEUTRAL.broadcast(
+                    """
+                    La preparación de la partida ha comenzado. Se configurará el mundo y se pregenerarán los chunks \
+                    necesarios antes de continuar.
+                    """,
+                    List.of(Sound.BLOCK_BEACON_ACTIVATE)
             );
 
             WorldManager worldManager = plugin.getWorldManager();
             PregenerationManager pregenerationManager = worldManager.getPregenerationManager();
 
             pregenerationManager.setProgressUpdatesEnabled(true);
-
             worldManager.applyConfiguration();
             worldManager.pregenerate();
 
@@ -62,9 +60,7 @@ final class PhaseBehavior {
 
             pregenerationManager.setProgressUpdatesEnabled(false);
 
-            if (!pregenerationManager.isCompleted()) {
-                pregenerationManager.pause();
-            }
+            if (!pregenerationManager.isCompleted()) pregenerationManager.pause();
         }
     };
 
@@ -73,14 +69,14 @@ final class PhaseBehavior {
         @Override
         public void onStart(Hardlands plugin, Phase phase) {
             LocalTime startTime = plugin.getGameManager().getStartTimeOption().getValue();
-            String formattedStartTime = startTime == null ? "sin configurar" : LocalTimeAdapter.HHMM_FORMATTER.format(startTime);
+            String formattedStartTime = startTime == null
+                    ? "sin configurar"
+                    : LocalTimeAdapter.HHMM_FORMATTER.format(startTime);
 
-            announce(
-                    "◷",
-                    HardlandsColor.INFO,
-                    "La preparación ha terminado y el mundo está listo. La partida comenzará a las " + formattedStartTime + ".",
-                    Sound.BLOCK_NOTE_BLOCK_CHIME,
-                    1.2F
+            AnnouncementType.NEUTRAL.broadcast(
+                    "El mundo está preparado y listo para comenzar. La partida iniciará a las %s.",
+                    List.of(Sound.BLOCK_NOTE_BLOCK_CHIME),
+                    highlight(formattedStartTime, HardlandsColor.GRAY.primary())
             );
         }
     };
@@ -95,23 +91,24 @@ final class PhaseBehavior {
             ScatterManager scatterManager = plugin.getWorldManager().getScatterManager();
             int playerCount = Bukkit.getOnlinePlayers().size();
 
-            announce(
-                    "✧",
-                    HardlandsColor.INFO,
-                    "La dispersión de " + playerCount + " jugadores ha comenzado. Cada jugador será enviado a su posición "
-                            + "inicial y, cuando termine el proceso, comenzará la cuenta regresiva.",
-                    Sound.ENTITY_ENDERMAN_TELEPORT,
-                    1.0F
+            AnnouncementType.NEUTRAL.broadcast(
+                    """
+                    La dispersión de %s jugadores ha comenzado. Todos serán enviados a sus posiciones iniciales antes \
+                    de comenzar la cuenta regresiva.
+                    """,
+                    List.of(Sound.ENTITY_ENDERMAN_TELEPORT),
+                    highlight(String.valueOf(playerCount), HardlandsColor.GRAY.primary())
             );
 
             Bukkit.getOnlinePlayers().forEach(scatterManager::enqueue);
-
             scatterManager.setProgressUpdatesEnabled(true);
-            gameManager.setScatterProgress(scatterManager.getScatterPercentage());
-            scatterManager.scatterAll();
 
-            this.countdown = new StartCountdown(plugin, scatterManager);
-            this.countdown.start();
+            scatterManager.scatterAllAsync().thenRun(() -> {
+                if (gameManager.getPhase() != phase) return;
+
+                this.countdown = new StartCountdown(plugin, scatterManager);
+                this.countdown.start();
+            });
         }
 
         @Override
@@ -123,32 +120,79 @@ final class PhaseBehavior {
 
             ScatterManager scatterManager = plugin.getWorldManager().getScatterManager();
 
+            scatterManager.cancelScatter();
             scatterManager.setProgressUpdatesEnabled(false);
+
             Bukkit.getOnlinePlayers().forEach(LivingEntity::clearActivePotionEffects);
         }
     };
 
     static final Handler SURVIVAL = new Handler() {
 
+        private ScheduledFuture<?> pvpAnnouncementTask;
+
         @Override
         public void onStart(Hardlands plugin, Phase phase) {
             GameManager gameManager = plugin.getGameManager();
             WorldManager worldManager = plugin.getWorldManager();
 
-            String pvpTime = formatGameTime(gameManager, gameManager.getPvpMinuteOption().getValue());
-            String borderShrinkTime = formatGameTime(gameManager, gameManager.getBorderShrinkMinuteOption().getValue());
-            String meetupTime = formatGameTime(gameManager, gameManager.getMeetupMinuteOption().getValue());
-            String deathmatchTime = formatGameTime(gameManager, gameManager.getDeathmatchMinuteOption().getValue());
-            String borderSize = formatBorderSize(worldManager.getSurvivalSizeOption().getValue());
+            int pvpMinute = gameManager.getPvpMinuteOption().getValue();
 
-            announce(
-                    "❣",
-                    HardlandsColor.GAMEPLAY,
-                    "La partida ha comenzado con un borde de " + borderSize + ". El PvP se activará en " + pvpTime
-                            + " y la primera reducción del borde comenzará en " + borderShrinkTime + ". El Meetup comenzará en "
-                            + meetupTime + " y el Deathmatch en " + deathmatchTime + ".",
-                    Sound.UI_TOAST_CHALLENGE_COMPLETE,
-                    1.0F
+            String borderSize = highlight(
+                    formatBorderSize(worldManager.getSurvivalSizeOption().getValue()),
+                    HardlandsColor.GREEN.primary()
+            );
+            String pvpTime = highlight(formatGameTime(gameManager, pvpMinute), HardlandsColor.GREEN.primary());
+            String borderShrinkTime = highlight(
+                    formatGameTime(gameManager, gameManager.getBorderShrinkMinuteOption().getValue()),
+                    HardlandsColor.GREEN.primary()
+            );
+            String meetupTime = highlight(
+                    formatGameTime(gameManager, gameManager.getMeetupMinuteOption().getValue()),
+                    HardlandsColor.GREEN.primary()
+            );
+            String deathmatchTime = highlight(
+                    formatGameTime(gameManager, gameManager.getDeathmatchMinuteOption().getValue()),
+                    HardlandsColor.GREEN.primary()
+            );
+
+            AnnouncementType.GAMEPLAY.broadcast(
+                    """
+                    La partida ha comenzado con un borde de %s. El PvP se activará en %s, la reducción del borde \
+                    comenzará en %s, el Meetup en %s y el Deathmatch en %s.
+                    """,
+                    List.of(Sound.ITEM_GOAT_HORN_SOUND_2),
+                    borderSize,
+                    pvpTime,
+                    borderShrinkTime,
+                    meetupTime,
+                    deathmatchTime
+            );
+
+            this.schedulePvpAnnouncement(plugin, gameManager, phase, pvpMinute);
+        }
+
+        @Override
+        public void onStop(Hardlands plugin, Phase phase) {
+            if (this.pvpAnnouncementTask == null) return;
+
+            this.pvpAnnouncementTask.cancel(false);
+            this.pvpAnnouncementTask = null;
+        }
+
+        private void schedulePvpAnnouncement(Hardlands plugin, GameManager gameManager, Phase phase, int pvpMinute) {
+            this.pvpAnnouncementTask = plugin.getSingleThreadScheduler().schedule(
+                    () -> Bukkit.getScheduler().runTask(plugin, () -> {
+                        if (gameManager.getPhase() != phase) return;
+
+                        AnnouncementType.DANGER.broadcast(
+                                "El PvP ha comenzado. El combate entre jugadores está habilitado a partir de este momento.",
+                                List.of(Sound.ENTITY_ELDER_GUARDIAN_CURSE)
+                        );
+
+                        this.pvpAnnouncementTask = null;
+                    }),
+                    Duration.ofMinutes(pvpMinute)
             );
         }
     };
@@ -157,23 +201,28 @@ final class PhaseBehavior {
 
         @Override
         public void onStart(Hardlands plugin, Phase phase) {
-            GameManager gameManager = plugin.getGameManager();
             WorldManager worldManager = plugin.getWorldManager();
-            Duration duration = phase.getDuration(gameManager);
+            Duration duration = phase.getDuration(plugin.getGameManager());
 
-            announce(
-                    "◆",
-                    HardlandsColor.DANGER,
-                    "El borde ha comenzado a reducirse de " + formatBorderSize(worldManager.getSurvivalSizeOption().getValue())
-                            + " a " + formatBorderSize(worldManager.getMeetupSizeOption().getValue()) + ". La reducción durará "
-                            + TimeFormatter.format(duration) + " y terminará al comenzar el Meetup.",
-                    Sound.BLOCK_PISTON_EXTEND,
-                    0.8F
+            String initialSize = highlight(
+                    formatBorderSize(worldManager.getSurvivalSizeOption().getValue()),
+                    HardlandsColor.RED.primary()
+            );
+            String targetSize = highlight(
+                    formatBorderSize(worldManager.getMeetupSizeOption().getValue()),
+                    HardlandsColor.RED.primary()
+            );
+            String shrinkDuration = highlight(TimeFormatter.format(duration), HardlandsColor.RED.primary());
+
+            AnnouncementType.DANGER.broadcast(
+                    "El borde ha comenzado a reducirse de %s a %s. La reducción durará %s y finalizará al comenzar el Meetup.",
+                    List.of(Sound.BLOCK_PISTON_EXTEND),
+                    initialSize,
+                    targetSize,
+                    shrinkDuration
             );
 
-            if (!duration.isZero()) {
-                worldManager.shrinkForMeetup(duration);
-            }
+            if (!duration.isZero()) worldManager.shrinkForMeetup(duration);
         }
     };
 
@@ -181,18 +230,20 @@ final class PhaseBehavior {
 
         @Override
         public void onStart(Hardlands plugin, Phase phase) {
-            GameManager gameManager = plugin.getGameManager();
             WorldManager worldManager = plugin.getWorldManager();
-            Duration duration = phase.getDuration(gameManager);
+            Duration duration = phase.getDuration(plugin.getGameManager());
 
-            announce(
-                    "♢",
-                    HardlandsColor.GAMEPLAY,
-                    "El Meetup ha comenzado y el borde se encuentra en "
-                            + formatBorderSize(worldManager.getMeetupSizeOption().getValue()) + ". La reducción final comenzará en "
-                            + TimeFormatter.format(duration) + ".",
-                    Sound.BLOCK_BELL_USE,
-                    1.0F
+            String borderSize = highlight(
+                    formatBorderSize(worldManager.getMeetupSizeOption().getValue()),
+                    HardlandsColor.GREEN.primary()
+            );
+            String finalShrinkTime = highlight(TimeFormatter.format(duration), HardlandsColor.GREEN.primary());
+
+            AnnouncementType.GAMEPLAY.broadcast(
+                    "El Meetup ha comenzado con un borde de %s. La reducción final comenzará en %s.",
+                    List.of(Sound.BLOCK_BELL_USE),
+                    borderSize,
+                    finalShrinkTime
             );
         }
     };
@@ -201,24 +252,31 @@ final class PhaseBehavior {
 
         @Override
         public void onStart(Hardlands plugin, Phase phase) {
-            GameManager gameManager = plugin.getGameManager();
             WorldManager worldManager = plugin.getWorldManager();
-            Duration duration = phase.getDuration(gameManager);
+            Duration duration = phase.getDuration(plugin.getGameManager());
 
-            announce(
-                    "♦",
-                    HardlandsColor.DANGER,
-                    "La reducción final del borde ha comenzado. El límite pasará de "
-                            + formatBorderSize(worldManager.getMeetupSizeOption().getValue()) + " a "
-                            + formatBorderSize(worldManager.getDeathmatchSizeOption().getValue()) + " durante "
-                            + TimeFormatter.format(duration) + "; el Deathmatch comenzará al finalizar.",
-                    Sound.BLOCK_RESPAWN_ANCHOR_CHARGE,
-                    0.8F
+            String initialSize = highlight(
+                    formatBorderSize(worldManager.getMeetupSizeOption().getValue()),
+                    HardlandsColor.RED.primary()
+            );
+            String targetSize = highlight(
+                    formatBorderSize(worldManager.getDeathmatchSizeOption().getValue()),
+                    HardlandsColor.RED.primary()
+            );
+            String shrinkDuration = highlight(TimeFormatter.format(duration), HardlandsColor.RED.primary());
+
+            AnnouncementType.DANGER.broadcast(
+                    """
+                    La reducción final del borde ha comenzado. El límite pasará de %s a %s durante %s. \
+                    El Deathmatch comenzará al finalizar.
+                    """,
+                    List.of(Sound.BLOCK_RESPAWN_ANCHOR_CHARGE),
+                    initialSize,
+                    targetSize,
+                    shrinkDuration
             );
 
-            if (!duration.isZero()) {
-                worldManager.shrinkForDeathmatch(duration);
-            }
+            if (!duration.isZero()) worldManager.shrinkForDeathmatch(duration);
         }
     };
 
@@ -226,31 +284,29 @@ final class PhaseBehavior {
 
         @Override
         public void onStart(Hardlands plugin, Phase phase) {
-            String borderSize = formatBorderSize(plugin.getWorldManager().getDeathmatchSizeOption().getValue());
+            String borderSize = highlight(
+                    formatBorderSize(plugin.getWorldManager().getDeathmatchSizeOption().getValue()),
+                    HardlandsColor.RED.primary()
+            );
 
-            announce(
-                    "☠",
-                    HardlandsColor.DANGER,
-                    "El Deathmatch ha comenzado. El borde final es de " + borderSize + " y no habrá más fases después de esta.",
-                    Sound.ENTITY_WITHER_SPAWN,
-                    0.9F
+            AnnouncementType.DANGER.broadcast(
+                    "El Deathmatch ha comenzado con un borde final de %s. No habrá más fases después de esta.",
+                    List.of(Sound.ENTITY_WITHER_SPAWN),
+                    borderSize
             );
         }
     };
 
     private PhaseBehavior() {}
 
-    private static void announce(String icon, HardlandsColor colors, String message, Sound sound, float pitch) {
-        ChatMessenger.broadcastFramed(icon, colors, message);
-        Bukkit.getOnlinePlayers().forEach(player -> player.playSound(player.getLocation(), sound, 1.0F, pitch));
+    private static String highlight(String text, TextColor color) {
+        return "<color:%s>%s</color>".formatted(color.asHexString(), text);
     }
 
     private static String formatGameTime(GameManager gameManager, Integer minute) {
         Integer startMinute = Phase.SURVIVAL.getMinute(gameManager);
 
-        if (minute == null || startMinute == null) {
-            return "sin configurar";
-        }
+        if (minute == null || startMinute == null) return "sin configurar";
 
         return TimeFormatter.format(Duration.ofMinutes(Math.max(0, minute - startMinute)));
     }

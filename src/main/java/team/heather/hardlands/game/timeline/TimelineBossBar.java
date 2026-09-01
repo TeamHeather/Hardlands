@@ -36,13 +36,10 @@ final class TimelineBossBar {
         this.bossBar.name(Component.text(phase.getLabel(), NamedTextColor.WHITE));
     }
 
-    void updateStatic(Phase phase) {
-        this.bossBar.progress(phase.getProgression().apply(0.0F));
-        this.bossBar.name(Component.text(phase.getLabel(), NamedTextColor.WHITE));
-    }
-
     void updatePercentage(Phase phase, float percentage) {
-        this.bossBar.progress(phase.getProgression().apply(Math.clamp(percentage / 100.0F, 0.0F, 1.0F)));
+        float progress = Math.clamp(percentage / 100.0F, 0.0F, 1.0F);
+
+        this.bossBar.progress(phase.getProgression().apply(progress));
         this.bossBar.name(this.buildLabel(phase.getLabel(), "%.1f%%".formatted(percentage), ""));
     }
 
@@ -73,6 +70,7 @@ final class TimelineBossBar {
         TextColor skullColor = this.isPvpEnabled(seconds)
                 ? HardlandsColor.HARDLANDS
                 : HardlandsColor.LIGHT_GRAY;
+
         this.bossBar.name(
                 Component.text("☠ ", skullColor)
                         .append(label)
@@ -89,32 +87,11 @@ final class TimelineBossBar {
     }
 
     private float computeCounterProgress(Phase phase, int seconds) {
-        if (phase == Phase.SURVIVAL) {
-            return this.computeSurvivalProgress(seconds);
-        }
-
         Integer startMinute = phase.getMinute(this.gameManager);
         Integer endMinute = phase.getNextMinute(this.gameManager);
 
-        if (startMinute == null || endMinute == null) {
-            return 0.0F;
-        }
-
+        if (startMinute == null || endMinute == null) return 0.0F;
         return computeProgress(seconds, startMinute, endMinute);
-    }
-
-    private float computeSurvivalProgress(int seconds) {
-        int pvpMinute = this.gameManager
-                .getPvpMinuteOption()
-                .getValue();
-
-        int borderShrinkMinute = this.gameManager
-                .getBorderShrinkMinuteOption()
-                .getValue();
-
-        return this.isPvpEnabled(seconds)
-                ? computeProgress(seconds, pvpMinute, borderShrinkMinute)
-                : computeProgress(seconds, 0, pvpMinute);
     }
 
     private String computeTarget(Phase phase, int seconds) {
@@ -122,17 +99,14 @@ final class TimelineBossBar {
             int targetMinute = this.isPvpEnabled(seconds)
                     ? this.gameManager.getBorderShrinkMinuteOption().getValue()
                     : this.gameManager.getPvpMinuteOption().getValue();
+
             return formatMinute(targetMinute);
         }
 
-        if (phase.getProgression() == Phase.Progression.FULL) {
-            return "";
-        }
+        if (phase.getProgression() == Phase.Progression.FULL) return "";
 
         Integer endMinute = phase.getNextMinute(this.gameManager);
-        return endMinute == null
-                ? ""
-                : formatMinute(endMinute);
+        return endMinute == null ? "" : formatMinute(endMinute);
     }
 
     private boolean isPvpEnabled(int seconds) {
@@ -145,9 +119,7 @@ final class TimelineBossBar {
                 .append(Component.text(" » ", NamedTextColor.WHITE))
                 .append(Component.text(value, HardlandsColor.HARDLANDS));
 
-        if (target.isEmpty()) {
-            return component;
-        }
+        if (target.isEmpty()) return component;
 
         return component
                 .append(Component.text(" → ", NamedTextColor.WHITE))
@@ -158,10 +130,7 @@ final class TimelineBossBar {
         int start = startMinute * 60;
         int end = endMinute * 60;
 
-        if (end <= start) {
-            return 1.0F;
-        }
-
+        if (end <= start) return 1.0F;
         return Math.clamp((float) (seconds - start) / (end - start), 0.0F, 1.0F);
     }
 

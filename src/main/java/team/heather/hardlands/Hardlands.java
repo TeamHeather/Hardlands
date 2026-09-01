@@ -32,6 +32,7 @@ public final class Hardlands extends JavaPlugin {
             .registerTypeAdapter(LocalTime.class, new LocalTimeAdapter().nullSafe())
             .setPrettyPrinting()
             .create();
+
     public static final String LABEL = HardlandsColor.HARDLANDS + "ʜᴀʀᴅʟᴀɴᴅꜱ";
 
     private final SingleThreadScheduler<Hardlands> singleThreadScheduler = new SingleThreadScheduler<>(this);

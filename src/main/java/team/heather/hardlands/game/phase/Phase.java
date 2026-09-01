@@ -11,90 +11,35 @@ import team.heather.hardlands.game.GameManagerConfiguration;
 
 public enum Phase {
 
-    OFF_GAME(
-            "Fuera de partida",
-            Stage.LOBBY,
-            Progression.EMPTY,
-            ProgressSource.STATIC,
-            false,
-            PhaseBehavior.OFF_GAME
-    ),
+    OFF_GAME("Fuera de partida", Stage.LOBBY, Progression.EMPTY, ProgressSource.STATIC, false,
+            PhaseBehavior.OFF_GAME),
 
-    PREPARATION(
-            "Preparación",
-            Stage.LOBBY,
-            Progression.FILL,
-            ProgressSource.PERCENTAGE,
-            true,
-            PhaseBehavior.PREPARATION
-    ),
+    PREPARATION("Preparación", Stage.LOBBY, Progression.FILL, ProgressSource.PERCENTAGE, true,
+            PhaseBehavior.PREPARATION),
 
-    WAITING(
-            "Esperando",
-            Stage.LOBBY,
-            Progression.DRAIN,
-            ProgressSource.CLOCK,
-            true,
-            PhaseBehavior.WAITING
-    ),
+    WAITING("Esperando", Stage.LOBBY, Progression.DRAIN, ProgressSource.CLOCK, true,
+            PhaseBehavior.WAITING),
 
-    SCATTER(
-            "Dispersión",
-            Stage.LOBBY,
-            Progression.FILL,
-            ProgressSource.PERCENTAGE,
-            false,
-            PhaseBehavior.SCATTER
-    ),
+    SCATTER("Dispersión", Stage.LOBBY, Progression.FILL, ProgressSource.PERCENTAGE, false,
+            PhaseBehavior.SCATTER),
 
-    SURVIVAL(
-            "Supervivencia",
-            Stage.SURVIVAL,
-            Progression.DRAIN,
-            ProgressSource.COUNTER,
-            true,
-            PhaseBehavior.SURVIVAL
-    ),
+    SURVIVAL("Supervivencia", Stage.SURVIVAL, Progression.FILL, ProgressSource.COUNTER, true,
+            PhaseBehavior.SURVIVAL),
 
-    BORDER_SHRINK(
-            "Reducción del borde",
-            Stage.MEETUP,
-            Progression.FILL,
-            ProgressSource.COUNTER,
-            true,
-            PhaseBehavior.BORDER_SHRINK,
-            GameManagerConfiguration::getBorderShrinkMinuteOption
-    ),
+    BORDER_SHRINK("Reducción del borde", Stage.MEETUP, Progression.FILL, ProgressSource.COUNTER,
+            true, PhaseBehavior.BORDER_SHRINK,
+            GameManagerConfiguration::getBorderShrinkMinuteOption),
 
-    MEETUP(
-            "Encuentro",
-            Stage.MEETUP,
-            Progression.DRAIN,
-            ProgressSource.COUNTER,
-            true,
-            PhaseBehavior.MEETUP,
-            GameManagerConfiguration::getMeetupMinuteOption
-    ),
+    MEETUP("Encuentro", Stage.MEETUP, Progression.DRAIN, ProgressSource.COUNTER, true,
+            PhaseBehavior.MEETUP, GameManagerConfiguration::getMeetupMinuteOption),
 
-    FINAL_SHRINK(
-            "Reducción final",
-            Stage.DEATHMATCH,
-            Progression.FILL,
-            ProgressSource.COUNTER,
-            true,
-            PhaseBehavior.FINAL_SHRINK,
-            GameManagerConfiguration::getFinalShrinkMinuteOption
-    ),
+    FINAL_SHRINK("Reducción final", Stage.DEATHMATCH, Progression.FILL, ProgressSource.COUNTER,
+            true, PhaseBehavior.FINAL_SHRINK,
+            GameManagerConfiguration::getFinalShrinkMinuteOption),
 
-    DEATHMATCH(
-            "Combate a muerte",
-            Stage.DEATHMATCH,
-            Progression.FULL,
-            ProgressSource.COUNTER,
-            false,
-            PhaseBehavior.DEATHMATCH,
-            GameManagerConfiguration::getDeathmatchMinuteOption
-    );
+    DEATHMATCH("Combate a muerte", Stage.DEATHMATCH, Progression.FULL, ProgressSource.COUNTER,
+            false, PhaseBehavior.DEATHMATCH,
+            GameManagerConfiguration::getDeathmatchMinuteOption);
 
     private static final Phase[] VALUES = values();
 
@@ -106,34 +51,14 @@ public enum Phase {
     private final PhaseBehavior.Handler handler;
     private final Function<GameManagerConfiguration, Option<Integer>> minuteOption;
 
-    Phase(
-            String label,
-            Stage stage,
-            Progression progression,
-            ProgressSource progressSource,
-            boolean automaticAdvance,
-            PhaseBehavior.Handler handler
-    ) {
-        this(
-                label,
-                stage,
-                progression,
-                progressSource,
-                automaticAdvance,
-                handler,
-                null
-        );
+    Phase(String label, Stage stage, Progression progression, ProgressSource progressSource,
+          boolean automaticAdvance, PhaseBehavior.Handler handler) {
+        this(label, stage, progression, progressSource, automaticAdvance, handler, null);
     }
 
-    Phase(
-            String label,
-            Stage stage,
-            Progression progression,
-            ProgressSource progressSource,
-            boolean automaticAdvance,
-            PhaseBehavior.Handler handler,
-            Function<GameManagerConfiguration, Option<Integer>> minuteOption
-    ) {
+    Phase(String label, Stage stage, Progression progression, ProgressSource progressSource,
+          boolean automaticAdvance, PhaseBehavior.Handler handler,
+          Function<GameManagerConfiguration, Option<Integer>> minuteOption) {
         this.label = label;
         this.stage = stage;
         this.progression = progression;
@@ -153,33 +78,23 @@ public enum Phase {
 
     public Optional<Phase> previous() {
         int index = this.ordinal() - 1;
-
-        return index >= 0
-                ? Optional.of(VALUES[index])
-                : Optional.empty();
+        return index >= 0 ? Optional.of(VALUES[index]) : Optional.empty();
     }
 
     public Optional<Phase> next() {
         int index = this.ordinal() + 1;
-
-        return index < VALUES.length
-                ? Optional.of(VALUES[index])
-                : Optional.empty();
+        return index < VALUES.length ? Optional.of(VALUES[index]) : Optional.empty();
     }
 
     public Integer getMinute(GameManagerConfiguration configuration) {
-        return this.minuteOption == null
-                ? null
-                : this.minuteOption.apply(configuration).getValue();
+        if (this == SURVIVAL) return 0;
+        return this.minuteOption == null ? null : this.minuteOption.apply(configuration).getValue();
     }
 
     public Integer getNextMinute(GameManagerConfiguration configuration) {
         for (int index = this.ordinal() + 1; index < VALUES.length; index++) {
             Integer minute = VALUES[index].getMinute(configuration);
-
-            if (minute != null) {
-                return minute;
-            }
+            if (minute != null) return minute;
         }
 
         return null;
@@ -189,13 +104,8 @@ public enum Phase {
         Integer startMinute = this.getMinute(configuration);
         Integer endMinute = this.getNextMinute(configuration);
 
-        if (startMinute == null || endMinute == null) {
-            return Duration.ZERO;
-        }
-
-        return Duration.ofMinutes(
-                Math.max(0, endMinute - startMinute)
-        );
+        if (startMinute == null || endMinute == null) return Duration.ZERO;
+        return Duration.ofMinutes(Math.max(0, endMinute - startMinute));
     }
 
     public boolean isScatterQueueEnabled() {
@@ -255,11 +165,7 @@ public enum Phase {
         FULL;
 
         public float apply(float progress) {
-            float normalized = Math.clamp(
-                    progress,
-                    0.0F,
-                    1.0F
-            );
+            float normalized = Math.clamp(progress, 0.0F, 1.0F);
 
             return switch (this) {
                 case EMPTY -> 0.0F;

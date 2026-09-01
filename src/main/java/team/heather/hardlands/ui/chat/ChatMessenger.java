@@ -17,7 +17,10 @@ public final class ChatMessenger {
     private ChatMessenger() {}
 
     public static void broadcastFramed(String icon, HardlandsColor colors, String message) {
-        Component component = frame(icon, colors)
+        Component component = Component.newline()
+                .append(Component.newline())
+                .append(Component.newline())
+                .append(frame(icon, colors))
                 .append(Component.newline())
                 .append(MINI_MESSAGE.deserialize("<white>" + message))
                 .append(Component.newline())
@@ -51,7 +54,7 @@ public final class ChatMessenger {
     private static Component bottomFrame(HardlandsColor colors) {
         return Component.text("♢", colors.primary())
                 .append(Component.text("»", colors.tertiary()))
-                .append(line(65, colors.tertiary()))
+                .append(line(66, colors.tertiary()))
                 .append(Component.text("«", colors.tertiary()))
                 .append(Component.text("♢", colors.primary()));
     }

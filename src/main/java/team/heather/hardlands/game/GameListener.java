@@ -15,41 +15,37 @@ public final class GameListener implements Listener {
 
 		@EventHandler
 		private void onPlayerJoin(PlayerJoinEvent event) {
-				GameManager gameManager = Hardlands.getInstance().getGameManager();
-				ScatterManager scatterManager = Hardlands.getInstance().getWorldManager().getScatterManager();
+				Hardlands plugin = Hardlands.getInstance();
+				GameManager gameManager = plugin.getGameManager();
+				ScatterManager scatterManager = plugin.getWorldManager().getScatterManager();
 
 				Player player = event.getPlayer();
 				Phase phase = gameManager.getPhase();
 
 				gameManager.addTimelineViewer(player);
 
-				if (!phase.isScatterQueueEnabled()) {
-						return;
-				}
+				if (!phase.isScatterQueueEnabled()) return;
 
 				scatterManager.enqueue(player);
-				if (phase == Phase.SCATTER) {
-						scatterManager.scatterNext();
-				}
+				if (phase == Phase.SCATTER) scatterManager.scatterAll();
 		}
 
 		@EventHandler
 		private void onPlayerQuit(PlayerQuitEvent event) {
-				GameManager gameManager = Hardlands.getInstance().getGameManager();
-				ScatterManager scatterManager = Hardlands.getInstance().getWorldManager().getScatterManager();
+				Hardlands plugin = Hardlands.getInstance();
+				GameManager gameManager = plugin.getGameManager();
+				ScatterManager scatterManager = plugin.getWorldManager().getScatterManager();
 
 				Player player = event.getPlayer();
 
 				gameManager.removeTimelineViewer(player);
-
-				if (gameManager.getPhase().isScatterQueueEnabled()) {
-						scatterManager.remove(player);
-				}
+				if (gameManager.getPhase().isScatterQueueEnabled()) scatterManager.remove(player);
 		}
 
 		@EventHandler
 		private void onConfigurationChange(ConfigChangeEvent event) {
-				GameManager gameManager = Hardlands.getInstance().getGameManager();
+				Hardlands plugin = Hardlands.getInstance();
+				GameManager gameManager = plugin.getGameManager();
 
 				if (event.getConfiguration() != gameManager
 								|| !event.getOptionKey().equals(gameManager.getStartTimeOption().getKey())) {
@@ -61,6 +57,6 @@ public final class GameListener implements Listener {
 						return;
 				}
 
-				Bukkit.getScheduler().runTask(Hardlands.getInstance(), gameManager::refreshTimelineStartTime);
+				Bukkit.getScheduler().runTask(plugin, gameManager::refreshTimelineStartTime);
 		}
 }

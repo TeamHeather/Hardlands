@@ -5,8 +5,7 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 import team.heather.hardlands.game.timeline.GameTimeline;
 
-public final class GameLoopTask
-				implements AutoCloseable {
+public final class GameLoopTask implements AutoCloseable {
 
 		private static final long INITIAL_DELAY_TICKS = 20L;
 		private static final long PERIOD_TICKS = 20L;
@@ -16,10 +15,7 @@ public final class GameLoopTask
 
 		private BukkitTask task;
 
-		public GameLoopTask(
-						Plugin plugin,
-						GameTimeline timeline
-		) {
+		public GameLoopTask(Plugin plugin, GameTimeline timeline) {
 				this.plugin = plugin;
 				this.timeline = timeline;
 		}
