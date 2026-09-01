@@ -109,8 +109,8 @@ public final class TextFormatters {
 
     public static final class LocalTimeFormatter implements Formatter<LocalTime, String> {
 
-        private static final DateTimeFormatter HHMM = DateTimeFormatter.ofPattern("HH:mm");
-        private static final DateTimeFormatter HHMMSS = DateTimeFormatter.ofPattern("HH:mm:ss");
+        public static final DateTimeFormatter HHMM = DateTimeFormatter.ofPattern("HH:mm");
+        public static final DateTimeFormatter HHMMSS = DateTimeFormatter.ofPattern("HH:mm:ss");
 
         private LocalTimeFormatter() {}
 

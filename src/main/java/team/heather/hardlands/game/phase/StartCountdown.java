@@ -3,6 +3,7 @@ package team.heather.hardlands.game.phase;
 import java.time.Duration;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
@@ -12,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.game.world.ScatterManager;
 import team.heather.hardlands.common.ui.HardlandsColor;
+import team.heather.hardlands.util.TextFormatters;
 
 public final class StartCountdown implements AutoCloseable {
 
@@ -35,8 +37,7 @@ public final class StartCountdown implements AutoCloseable {
 
     private static final String HOST_LABEL = "Hosteado por:";
 
-    private static final Component GAME_TITLE = TextFormatter.tinyCaps("Hardlands")
-            .color(HardlandsColor.HARDLANDS);
+    private static final Component GAME_TITLE = MiniMessage.miniMessage().deserialize(Hardlands.LABEL);
 
     private static final Title.Times COUNTDOWN_TIMES = Title.Times.times(
             Duration.ZERO,
@@ -143,7 +144,7 @@ public final class StartCountdown implements AutoCloseable {
                         this.remainingSeconds,
                         HardlandsColor.HARDLANDS
                 ),
-                TextFormatter.tinyCaps("La partida comienza en")
+                TextFormatters.TINY_CAPS.formatColored("La partida comienza en")
                         .color(HardlandsColor.LIGHT_GRAY),
                 COUNTDOWN_TIMES
         );
@@ -180,7 +181,7 @@ public final class StartCountdown implements AutoCloseable {
             );
 
             this.showStartTitle(
-                    TextFormatter.tinyCaps(visibleText)
+                    TextFormatters.TINY_CAPS.formatColored(visibleText)
                             .color(HardlandsColor.LIGHT_GRAY),
                     TYPEWRITER_TIMES
             );
@@ -195,13 +196,11 @@ public final class StartCountdown implements AutoCloseable {
     }
 
     private void showFinalStartTitle() {
-        Component subtitle = TextFormatter.tinyCaps(HOST_LABEL)
+        Component subtitle = TextFormatters.TINY_CAPS.formatColored(HOST_LABEL)
                 .color(HardlandsColor.LIGHT_GRAY);
 
         if (this.host != null) {
-            Component formattedHost = TextFormatter.parse(
-                            TextFormatter.formatUsername(this.host)
-                    )
+            Component formattedHost = TextFormatters.MINI_MESSAGE.format(TextFormatters.USERNAME.format(this.host))
                     .color(HardlandsColor.LIGHT_GRAY);
 
             subtitle = subtitle

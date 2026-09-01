@@ -23,6 +23,7 @@ import team.heather.hardlands.common.ui.inventory.HardlandsInventory;
 import team.heather.hardlands.module.enchantment.HardlandsEnchantment;
 import team.heather.hardlands.module.scenario.Scenario;
 import team.heather.hardlands.module.scenario.implementation.EnchantiaScenario;
+import team.heather.hardlands.util.TextFormatters;
 
 public final class EnchantiaInventoryHandler implements InventoryHandler {
 
@@ -191,7 +192,7 @@ public final class EnchantiaInventoryHandler implements InventoryHandler {
             };
 
             return new ItemBuilder(material)
-                    .name(TextFormatter.tinyCaps(this.name))
+                    .name(TextFormatters.TINY_CAPS.format(this.name))
                     .glint(level > 0)
                     .formattedLore(
                             this.description,

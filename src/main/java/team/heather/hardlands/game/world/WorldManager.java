@@ -39,7 +39,7 @@ public final class WorldManager extends WorldManagerConfiguration {
     public void pregenerate() {
         this.forEachEnabledWorld((world, centerX, centerZ, survivalSize) ->
                 this.pregenerationManager.review(
-                        new PregenerationRequest(world.getName(), centerX, centerZ, survivalSize)));
+                        new PregenerationManager.Request(world.getName(), centerX, centerZ, survivalSize)));
     }
 
     public void shrinkForMeetup(Duration duration) {

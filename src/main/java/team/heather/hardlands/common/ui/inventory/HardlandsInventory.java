@@ -28,7 +28,7 @@ public enum HardlandsInventory {
             'N', InventoryItem.SCENARIOS,
             'I', InventoryItem.PLAYERS,
             'G', InventoryItem.GENERAL,
-            'E', InventoryItem.PHASES,
+            'E', InventoryItem.TIMELINE,
             'R', InventoryItem.WORLD,
             'K', InventoryItem.PRESETS)),
 

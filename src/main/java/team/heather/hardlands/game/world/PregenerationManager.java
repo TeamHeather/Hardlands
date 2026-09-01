@@ -33,7 +33,7 @@ public final class PregenerationManager {
     }
 
     public synchronized void review(
-            PregenerationRequest request
+            Request request
     ) {
         String worldName = request.worldName();
 
@@ -275,6 +275,25 @@ public final class PregenerationManager {
                     State.RUNNING,
                     0.0F
             );
+        }
+    }
+
+    public record Request(
+            String worldName,
+            double centerX,
+            double centerZ,
+            double worldSize) {
+
+        public boolean reviewAndStart(ChunkyAPI chunky) {
+            double radius = this.worldSize / 2.0D;
+            return chunky.startTask(
+                    this.worldName,
+                    "square",
+                    this.centerX,
+                    this.centerZ,
+                    radius,
+                    radius,
+                    "concentric");
         }
     }
 

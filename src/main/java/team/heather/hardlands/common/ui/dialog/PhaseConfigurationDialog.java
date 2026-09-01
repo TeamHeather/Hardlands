@@ -1,11 +1,9 @@
 package team.heather.hardlands.common.ui.dialog;
 
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.dialog.DialogResponseView;
@@ -19,10 +17,11 @@ import net.kyori.adventure.text.event.ClickCallback;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
 import team.heather.hardlands.Hardlands;
+import team.heather.hardlands.common.ui.HardlandsColor;
+import team.heather.hardlands.game.GameManager;
 import team.heather.hardlands.internal.config.Option;
 import team.heather.hardlands.internal.data.json.LocalTimeAdapter;
-import team.heather.hardlands.game.GameManager;
-import team.heather.hardlands.common.ui.HardlandsColor;
+import team.heather.hardlands.util.TextFormatters;
 
 @SuppressWarnings("UnstableApiUsage")
 public final class PhaseConfigurationDialog {
@@ -41,9 +40,6 @@ public final class PhaseConfigurationDialog {
     private static final String FINAL_SHRINK = "finalShrinkMinute";
     private static final String DEATHMATCH = "deathmatchMinute";
 
-    private static final DateTimeFormatter CURRENT_TIME_FORMATTER =
-            DateTimeFormatter.ofPattern("HH:mm:ss", Locale.ROOT);
-
     private PhaseConfigurationDialog() {}
 
     public static void show(Player player) {
@@ -52,10 +48,8 @@ public final class PhaseConfigurationDialog {
 
         player.showDialog(Dialog.create(builder -> builder
                 .empty()
-                .base(DialogBase.builder(
-                                TextFormatter.tinyCaps("Configuracion de fases")
-                        )
-                        .externalTitle(TextFormatter.tinyCaps("Fases"))
+                .base(DialogBase.builder(tinyCaps("Configuracion de fases"))
+                        .externalTitle(tinyCaps("Fases"))
                         .canCloseWithEscape(true)
                         .pause(false)
                         .afterAction(DialogBase.DialogAfterAction.NONE)
@@ -86,20 +80,18 @@ public final class PhaseConfigurationDialog {
         LocalTime startTime = manager.getStartTimeOption().getValue();
         LocalTime currentTime = LocalTime.now();
 
-        Component label = TextFormatter.tinyCaps("Hora de inicio (HH:mm)")
+        Component label = tinyCaps("Hora de inicio (HH:mm)")
                 .color(NamedTextColor.WHITE)
                 .append(Component.newline())
-                .append(TextFormatter.tinyCaps(
-                                "Hora actual: "
-                                        + LocalTimeAdapter.HHMMSS_FORMATTER.format(currentTime)
-                        )
-                        .color(HardlandsColor.LIGHT_GRAY));
+                .append(tinyCaps(
+                        "Hora actual: " + TextFormatters.LOCAL_TIME.formatWithSeconds(currentTime)
+                ).color(HardlandsColor.LIGHT_GRAY));
 
         return DialogInput.text(START_TIME, label)
                 .width(INPUT_WIDTH)
                 .initial(startTime == null
                         ? ""
-                        : LocalTimeAdapter.HHMM_FORMATTER.format(startTime))
+                        : TextFormatters.LOCAL_TIME.format(startTime))
                 .maxLength(5)
                 .build();
     }
@@ -110,8 +102,7 @@ public final class PhaseConfigurationDialog {
         return DialogInput.numberRange(
                 setting.key(),
                 INPUT_WIDTH,
-                TextFormatter.tinyCaps(setting.label())
-                        .color(NamedTextColor.WHITE),
+                tinyCaps(setting.label()).color(NamedTextColor.WHITE),
                 "%1$s: %2$s min",
                 MIN_MINUTE,
                 MAX_MINUTE,
@@ -125,10 +116,8 @@ public final class PhaseConfigurationDialog {
             List<MinuteSetting> settings
     ) {
         return ActionButton.create(
-                TextFormatter.tinyCaps("Guardar")
-                        .color(HardlandsColor.HARDLANDS),
-                TextFormatter.tinyCaps("Guardar los cambios.")
-                        .color(HardlandsColor.LIGHT_GRAY),
+                tinyCaps("Guardar").color(HardlandsColor.HARDLANDS),
+                tinyCaps("Guardar los cambios.").color(HardlandsColor.LIGHT_GRAY),
                 ACTION_WIDTH,
                 DialogAction.customClick(
                         (response, audience) -> {
@@ -150,10 +139,8 @@ public final class PhaseConfigurationDialog {
 
     private static ActionButton createCancelButton() {
         return ActionButton.create(
-                TextFormatter.tinyCaps("Cancelar")
-                        .color(NamedTextColor.GRAY),
-                TextFormatter.tinyCaps("Descartar los cambios.")
-                        .color(HardlandsColor.LIGHT_GRAY),
+                tinyCaps("Cancelar").color(NamedTextColor.GRAY),
+                tinyCaps("Descartar los cambios.").color(HardlandsColor.LIGHT_GRAY),
                 ACTION_WIDTH,
                 DialogAction.customClick(
                         (_, audience) -> audience.closeDialog(),
@@ -171,23 +158,20 @@ public final class PhaseConfigurationDialog {
             DialogResponseView response
     ) {
         try {
-            PhaseConfiguration configuration =
-                    readConfiguration(settings, response);
+            PhaseConfiguration configuration = readConfiguration(settings, response);
 
             validateConfiguration(configuration);
             applyConfiguration(manager, settings, configuration);
         } catch (IllegalArgumentException exception) {
             player.sendMessage(
-                    TextFormatter.tinyCaps(exception.getMessage())
-                            .color(NamedTextColor.RED)
+                    tinyCaps(exception.getMessage()).color(NamedTextColor.RED)
             );
             return;
         }
 
         player.closeDialog();
         player.sendMessage(
-                TextFormatter.tinyCaps("Configuracion guardada.")
-                        .color(NamedTextColor.GREEN)
+                tinyCaps("Configuracion guardada.").color(NamedTextColor.GREEN)
         );
     }
 
@@ -205,17 +189,13 @@ public final class PhaseConfigurationDialog {
         String input = response.getText(START_TIME);
 
         if (input == null || input.isBlank()) {
-            throw new IllegalArgumentException(
-                    "Configura una hora de inicio."
-            );
+            throw new IllegalArgumentException("Configura una hora de inicio.");
         }
 
         try {
-            return LocalTime.parse(input.strip(), LocalTimeAdapter.HHMM_FORMATTER);
+            return LocalTime.parse(input.strip(), TextFormatters.LocalTimeFormatter.HHMM);
         } catch (DateTimeParseException exception) {
-            throw new IllegalArgumentException(
-                    "Usa el formato HH:mm."
-            );
+            throw new IllegalArgumentException("Usa el formato HH:mm.");
         }
     }
 
@@ -244,9 +224,7 @@ public final class PhaseConfigurationDialog {
         return values;
     }
 
-    private static void validateConfiguration(
-            PhaseConfiguration configuration
-    ) {
+    private static void validateConfiguration(PhaseConfiguration configuration) {
         List<MinuteValue> values = configuration.minuteValues();
 
         for (int index = 1; index < values.size(); index++) {
@@ -284,9 +262,7 @@ public final class PhaseConfigurationDialog {
         }
     }
 
-    private static List<MinuteSetting> createMinuteSettings(
-            GameManager manager
-    ) {
+    private static List<MinuteSetting> createMinuteSettings(GameManager manager) {
         return List.of(
                 new MinuteSetting(
                         PVP,
@@ -314,6 +290,10 @@ public final class PhaseConfigurationDialog {
                         manager.getDeathmatchMinuteOption()
                 )
         );
+    }
+
+    private static Component tinyCaps(String text) {
+        return Component.text(TextFormatters.TINY_CAPS.format(text));
     }
 
     private record PhaseConfiguration(

@@ -22,7 +22,7 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
-import team.heather.hardlands.internal.data.PersistentDataAccess;
+import team.heather.hardlands.internal.data.pdc.PersistentDataAccess;
 import team.heather.hardlands.util.TextFormatters;
 
 // Vaya puta mierda

@@ -10,6 +10,7 @@ import team.heather.hardlands.module.enchantment.HardlandsEnchantment;
 import team.heather.hardlands.module.scenario.Scenario;
 import team.heather.hardlands.module.scenario.ScenarioProcessor;
 import team.heather.hardlands.common.ui.HardlandsColor;
+import team.heather.hardlands.util.TextFormatters;
 
 public final class ScenarioItemFactory {
 
@@ -18,8 +19,7 @@ public final class ScenarioItemFactory {
     public static ItemStack create(Scenario scenario, boolean enabled) {
         ScenarioProcessor processor = scenario.getProcessor();
 
-        Component name = TextFormatter.tinyCaps(scenario.getLabel())
-                .color(enabled ? HardlandsColor.HARDLANDS : NamedTextColor.DARK_GRAY);
+        Component name = TextFormatters.TINY_CAPS.formatColored(scenario.getLabel()).color(enabled ? HardlandsColor.HARDLANDS : NamedTextColor.DARK_GRAY);
 
         ItemBuilder builder = new ItemBuilder(scenario.getMaterial())
                 .name(name)
@@ -89,7 +89,7 @@ public final class ScenarioItemFactory {
         return switch (level) {
             case -1 -> "Desactivado";
             case 0 -> "0";
-            default -> RomanNumerals.format(level);
+            default -> TextFormatters.ROMAN_NUMERAL.format(level);
         };
     }
 

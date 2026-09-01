@@ -1,4 +1,4 @@
-package team.heather.hardlands.internal;
+package team.heather.hardlands.internal.data;
 
 import java.util.Set;
 

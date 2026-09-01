@@ -1,4 +1,4 @@
-package team.heather.hardlands.internal.data;
+package team.heather.hardlands.util;
 
 public class BoundedCounter {
 

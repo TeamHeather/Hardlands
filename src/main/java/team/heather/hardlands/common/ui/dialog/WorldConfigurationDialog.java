@@ -1,5 +1,10 @@
 package team.heather.hardlands.common.ui.dialog;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.dialog.DialogResponseView;
 import io.papermc.paper.registry.data.dialog.ActionButton;
@@ -8,12 +13,6 @@ import io.papermc.paper.registry.data.dialog.action.DialogAction;
 import io.papermc.paper.registry.data.dialog.input.DialogInput;
 import io.papermc.paper.registry.data.dialog.input.SingleOptionDialogInput;
 import io.papermc.paper.registry.data.dialog.type.DialogType;
-
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickCallback;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -22,10 +21,11 @@ import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import team.heather.hardlands.Hardlands;
-import team.heather.hardlands.internal.config.Option;
+import team.heather.hardlands.common.ui.HardlandsColor;
 import team.heather.hardlands.common.ui.inventory.HardlandsInventory;
 import team.heather.hardlands.game.world.WorldManager;
-import team.heather.hardlands.common.ui.HardlandsColor;
+import team.heather.hardlands.internal.config.Option;
+import team.heather.hardlands.util.TextFormatters;
 
 @SuppressWarnings("UnstableApiUsage")
 public final class WorldConfigurationDialog {
@@ -62,17 +62,23 @@ public final class WorldConfigurationDialog {
 
         player.showDialog(Dialog.create(builder -> builder
                 .empty()
-                .base(DialogBase.builder(TextFormatter.tinyCaps("Configuración del mundo"))
+                .base(DialogBase.builder(tinyCaps("Configuración del mundo"))
                         .externalTitle(Component.text("Mundo"))
                         .canCloseWithEscape(true)
                         .pause(false)
                         .afterAction(DialogBase.DialogAfterAction.NONE)
                         .inputs(createInputs(manager, worlds))
                         .build())
-                .type(DialogType.confirmation(createSaveButton(manager, worlds), createCancelButton()))));
+                .type(DialogType.confirmation(
+                        createSaveButton(manager, worlds),
+                        createCancelButton()
+                ))));
     }
 
-    private static List<DialogInput> createInputs(WorldManager manager, List<World> worlds) {
+    private static List<DialogInput> createInputs(
+            WorldManager manager,
+            List<World> worlds
+    ) {
         List<DialogInput> inputs = new ArrayList<>(worlds.size() + 7);
 
         addWorldInputs(inputs, manager, worlds);
@@ -81,13 +87,15 @@ public final class WorldConfigurationDialog {
                 SURFACE_TELEPORT,
                 "↑",
                 "Teletransportar a la superficie",
-                manager.getSurfaceTeleportOption().getValue()));
+                manager.getSurfaceTeleportOption().getValue()
+        ));
 
         inputs.add(booleanInput(
                 BORDER_DAMAGE,
                 "☠",
                 "Daño fuera del World Border",
-                manager.getBorderDamageOption().getValue()));
+                manager.getBorderDamageOption().getValue()
+        ));
 
         inputs.add(borderSizeInput(
                 SURVIVAL_SIZE,
@@ -95,7 +103,8 @@ public final class WorldConfigurationDialog {
                 "World Border de Supervivencia",
                 manager.getSurvivalSizeOption().getValue(),
                 SURVIVAL_MIN_SIZE,
-                SURVIVAL_MAX_SIZE));
+                SURVIVAL_MAX_SIZE
+        ));
 
         inputs.add(borderSizeInput(
                 MEETUP_SIZE,
@@ -103,7 +112,8 @@ public final class WorldConfigurationDialog {
                 "World Border de Meetup",
                 manager.getMeetupSizeOption().getValue(),
                 MEETUP_MIN_SIZE,
-                MEETUP_MAX_SIZE));
+                MEETUP_MAX_SIZE
+        ));
 
         inputs.add(borderSizeInput(
                 DEATHMATCH_SIZE,
@@ -111,24 +121,33 @@ public final class WorldConfigurationDialog {
                 "World Border de Deathmatch",
                 manager.getDeathmatchSizeOption().getValue(),
                 DEATHMATCH_MIN_SIZE,
-                DEATHMATCH_MAX_SIZE));
+                DEATHMATCH_MAX_SIZE
+        ));
 
         inputs.add(numberInput(
                 CENTER_X,
                 "Coordenada X del centro de los World Borders",
-                manager.getCenterXOption().getValue()));
+                manager.getCenterXOption().getValue()
+        ));
 
         inputs.add(numberInput(
                 CENTER_Z,
                 "Coordenada Z del centro de los World Borders",
-                manager.getCenterZOption().getValue()));
+                manager.getCenterZOption().getValue()
+        ));
 
         return inputs;
     }
 
-    private static void addWorldInputs(List<DialogInput> inputs, WorldManager manager, List<World> worlds) {
+    private static void addWorldInputs(
+            List<DialogInput> inputs,
+            WorldManager manager,
+            List<World> worlds
+    ) {
         Option<Set<String>> option = manager.getEnabledWorldsOption();
-        Set<String> enabledWorlds = option.hasValue() ? option.getValue() : Set.of();
+        Set<String> enabledWorlds = option.hasValue()
+                ? option.getValue()
+                : Set.of();
 
         for (int index = 0; index < worlds.size(); index++) {
             World world = worlds.get(index);
@@ -147,9 +166,15 @@ public final class WorldConfigurationDialog {
         return DialogInput.singleOption(
                 worldKey(index),
                 INPUT_WIDTH,
-                List.of(stateOption(TRUE, "Activado", NamedTextColor.GREEN, true)),
+                List.of(stateOption(
+                        TRUE,
+                        "Activado",
+                        NamedTextColor.GREEN,
+                        true
+                )),
                 worldLabel(world),
-                true);
+                true
+        );
     }
 
     private static Component worldLabel(World world) {
@@ -160,25 +185,54 @@ public final class WorldConfigurationDialog {
             default -> world.getName();
         };
 
-        return TextFormatter.tinyCaps(name).color(NamedTextColor.WHITE);
+        return tinyCaps(name).color(NamedTextColor.WHITE);
     }
 
-    private static DialogInput booleanInput(String key, String icon, String name, Boolean value) {
+    private static DialogInput booleanInput(
+            String key,
+            String icon,
+            String name,
+            Boolean value
+    ) {
         return DialogInput.singleOption(
                 key,
                 INPUT_WIDTH,
                 List.of(
-                        stateOption(DEFAULT, "Sin configurar", NamedTextColor.DARK_GRAY, value == null),
-                        stateOption(TRUE, "Activado", NamedTextColor.GREEN, Boolean.TRUE.equals(value)),
-                        stateOption(FALSE, "Desactivado", NamedTextColor.RED, Boolean.FALSE.equals(value))),
+                        stateOption(
+                                DEFAULT,
+                                "Sin configurar",
+                                NamedTextColor.DARK_GRAY,
+                                value == null
+                        ),
+                        stateOption(
+                                TRUE,
+                                "Activado",
+                                NamedTextColor.GREEN,
+                                Boolean.TRUE.equals(value)
+                        ),
+                        stateOption(
+                                FALSE,
+                                "Desactivado",
+                                NamedTextColor.RED,
+                                Boolean.FALSE.equals(value)
+                        )
+                ),
                 iconLabel(icon, name),
-                true);
+                true
+        );
     }
 
     private static DialogInput borderSizeInput(
-            String key, String icon, String name, Integer value, float min, float max) {
-
-        Float initial = value == null ? null : Math.clamp(value.floatValue(), min, max);
+            String key,
+            String icon,
+            String name,
+            Integer value,
+            float min,
+            float max
+    ) {
+        Float initial = value == null
+                ? null
+                : Math.clamp(value.floatValue(), min, max);
 
         return DialogInput.numberRange(
                 key,
@@ -188,10 +242,15 @@ public final class WorldConfigurationDialog {
                 min,
                 max,
                 initial,
-                BORDER_SIZE_STEP);
+                BORDER_SIZE_STEP
+        );
     }
 
-    private static DialogInput numberInput(String key, String name, Double value) {
+    private static DialogInput numberInput(
+            String key,
+            String name,
+            Double value
+    ) {
         return DialogInput.text(key, plainLabel(name))
                 .width(INPUT_WIDTH)
                 .initial(value == null ? "" : formatNumber(value))
@@ -200,56 +259,94 @@ public final class WorldConfigurationDialog {
     }
 
     private static SingleOptionDialogInput.OptionEntry stateOption(
-            String key, String name, TextColor color, boolean selected) {
-
-        return SingleOptionDialogInput.OptionEntry.create(key, TextFormatter.tinyCaps(name).color(color), selected);
+            String key,
+            String name,
+            TextColor color,
+            boolean selected
+    ) {
+        return SingleOptionDialogInput.OptionEntry.create(
+                key,
+                tinyCaps(name).color(color),
+                selected
+        );
     }
 
     private static Component iconLabel(String icon, String name) {
         return Component.text(icon + "  ", HardlandsColor.HARDLANDS)
-                .append(TextFormatter.tinyCaps(name).color(NamedTextColor.WHITE));
+                .append(tinyCaps(name).color(NamedTextColor.WHITE));
     }
 
     private static Component plainLabel(String name) {
-        return TextFormatter.tinyCaps(name).color(NamedTextColor.WHITE);
+        return tinyCaps(name).color(NamedTextColor.WHITE);
     }
 
-    private static ActionButton createSaveButton(WorldManager manager, List<World> worlds) {
+    private static ActionButton createSaveButton(
+            WorldManager manager,
+            List<World> worlds
+    ) {
         return ActionButton.create(
-                TextFormatter.tinyCaps("Guardar").color(HardlandsColor.HARDLANDS),
-                Component.text("Aplicar los cambios.", HardlandsColor.LIGHT_GRAY),
+                tinyCaps("Guardar").color(HardlandsColor.HARDLANDS),
+                Component.text(
+                        "Aplicar los cambios.",
+                        HardlandsColor.LIGHT_GRAY
+                ),
                 ACTION_WIDTH,
                 DialogAction.customClick(
                         (response, audience) -> {
-                            if (!(audience instanceof Player player)) return;
+                            if (!(audience instanceof Player player)) {
+                                return;
+                            }
 
                             try {
-                                WorldSettings settings = readSettings(worlds, response);
+                                WorldSettings settings = readSettings(
+                                        worlds,
+                                        response
+                                );
+
                                 validateSettings(manager, settings);
                                 applySettings(manager, settings);
                             } catch (IllegalArgumentException exception) {
-                                player.sendRichMessage("<red>" + exception.getMessage());
+                                player.sendRichMessage(
+                                        "<red>" + exception.getMessage()
+                                );
                                 return;
                             }
 
                             HardlandsInventory.refreshPreparationItems();
+
                             player.closeDialog();
-                            player.sendRichMessage("<green>Configuración del mundo guardada.");
+                            player.sendRichMessage(
+                                    "<green>Configuración del mundo guardada."
+                            );
                         },
-                        ClickCallback.Options.builder().uses(ClickCallback.UNLIMITED_USES).build()));
+                        ClickCallback.Options.builder()
+                                .uses(ClickCallback.UNLIMITED_USES)
+                                .build()
+                )
+        );
     }
 
     private static ActionButton createCancelButton() {
         return ActionButton.create(
-                TextFormatter.tinyCaps("Cancelar").color(NamedTextColor.GRAY),
-                Component.text("Cerrar sin guardar.", HardlandsColor.LIGHT_GRAY),
+                tinyCaps("Cancelar").color(NamedTextColor.GRAY),
+                Component.text(
+                        "Cerrar sin guardar.",
+                        HardlandsColor.LIGHT_GRAY
+                ),
                 ACTION_WIDTH,
                 DialogAction.customClick(
-                        (response, audience) -> audience.closeDialog(),
-                        ClickCallback.Options.builder().uses(1).build()));
+                        (_, audience) -> audience.closeDialog(),
+                        ClickCallback.Options.builder()
+                                .uses(1)
+                                .build()
+                )
+        );
     }
 
-    private static WorldSettings readSettings(List<World> worlds, DialogResponseView response) {
+    private static WorldSettings readSettings(
+            List<World> worlds,
+            DialogResponseView response
+    ) {
         return new WorldSettings(
                 readEnabledWorlds(worlds, response),
                 readBorderSize(response, SURVIVAL_SIZE),
@@ -257,65 +354,115 @@ public final class WorldConfigurationDialog {
                 readBorderSize(response, DEATHMATCH_SIZE),
                 readBoolean(response, SURFACE_TELEPORT),
                 readBoolean(response, BORDER_DAMAGE),
-                parseDouble(response.getText(CENTER_X), "La coordenada X del centro de los World Borders"),
-                parseDouble(response.getText(CENTER_Z), "La coordenada Z del centro de los World Borders"));
+                parseDouble(
+                        response.getText(CENTER_X),
+                        "La coordenada X del centro de los World Borders"
+                ),
+                parseDouble(
+                        response.getText(CENTER_Z),
+                        "La coordenada Z del centro de los World Borders"
+                )
+        );
     }
 
-    private static void validateSettings(WorldManager manager, WorldSettings settings) {
-        validate(manager.getEnabledWorldsOption(), settings.enabledWorlds(), "La selección de mundos no es válida.");
+    private static void validateSettings(
+            WorldManager manager,
+            WorldSettings settings
+    ) {
+        validate(
+                manager.getEnabledWorldsOption(),
+                settings.enabledWorlds(),
+                "La selección de mundos no es válida."
+        );
 
         validateBorderSize(
                 manager.getSurvivalSizeOption(),
                 settings.survivalSize(),
                 "El World Border de Supervivencia",
                 SURVIVAL_MIN_SIZE,
-                SURVIVAL_MAX_SIZE);
+                SURVIVAL_MAX_SIZE
+        );
 
         validateBorderSize(
                 manager.getMeetupSizeOption(),
                 settings.meetupSize(),
                 "El World Border de Meetup",
                 MEETUP_MIN_SIZE,
-                MEETUP_MAX_SIZE);
+                MEETUP_MAX_SIZE
+        );
 
         validateBorderSize(
                 manager.getDeathmatchSizeOption(),
                 settings.deathmatchSize(),
                 "El World Border de Deathmatch",
                 DEATHMATCH_MIN_SIZE,
-                DEATHMATCH_MAX_SIZE);
+                DEATHMATCH_MAX_SIZE
+        );
 
         validate(
                 manager.getSurfaceTeleportOption(),
                 settings.surfaceTeleport(),
-                "La opción de teletransporte a la superficie no es válida.");
+                "La opción de teletransporte a la superficie no es válida."
+        );
 
         validate(
                 manager.getBorderDamageOption(),
                 settings.borderDamage(),
-                "La opción de daño fuera del World Border no es válida.");
+                "La opción de daño fuera del World Border no es válida."
+        );
 
-        validate(manager.getCenterXOption(), settings.centerX(), "La coordenada X del centro no es válida.");
-        validate(manager.getCenterZOption(), settings.centerZ(), "La coordenada Z del centro no es válida.");
+        validate(
+                manager.getCenterXOption(),
+                settings.centerX(),
+                "La coordenada X del centro no es válida."
+        );
 
-        validateBorderSizes(settings.survivalSize(), settings.meetupSize(), settings.deathmatchSize());
+        validate(
+                manager.getCenterZOption(),
+                settings.centerZ(),
+                "La coordenada Z del centro no es válida."
+        );
+
+        validateBorderSizes(
+                settings.survivalSize(),
+                settings.meetupSize(),
+                settings.deathmatchSize()
+        );
     }
 
-    private static void applySettings(WorldManager manager, WorldSettings settings) {
-        manager.getEnabledWorldsOption().changeValue(settings.enabledWorlds());
+    private static void applySettings(
+            WorldManager manager,
+            WorldSettings settings
+    ) {
+        manager.getEnabledWorldsOption()
+                .changeValue(settings.enabledWorlds());
 
-        manager.getSurfaceTeleportOption().changeValue(settings.surfaceTeleport());
-        manager.getBorderDamageOption().changeValue(settings.borderDamage());
+        manager.getSurfaceTeleportOption()
+                .changeValue(settings.surfaceTeleport());
 
-        manager.getSurvivalSizeOption().changeValue(settings.survivalSize());
-        manager.getMeetupSizeOption().changeValue(settings.meetupSize());
-        manager.getDeathmatchSizeOption().changeValue(settings.deathmatchSize());
+        manager.getBorderDamageOption()
+                .changeValue(settings.borderDamage());
 
-        manager.getCenterXOption().changeValue(settings.centerX());
-        manager.getCenterZOption().changeValue(settings.centerZ());
+        manager.getSurvivalSizeOption()
+                .changeValue(settings.survivalSize());
+
+        manager.getMeetupSizeOption()
+                .changeValue(settings.meetupSize());
+
+        manager.getDeathmatchSizeOption()
+                .changeValue(settings.deathmatchSize());
+
+        manager.getCenterXOption()
+                .changeValue(settings.centerX());
+
+        manager.getCenterZOption()
+                .changeValue(settings.centerZ());
     }
 
-    private static Set<String> readEnabledWorlds(List<World> worlds, DialogResponseView response) {
+    private static Set<String> readEnabledWorlds(
+            List<World> worlds,
+            DialogResponseView response
+    ) {
         Set<String> enabledWorlds = new LinkedHashSet<>();
 
         for (int index = 0; index < worlds.size(); index++) {
@@ -330,64 +477,119 @@ public final class WorldConfigurationDialog {
         return enabledWorlds;
     }
 
-    private static Integer readBorderSize(DialogResponseView response, String key) {
+    private static Integer readBorderSize(
+            DialogResponseView response,
+            String key
+    ) {
         Float value = response.getFloat(key);
-        return value == null ? null : Math.round(value);
+
+        return value == null
+                ? null
+                : Math.round(value);
     }
 
-    private static Boolean readBoolean(DialogResponseView response, String key) {
+    private static Boolean readBoolean(
+            DialogResponseView response,
+            String key
+    ) {
         String value = response.getText(key);
 
-        if (value == null || value.equals(DEFAULT)) return null;
-        if (value.equals(TRUE)) return true;
-        if (value.equals(FALSE)) return false;
+        if (value == null || value.equals(DEFAULT)) {
+            return null;
+        }
 
-        throw new IllegalArgumentException("La opción seleccionada no es válida.");
+        if (value.equals(TRUE)) {
+            return true;
+        }
+
+        if (value.equals(FALSE)) {
+            return false;
+        }
+
+        throw new IllegalArgumentException(
+                "La opción seleccionada no es válida."
+        );
     }
 
     private static Double parseDouble(String input, String name) {
-        if (input == null || input.isBlank()) return null;
+        if (input == null || input.isBlank()) {
+            return null;
+        }
 
         try {
             double value = Double.parseDouble(input.strip());
 
-            if (!Double.isFinite(value)) throw new NumberFormatException();
+            if (!Double.isFinite(value)) {
+                throw new NumberFormatException();
+            }
 
             return value;
         } catch (NumberFormatException exception) {
-            throw new IllegalArgumentException(name + " debe ser un número válido.");
+            throw new IllegalArgumentException(
+                    name + " debe ser un número válido."
+            );
         }
     }
 
     private static void validateBorderSize(
-            Option<Integer> option, Integer value, String name, float min, float max) {
-
+            Option<Integer> option,
+            Integer value,
+            String name,
+            float min,
+            float max
+    ) {
         if (value != null && (value < min || value > max)) {
             throw new IllegalArgumentException(
-                    "%s debe estar entre %.0f × %.0f y %.0f × %.0f bloques.".formatted(name, min, min, max, max));
+                    "%s debe estar entre %.0f × %.0f y %.0f × %.0f bloques."
+                            .formatted(
+                                    name,
+                                    min,
+                                    min,
+                                    max,
+                                    max
+                            )
+            );
         }
 
         validate(option, value, name + " no es válido.");
     }
 
-    private static void validateBorderSizes(Integer survival, Integer meetup, Integer deathmatch) {
-        if (survival != null && meetup != null && survival < meetup) {
+    private static void validateBorderSizes(
+            Integer survival,
+            Integer meetup,
+            Integer deathmatch
+    ) {
+        if (survival != null
+                && meetup != null
+                && survival < meetup) {
             throw new IllegalArgumentException(
-                    "El World Border de Supervivencia no puede ser menor que el de Meetup.");
+                    "El World Border de Supervivencia no puede ser menor que el de Meetup."
+            );
         }
 
-        if (meetup != null && deathmatch != null && meetup < deathmatch) {
+        if (meetup != null
+                && deathmatch != null
+                && meetup < deathmatch) {
             throw new IllegalArgumentException(
-                    "El World Border de Meetup no puede ser menor que el de Deathmatch.");
+                    "El World Border de Meetup no puede ser menor que el de Deathmatch."
+            );
         }
     }
 
-    private static <T> void validate(Option<T> option, T value, String error) {
-        if (value != null && !option.getPredicate().test(value)) throw new IllegalArgumentException(error);
+    private static <T> void validate(
+            Option<T> option,
+            T value,
+            String error
+    ) {
+        if (value != null && !option.getPredicate().test(value)) {
+            throw new IllegalArgumentException(error);
+        }
     }
 
     private static String formatNumber(double value) {
-        return value == Math.rint(value) ? Long.toString((long) value) : Double.toString(value);
+        return value == Math.rint(value)
+                ? Long.toString((long) value)
+                : Double.toString(value);
     }
 
     private static String worldKey(int index) {
@@ -396,6 +598,10 @@ public final class WorldConfigurationDialog {
 
     private static WorldManager getWorldManager() {
         return Hardlands.getInstance().getWorldManager();
+    }
+
+    private static Component tinyCaps(String text) {
+        return Component.text(TextFormatters.TINY_CAPS.format(text));
     }
 
     private record WorldSettings(

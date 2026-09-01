@@ -4,6 +4,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.block.BlockDropItemEvent;
 import org.bukkit.inventory.ItemStack;
+import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.config.OptionDef;
 import team.heather.hardlands.config.ScenarioConfigBuilder;
 import team.heather.hardlands.internal.config.Validator;
@@ -19,7 +20,7 @@ public final class BonanzaScenario extends BonanzaScenarioConfiguration {
 
     @EventHandler(priority = EventPriority.LOWEST)
     private void onBlockDropItem(BlockDropItemEvent event) {
-        if (!BlockUtils.isOre(event.getBlockState().getType())) {
+        if (!Hardlands.getInstance().getInternalDefinitions().isKnownOre(event.getBlockState().getType())) {
             return;
         }
 

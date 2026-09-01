@@ -24,9 +24,10 @@ import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.common.ui.inventory.HardlandsInventory;
 import team.heather.hardlands.common.item.InventoryItem;
 import team.heather.hardlands.common.item.ItemBuilder;
-import team.heather.hardlands.game.preset.PresetRepository;
-import team.heather.hardlands.game.preset.PresetRepository.PresetInfo;
+import team.heather.hardlands.internal.data.PresetRepository;
+import team.heather.hardlands.internal.data.PresetRepository.PresetInfo;
 import team.heather.hardlands.common.ui.HardlandsColor;
+import team.heather.hardlands.util.TextFormatters;
 
 public final class PresetInventoryHandler implements InventoryHandler {
 
@@ -430,7 +431,7 @@ public final class PresetInventoryHandler implements InventoryHandler {
 
     private static ItemStack createSaveItem() {
         return new ItemBuilder(Material.WRITABLE_BOOK)
-                .name(TextFormatter.tinyCaps("Crear preset"))
+                .name(TextFormatters.TINY_CAPS.format("Crear preset"))
                 .formattedLore(
                         "Guarda la [configuración actual].",
                         "",

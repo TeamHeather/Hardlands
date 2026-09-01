@@ -1,4 +1,4 @@
-package team.heather.hardlands.internal.data;
+package team.heather.hardlands.internal.data.pdc;
 
 import java.util.Optional;
 import org.bukkit.NamespacedKey;

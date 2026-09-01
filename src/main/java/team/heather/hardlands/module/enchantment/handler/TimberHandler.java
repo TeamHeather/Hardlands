@@ -5,7 +5,8 @@ import org.bukkit.Tag;
 import org.bukkit.block.Block;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.inventory.ItemStack;
-import team.heather.hardlands.internal.data.BoundedCounter;
+import team.heather.hardlands.util.BlockFloodFill;
+import team.heather.hardlands.util.BoundedCounter;
 import team.heather.hardlands.internal.event.TimberBreakLeavesEvent;
 import team.heather.hardlands.module.enchantment.HardlandsEnchantment;
 
@@ -29,7 +30,7 @@ public final class TimberHandler implements EnchantmentHandler<BlockBreakEvent> 
         BoundedCounter logs = new BoundedCounter(LOG_LIMIT);
         BoundedCounter leaves = new BoundedCounter(LEAF_LIMIT);
 
-        BlockUtils.floodFill(origin, block -> {
+        BlockFloodFill.fill(origin, block -> {
             Material material = block.getType();
 
             if (Tag.LOGS.isTagged(material)) {

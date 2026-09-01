@@ -5,7 +5,9 @@ import org.bukkit.Tag;
 import org.bukkit.block.Block;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.inventory.ItemStack;
-import team.heather.hardlands.internal.data.BoundedCounter;
+import team.heather.hardlands.Hardlands;
+import team.heather.hardlands.util.BlockFloodFill;
+import team.heather.hardlands.util.BoundedCounter;
 import team.heather.hardlands.module.enchantment.HardlandsEnchantment;
 
 public final class VeinMinerHandler implements EnchantmentHandler<BlockBreakEvent> {
@@ -17,7 +19,7 @@ public final class VeinMinerHandler implements EnchantmentHandler<BlockBreakEven
         ItemStack tool = event.getPlayer().getInventory().getItemInMainHand();
         Block origin = event.getBlock();
 
-        if (!BlockUtils.isOre(origin.getType())
+        if (!Hardlands.getInstance().getInternalDefinitions().isKnownOre(origin.getType())
                 || !HardlandsEnchantment.VEIN_MINER.matches(tool, item -> Tag.ITEMS_PICKAXES.isTagged(item.getType()))) {
             return;
         }
@@ -26,7 +28,7 @@ public final class VeinMinerHandler implements EnchantmentHandler<BlockBreakEven
         boolean smeltingTouch = HardlandsEnchantment.SMELTING_TOUCH.matches(tool);
         BoundedCounter blocks = new BoundedCounter(BLOCK_LIMIT);
 
-        BlockUtils.floodFill(origin, block -> {
+        BlockFloodFill.fill(origin, block -> {
             if (block.getType() != ore || !blocks.tryAdvance()) return false;
             if (block.equals(origin)) return true;
 

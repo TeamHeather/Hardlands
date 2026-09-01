@@ -19,7 +19,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.common.item.ItemBuilder;
-import team.heather.hardlands.internal.data.PersistentDataAccess;
+import team.heather.hardlands.internal.data.pdc.PersistentDataAccess;
 import team.heather.hardlands.module.enchantment.handler.*;
 import team.heather.hardlands.common.ui.HardlandsColor;
 import team.heather.hardlands.util.TextFormatters;

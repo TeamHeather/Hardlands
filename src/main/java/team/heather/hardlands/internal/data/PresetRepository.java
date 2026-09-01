@@ -1,4 +1,4 @@
-package team.heather.hardlands.game.preset;
+package team.heather.hardlands.internal.data;
 
 import com.google.gson.JsonObject;
 import com.google.gson.annotations.SerializedName;
