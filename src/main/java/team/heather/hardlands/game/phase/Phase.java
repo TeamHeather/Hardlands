@@ -6,7 +6,7 @@ import java.util.function.Function;
 
 import net.kyori.adventure.bossbar.BossBar;
 import team.heather.hardlands.Hardlands;
-import team.heather.hardlands.core.config.Option;
+import team.heather.hardlands.internal.config.Option;
 import team.heather.hardlands.game.GameManagerConfiguration;
 
 public enum Phase {

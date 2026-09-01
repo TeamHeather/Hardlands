@@ -13,7 +13,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import team.heather.hardlands.util.text.TextFormatter;
 
 public final class PlayerListener implements Listener {
     private static final String KILL_MESSAGE = "☠ {¡Has eliminado a} %s{!} ☠";

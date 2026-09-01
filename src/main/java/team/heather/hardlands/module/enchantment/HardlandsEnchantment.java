@@ -19,10 +19,10 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.feature.item.ItemBuilder;
-import team.heather.hardlands.core.data.pdc.PersistentData;
+import team.heather.hardlands.internal.data.PersistentDataAccess;
 import team.heather.hardlands.module.enchantment.handler.*;
-import team.heather.hardlands.util.text.RomanNumerals;
-import team.heather.hardlands.ui.HardlandsColor;
+import team.heather.hardlands.feature.ui.HardlandsColor;
+import team.heather.hardlands.util.TextFormatters;
 
 public enum HardlandsEnchantment {
 
@@ -156,7 +156,7 @@ public enum HardlandsEnchantment {
     }
 
     public Optional<Integer> findLevel(ItemMeta meta) {
-        return PersistentData.find(meta, namespacedKey, PersistentDataType.INTEGER);
+        return PersistentDataAccess.find(meta, namespacedKey, PersistentDataType.INTEGER);
     }
 
     public ItemStack createEnchantedBook(int amplifier) {
@@ -173,7 +173,7 @@ public enum HardlandsEnchantment {
 
     public Component createBeautifulName(int amplifier) {
         String level = amplifier != 0
-                ? " " + RomanNumerals.format(amplifier + 1)
+                ? " " + TextFormatters.ROMAN_NUMERAL.format(amplifier + 1)
                 : "";
 
         return Component.text(label + level, NamedTextColor.GRAY)

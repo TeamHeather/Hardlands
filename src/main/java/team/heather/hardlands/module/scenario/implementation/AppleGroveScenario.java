@@ -3,16 +3,14 @@ package team.heather.hardlands.module.scenario.implementation;
 import org.bukkit.Material;
 import org.bukkit.Tag;
 import org.bukkit.block.Block;
-import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.block.BlockDropItemEvent;
 import org.bukkit.event.block.LeavesDecayEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 import team.heather.hardlands.config.OptionDef;
 import team.heather.hardlands.config.ScenarioConfigBuilder;
-import team.heather.hardlands.core.config.Validator;
-import team.heather.hardlands.core.event.TimberBreakLeavesEvent;
+import team.heather.hardlands.internal.config.Validator;
+import team.heather.hardlands.internal.event.TimberBreakLeavesEvent;
 
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;

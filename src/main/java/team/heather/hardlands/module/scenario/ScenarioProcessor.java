@@ -5,24 +5,38 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.jetbrains.annotations.Nullable;
 import team.heather.hardlands.Hardlands;
-import team.heather.hardlands.core.config.Configuration;
+import team.heather.hardlands.internal.config.Configuration;
+
+import java.util.UUID;
 
 public abstract class ScenarioProcessor extends Configuration implements Listener {
 
     @Nullable private Hardlands plugin;
+
+    protected ScenarioProcessor() {
+        super(null);
+    }
+
+    protected boolean onEnableValidation() {
+        return true;
+    }
+
+    public final boolean canEnable() {
+        return super.isConfigValid() && this.onEnableValidation();
+    }
 
     final void initializeScenario(Hardlands plugin, String identifier) {
         if (this.plugin != null) {
             throw new IllegalStateException("Scenario is already initialized");
         }
 
-        setConfigurationIdentifier(identifier);
+        setConfigName(identifier);
         this.plugin = plugin;
     }
 
     final void enableScenario() {
         if (!canEnable()) {
-            throw new IllegalStateException("Scenario configuration is invalid: " + this.getConfigurationIdentifier());
+            throw new IllegalStateException("Scenario configuration is invalid: " + this.getConfigName());
         }
 
         Bukkit.getPluginManager().registerEvents(this, getPluginOrThrow());
@@ -30,10 +44,6 @@ public abstract class ScenarioProcessor extends Configuration implements Listene
 
     final void disableScenario() {
         HandlerList.unregisterAll(this);
-    }
-
-    public boolean canEnable() {
-        return isConfigurationValid();
     }
 
     protected final Hardlands getPluginOrThrow() {

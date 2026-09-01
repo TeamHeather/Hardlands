@@ -8,9 +8,9 @@ import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.WorldBorder;
 import team.heather.hardlands.config.ConfigBuilder;
-import team.heather.hardlands.core.config.Option;
+import team.heather.hardlands.internal.config.Option;
 import team.heather.hardlands.config.OptionDef;
-import team.heather.hardlands.core.config.Validator;
+import team.heather.hardlands.internal.config.Validator;
 import org.popcraft.chunky.api.ChunkyAPI;
 
 @ConfigBuilder(identifier = "world", options = {
@@ -59,9 +59,7 @@ public final class WorldManager extends WorldManagerConfiguration {
     }
 
     @Override
-    public boolean isConfigurationValid() {
-        if (!super.isConfigurationValid()) return false;
-
+    public boolean onConfigValidation() {
         int survival = super.survivalSize.getValue();
         int meetup = super.meetupSize.getValue();
         int deathmatch = super.deathmatchSize.getValue();

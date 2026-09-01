@@ -8,12 +8,11 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.entity.Player;
-import team.heather.hardlands.core.data.json.LocalTimeAdapter;
+import team.heather.hardlands.internal.data.json.LocalTimeAdapter;
 import team.heather.hardlands.game.GameManager;
 import team.heather.hardlands.game.phase.Phase;
-import team.heather.hardlands.ui.HardlandsColor;
-import team.heather.hardlands.util.text.TimeFormatter;
-import team.heather.hardlands.util.text.TinyCaps;
+import team.heather.hardlands.feature.ui.HardlandsColor;
+import team.heather.hardlands.util.TextFormatters;
 
 final class TimelineBossBar {
 
@@ -47,8 +46,8 @@ final class TimelineBossBar {
         this.bossBar.progress(phase.getProgression().apply(progress));
         this.bossBar.name(this.buildLabel(
                 phase.getLabel(),
-                LocalTimeAdapter.HHMMSS_FORMATTER.format(currentTime),
-                LocalTimeAdapter.format(targetTime)
+                TextFormatters.LOCAL_TIME.formatWithSeconds(currentTime),
+                TextFormatters.LOCAL_TIME.format(targetTime)
         ));
     }
 
@@ -56,7 +55,7 @@ final class TimelineBossBar {
         float progress = this.computeCounterProgress(phase, seconds);
         Component label = this.buildLabel(
                 phase.getLabel(),
-                TimeFormatter.format(Duration.ofSeconds(seconds)),
+                TextFormatters.DURATION.format(Duration.ofSeconds(seconds)),
                 this.computeTarget(phase, seconds)
         );
 
@@ -115,7 +114,7 @@ final class TimelineBossBar {
     }
 
     private Component buildLabel(String label, String value, String target) {
-        Component component = Component.text(TinyCaps.format(label))
+        Component component = Component.text(TextFormatters.TINY_CAPS.format(label))
                 .append(Component.text(" » ", NamedTextColor.WHITE))
                 .append(Component.text(value, HardlandsColor.HARDLANDS));
 
@@ -135,6 +134,6 @@ final class TimelineBossBar {
     }
 
     private static String formatMinute(int minute) {
-        return TimeFormatter.format(Duration.ofMinutes(minute));
+        return TextFormatters.DURATION.format(Duration.ofMinutes(minute));
     }
 }

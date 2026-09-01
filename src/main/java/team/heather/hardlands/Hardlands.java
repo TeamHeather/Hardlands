@@ -8,13 +8,15 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
+import org.bukkit.block.Biome;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
-import team.heather.hardlands.command.HardlandsCommand;
-import team.heather.hardlands.command.PhaseCommand;
-import team.heather.hardlands.core.SingleThreadScheduler;
-import team.heather.hardlands.core.data.json.LocalTimeAdapter;
+import team.heather.hardlands.feature.command.HardlandsCommand;
+import team.heather.hardlands.feature.command.PhaseCommand;
+import team.heather.hardlands.internal.InternalDefinitions;
+import team.heather.hardlands.internal.ThreadScheduler;
+import team.heather.hardlands.internal.data.json.LocalTimeAdapter;
 import team.heather.hardlands.feature.item.ItemListener;
 import team.heather.hardlands.feature.player.PlayerListener;
 import team.heather.hardlands.game.GameListener;
@@ -23,20 +25,21 @@ import team.heather.hardlands.game.preset.PresetRepository;
 import team.heather.hardlands.game.world.WorldManager;
 import team.heather.hardlands.module.enchantment.EnchantmentManager;
 import team.heather.hardlands.module.scenario.ScenarioManager;
-import team.heather.hardlands.ui.inventory.InventoryListener;
-import team.heather.hardlands.ui.HardlandsColor;
+import team.heather.hardlands.feature.ui.inventory.InventoryListener;
+import team.heather.hardlands.feature.ui.HardlandsColor;
 
 public final class Hardlands extends JavaPlugin {
 
+    public static final String LABEL = HardlandsColor.HARDLANDS + "ʜᴀʀᴅʟᴀɴᴅꜱ";
     public static final Gson GSON = new GsonBuilder()
             .registerTypeAdapter(LocalTime.class, new LocalTimeAdapter().nullSafe())
             .setPrettyPrinting()
             .create();
 
-    public static final String LABEL = HardlandsColor.HARDLANDS + "ʜᴀʀᴅʟᴀɴᴅꜱ";
 
-    private final SingleThreadScheduler<Hardlands> singleThreadScheduler = new SingleThreadScheduler<>(this);
+    private final ThreadScheduler<Hardlands> threadScheduler = new ThreadScheduler<>(this);
 
+    @Nullable private InternalDefinitions internalDefinitions;
     @Nullable private EnchantmentManager enchantmentManager;
     @Nullable private ScenarioManager scenarioManager;
     @Nullable private WorldManager worldManager;
@@ -46,6 +49,7 @@ public final class Hardlands extends JavaPlugin {
     @Override
     public void onEnable() {
 
+        this.internalDefinitions = new InternalDefinitions(this, "internal");
         this.enchantmentManager = new EnchantmentManager(this);
         this.scenarioManager = new ScenarioManager(this);
         this.worldManager = new WorldManager();
@@ -53,8 +57,8 @@ public final class Hardlands extends JavaPlugin {
         this.presetRepository = new PresetRepository(this, "presets");
 
         this.gameManager.start();
+        this.internalDefinitions.load();
         this.presetRepository.load("default");
-
 
         this.registerCommands(
                 new HardlandsCommand(),
@@ -77,7 +81,7 @@ public final class Hardlands extends JavaPlugin {
             this.gameManager.stop();
         }
 
-        this.singleThreadScheduler.close();
+        this.threadScheduler.close();
 
         super.getLogger().info("Hardlands successfully disabled.");
     }
@@ -90,8 +94,12 @@ public final class Hardlands extends JavaPlugin {
         return JavaPlugin.getPlugin(Hardlands.class);
     }
 
-    public SingleThreadScheduler<Hardlands> getSingleThreadScheduler() {
-        return this.singleThreadScheduler;
+    public ThreadScheduler<Hardlands> getSingleThreadScheduler() {
+        return this.threadScheduler;
+    }
+
+    public InternalDefinitions getInternalDefinitions() {
+        return requireInitialized(this.internalDefinitions, "InternalDefinitions");
     }
 
     public PresetRepository getPresetRepository() {

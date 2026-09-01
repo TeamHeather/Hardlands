@@ -9,9 +9,7 @@ import org.bukkit.inventory.ItemStack;
 import team.heather.hardlands.module.enchantment.HardlandsEnchantment;
 import team.heather.hardlands.module.scenario.Scenario;
 import team.heather.hardlands.module.scenario.ScenarioProcessor;
-import team.heather.hardlands.util.text.RomanNumerals;
-import team.heather.hardlands.ui.HardlandsColor;
-import team.heather.hardlands.util.text.TextFormatter;
+import team.heather.hardlands.feature.ui.HardlandsColor;
 
 public final class ScenarioItemFactory {
 
@@ -28,7 +26,7 @@ public final class ScenarioItemFactory {
                 .glint(enabled)
                 .addFormattedLore(scenario.getDescription(), "");
 
-        if (!processor.getConfigurationOptions().isEmpty()) {
+        if (!processor.getConfigOptions().isEmpty()) {
             builder.addFormattedLore(createConfigurationLore(processor), "");
         }
 
@@ -40,7 +38,7 @@ public final class ScenarioItemFactory {
     private static String createControls(ScenarioProcessor processor, boolean enabled) {
         String action = enabled ? "Desactivar" : "Activar";
 
-        return processor.getConfigurationOptions().isEmpty()
+        return processor.getConfigOptions().isEmpty()
                 ? "<gray>Izq. <dark_gray>↔ {%s}".formatted(action)
                 : "<gray>Izq. <dark_gray>↔ {%s}  <dark_gray>│  <gray>Der. <dark_gray>✎ {Configurar}".formatted(action);
     }
@@ -48,7 +46,7 @@ public final class ScenarioItemFactory {
     private static String createConfigurationLore(ScenarioProcessor processor) {
         StringBuilder lore = new StringBuilder("{Configuración}");
 
-        processor.getConfigurationOptions().forEach((key, option) -> {
+        processor.getConfigOptions().forEach((key, option) -> {
             lore.append("\n\n<dark_gray>◆ <gray>").append(formatName(key));
             appendValue(lore, option.getValue());
         });

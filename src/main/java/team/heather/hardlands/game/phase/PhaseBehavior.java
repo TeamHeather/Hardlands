@@ -10,14 +10,14 @@ import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.entity.LivingEntity;
 import team.heather.hardlands.Hardlands;
-import team.heather.hardlands.core.data.json.LocalTimeAdapter;
+import team.heather.hardlands.internal.data.json.LocalTimeAdapter;
 import team.heather.hardlands.game.GameManager;
 import team.heather.hardlands.game.world.PregenerationManager;
 import team.heather.hardlands.game.world.ScatterManager;
 import team.heather.hardlands.game.world.WorldManager;
-import team.heather.hardlands.ui.HardlandsColor;
-import team.heather.hardlands.ui.chat.AnnouncementType;
-import team.heather.hardlands.util.text.TimeFormatter;
+import team.heather.hardlands.feature.ui.HardlandsColor;
+import team.heather.hardlands.feature.ui.chat.AnnouncementType;
+import team.heather.hardlands.util.TextFormatters;
 
 final class PhaseBehavior {
 
@@ -71,7 +71,7 @@ final class PhaseBehavior {
             LocalTime startTime = plugin.getGameManager().getStartTimeOption().getValue();
             String formattedStartTime = startTime == null
                     ? "sin configurar"
-                    : LocalTimeAdapter.HHMM_FORMATTER.format(startTime);
+                    : TextFormatters.LOCAL_TIME.format(startTime);
 
             AnnouncementType.NEUTRAL.broadcast(
                     "El mundo está preparado y listo para comenzar. La partida iniciará a las %s.",
@@ -212,7 +212,7 @@ final class PhaseBehavior {
                     formatBorderSize(worldManager.getMeetupSizeOption().getValue()),
                     HardlandsColor.RED.primary()
             );
-            String shrinkDuration = highlight(TimeFormatter.format(duration), HardlandsColor.RED.primary());
+            String shrinkDuration = highlight(TextFormatters.DURATION.format(duration), HardlandsColor.RED.primary());
 
             AnnouncementType.DANGER.broadcast(
                     "El borde ha comenzado a reducirse de %s a %s. La reducción durará %s y finalizará al comenzar el Meetup.",
@@ -237,7 +237,7 @@ final class PhaseBehavior {
                     formatBorderSize(worldManager.getMeetupSizeOption().getValue()),
                     HardlandsColor.GREEN.primary()
             );
-            String finalShrinkTime = highlight(TimeFormatter.format(duration), HardlandsColor.GREEN.primary());
+            String finalShrinkTime = highlight(TextFormatters.DURATION.format(duration), HardlandsColor.GREEN.primary());
 
             AnnouncementType.GAMEPLAY.broadcast(
                     "El Meetup ha comenzado con un borde de %s. La reducción final comenzará en %s.",
@@ -263,7 +263,7 @@ final class PhaseBehavior {
                     formatBorderSize(worldManager.getDeathmatchSizeOption().getValue()),
                     HardlandsColor.RED.primary()
             );
-            String shrinkDuration = highlight(TimeFormatter.format(duration), HardlandsColor.RED.primary());
+            String shrinkDuration = highlight(TextFormatters.DURATION.format(duration), HardlandsColor.RED.primary());
 
             AnnouncementType.DANGER.broadcast(
                     """
@@ -308,7 +308,7 @@ final class PhaseBehavior {
 
         if (minute == null || startMinute == null) return "sin configurar";
 
-        return TimeFormatter.format(Duration.ofMinutes(Math.max(0, minute - startMinute)));
+        return TextFormatters.DURATION.format(Duration.ofMinutes(Math.max(0, minute - startMinute)));
     }
 
     private static String formatBorderSize(Integer size) {

@@ -5,10 +5,9 @@ import org.bukkit.Tag;
 import org.bukkit.block.Block;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.inventory.ItemStack;
-import team.heather.hardlands.core.data.BoundedCounter;
-import team.heather.hardlands.core.event.TimberBreakLeavesEvent;
+import team.heather.hardlands.internal.data.BoundedCounter;
+import team.heather.hardlands.internal.event.TimberBreakLeavesEvent;
 import team.heather.hardlands.module.enchantment.HardlandsEnchantment;
-import team.heather.hardlands.util.BlockUtils;
 
 public final class TimberHandler implements EnchantmentHandler<BlockBreakEvent> {
 

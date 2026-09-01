@@ -7,7 +7,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import team.heather.hardlands.Hardlands;
-import team.heather.hardlands.core.event.ConfigChangeEvent;
+import team.heather.hardlands.internal.event.ConfigChangeEvent;
 import team.heather.hardlands.game.phase.Phase;
 import team.heather.hardlands.game.world.ScatterManager;
 

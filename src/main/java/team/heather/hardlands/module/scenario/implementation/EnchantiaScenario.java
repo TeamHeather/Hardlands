@@ -58,14 +58,14 @@ public final class EnchantiaScenario extends EnchantiaScenarioConfiguration {
                 Map<HardlandsEnchantment, Integer> values = new LinkedHashMap<>(this.hardlandsEnchantments.getValue());
 
                 updateLevel(values, enchantment, level);
-                this.hardlandsEnchantments.setValue(values);
+                this.hardlandsEnchantments.changeValue(values);
         }
 
         public void level(Enchantment enchantment, int level) {
                 Map<String, Integer> values = new LinkedHashMap<>(this.vanillaEnchantments.getValue());
 
                 updateLevel(values, enchantment.getKey().toString(), level);
-                this.vanillaEnchantments.setValue(values);
+                this.vanillaEnchantments.changeValue(values);
         }
 
         private boolean applyHardlandsEnchantments(ItemStack stack) {

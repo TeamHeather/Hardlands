@@ -125,16 +125,12 @@ public final class GameManager extends GameManagerConfiguration {
     }
 
     @Override
-    public boolean isConfigurationValid() {
-        if (!super.isConfigurationValid()) {
-            return false;
-        }
-
-        int pvpMinute = this.getPvpMinuteOption().getValue();
-        int borderShrinkMinute = this.getBorderShrinkMinuteOption().getValue();
-        int meetupMinute = this.getMeetupMinuteOption().getValue();
-        int finalShrinkMinute = this.getFinalShrinkMinuteOption().getValue();
-        int deathmatchMinute = this.getDeathmatchMinuteOption().getValue();
+    public boolean onConfigValidation() {
+        int pvpMinute = super.getPvpMinuteOption().getValue();
+        int borderShrinkMinute = super.getBorderShrinkMinuteOption().getValue();
+        int meetupMinute = super.getMeetupMinuteOption().getValue();
+        int finalShrinkMinute = super.getFinalShrinkMinuteOption().getValue();
+        int deathmatchMinute = super.getDeathmatchMinuteOption().getValue();
 
         return pvpMinute > 0
                 && pvpMinute < borderShrinkMinute

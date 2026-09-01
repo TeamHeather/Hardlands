@@ -6,8 +6,7 @@ import org.bukkit.event.block.BlockDropItemEvent;
 import org.bukkit.inventory.ItemStack;
 import team.heather.hardlands.config.OptionDef;
 import team.heather.hardlands.config.ScenarioConfigBuilder;
-import team.heather.hardlands.core.config.Validator;
-import team.heather.hardlands.util.BlockUtils;
+import team.heather.hardlands.internal.config.Validator;
 
 @ScenarioConfigBuilder(options = {
         @OptionDef(

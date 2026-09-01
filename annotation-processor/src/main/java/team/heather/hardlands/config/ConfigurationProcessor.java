@@ -26,7 +26,7 @@ import java.util.Set;
 @SupportedAnnotationTypes("team.heather.hardlands.config.ConfigBuilder")
 public final class ConfigurationProcessor extends AbstractProcessor {
 
-    private static final String CONFIGURATION_PACKAGE = "team.heather.hardlands.core.config";
+    private static final String CONFIGURATION_PACKAGE = "team.heather.hardlands.internal.config";
 
     private static final String DEFAULT_SUPERCLASS = CONFIGURATION_PACKAGE + ".Configuration";
     private static final String OPTION_TYPE = CONFIGURATION_PACKAGE + ".Option";
