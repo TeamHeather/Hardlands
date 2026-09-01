@@ -12,7 +12,7 @@ import org.jetbrains.annotations.Nullable;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.feature.player.PlayerListener;
 import team.heather.hardlands.game.world.ScatterManager;
-import team.heather.hardlands.util.HardlandsColor;
+import team.heather.hardlands.ui.HardlandsColor;
 import team.heather.hardlands.util.text.TextFormatter;
 
 public final class StartCountdown implements AutoCloseable {
@@ -38,7 +38,7 @@ public final class StartCountdown implements AutoCloseable {
     private static final String HOST_LABEL = "Hosteado por:";
 
     private static final Component GAME_TITLE = TextFormatter.tinyCaps("Hardlands")
-            .color(HardlandsColor.PRIMARY);
+            .color(HardlandsColor.HARDLANDS);
 
     private static final Title.Times COUNTDOWN_TIMES = Title.Times.times(
             Duration.ZERO,
@@ -143,7 +143,7 @@ public final class StartCountdown implements AutoCloseable {
         Title title = Title.title(
                 Component.text(
                         this.remainingSeconds,
-                        HardlandsColor.PRIMARY
+                        HardlandsColor.HARDLANDS
                 ),
                 TextFormatter.tinyCaps("La partida comienza en")
                         .color(HardlandsColor.LIGHT_GRAY),
@@ -202,7 +202,7 @@ public final class StartCountdown implements AutoCloseable {
 
         if (this.host != null) {
             Component formattedHost = TextFormatter.parse(
-                            PlayerListener.formatUsername(this.host)
+                            TextFormatter.formatUsername(this.host)
                     )
                     .color(HardlandsColor.LIGHT_GRAY);
 

@@ -1,32 +1,27 @@
 package team.heather.hardlands.ui.chat;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import team.heather.hardlands.Hardlands;
+import team.heather.hardlands.ui.HardlandsColor;
 
 public final class ChatMessenger {
 
     private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
-
     private static final String FORMAT = "<dark_gray>[%s<dark_gray>] <gray>» <white>%s";
-
-    private static final String FRAMED_FORMAT = """
-            <#e5383b>♢<#800E13>»%s{ <#e5383b>❣ <#8c2f39>☠ <#e5383b>❣ <#800E13>}%s«<#e5383b>♢
-            <white>%s
-            <#e5383b>♢<#800E13>»%s«<#e5383b>♢
-            """;
 
     private ChatMessenger() {}
 
-    public static void broadcastFramed(String message) {
-        Component component = MINI_MESSAGE.deserialize(FRAMED_FORMAT.formatted(
-                line(30),
-                line(30),
-                message,
-                line(71)
-        ));
+    public static void broadcastFramed(String icon, HardlandsColor colors, String message) {
+        Component component = frame(icon, colors)
+                .append(Component.newline())
+                .append(MINI_MESSAGE.deserialize("<white>" + message))
+                .append(Component.newline())
+                .append(bottomFrame(colors));
 
         Bukkit.getOnlinePlayers().forEach(player -> player.sendMessage(component));
     }
@@ -40,7 +35,28 @@ public final class ChatMessenger {
         player.sendMessage(MINI_MESSAGE.deserialize(FORMAT.formatted(Hardlands.LABEL, message)));
     }
 
-    private static String line(int length) {
-        return "<st>" + " ".repeat(length) + "<!st>";
+    private static Component frame(String icon, HardlandsColor colors) {
+        return Component.text("♢", colors.primary())
+                .append(Component.text("»", colors.tertiary()))
+                .append(line(30, colors.tertiary()))
+                .append(Component.text("{ ", colors.tertiary()))
+                .append(Component.text(icon, colors.primary()))
+                .append(Component.text(" ", colors.secondary()))
+                .append(Component.text("}", colors.tertiary()))
+                .append(line(30, colors.tertiary()))
+                .append(Component.text("«", colors.tertiary()))
+                .append(Component.text("♢", colors.primary()));
+    }
+
+    private static Component bottomFrame(HardlandsColor colors) {
+        return Component.text("♢", colors.primary())
+                .append(Component.text("»", colors.tertiary()))
+                .append(line(65, colors.tertiary()))
+                .append(Component.text("«", colors.tertiary()))
+                .append(Component.text("♢", colors.primary()));
+    }
+
+    private static TextComponent line(int length, net.kyori.adventure.text.format.TextColor color) {
+        return Component.text(" ".repeat(length), color).decorate(TextDecoration.STRIKETHROUGH);
     }
 }

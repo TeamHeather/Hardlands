@@ -26,7 +26,7 @@ import team.heather.hardlands.feature.item.InventoryItem;
 import team.heather.hardlands.feature.item.ItemBuilder;
 import team.heather.hardlands.game.preset.PresetRepository;
 import team.heather.hardlands.game.preset.PresetRepository.PresetInfo;
-import team.heather.hardlands.util.HardlandsColor;
+import team.heather.hardlands.ui.HardlandsColor;
 import team.heather.hardlands.util.text.TextFormatter;
 
 public final class PresetInventoryHandler implements InventoryHandler {

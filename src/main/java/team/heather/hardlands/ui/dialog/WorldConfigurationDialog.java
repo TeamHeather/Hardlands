@@ -25,7 +25,7 @@ import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.core.config.Option;
 import team.heather.hardlands.ui.inventory.HardlandsInventory;
 import team.heather.hardlands.game.world.WorldManager;
-import team.heather.hardlands.util.HardlandsColor;
+import team.heather.hardlands.ui.HardlandsColor;
 import team.heather.hardlands.util.text.TextFormatter;
 
 @SuppressWarnings("UnstableApiUsage")
@@ -207,7 +207,7 @@ public final class WorldConfigurationDialog {
     }
 
     private static Component iconLabel(String icon, String name) {
-        return Component.text(icon + "  ", HardlandsColor.PRIMARY)
+        return Component.text(icon + "  ", HardlandsColor.HARDLANDS)
                 .append(TextFormatter.tinyCaps(name).color(NamedTextColor.WHITE));
     }
 
@@ -217,7 +217,7 @@ public final class WorldConfigurationDialog {
 
     private static ActionButton createSaveButton(WorldManager manager, List<World> worlds) {
         return ActionButton.create(
-                TextFormatter.tinyCaps("Guardar").color(HardlandsColor.PRIMARY),
+                TextFormatter.tinyCaps("Guardar").color(HardlandsColor.HARDLANDS),
                 Component.text("Aplicar los cambios.", HardlandsColor.LIGHT_GRAY),
                 ACTION_WIDTH,
                 DialogAction.customClick(

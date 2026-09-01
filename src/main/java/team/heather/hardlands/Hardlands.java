@@ -24,7 +24,7 @@ import team.heather.hardlands.game.world.WorldManager;
 import team.heather.hardlands.module.enchantment.EnchantmentManager;
 import team.heather.hardlands.module.scenario.ScenarioManager;
 import team.heather.hardlands.ui.inventory.InventoryListener;
-import team.heather.hardlands.util.HardlandsColor;
+import team.heather.hardlands.ui.HardlandsColor;
 
 public final class Hardlands extends JavaPlugin {
 
@@ -32,7 +32,7 @@ public final class Hardlands extends JavaPlugin {
             .registerTypeAdapter(LocalTime.class, new LocalTimeAdapter().nullSafe())
             .setPrettyPrinting()
             .create();
-    public static final String LABEL = HardlandsColor.PRIMARY + "ʜᴀʀᴅʟᴀɴᴅꜱ";
+    public static final String LABEL = HardlandsColor.HARDLANDS + "ʜᴀʀᴅʟᴀɴᴅꜱ";
 
     private final SingleThreadScheduler<Hardlands> singleThreadScheduler = new SingleThreadScheduler<>(this);
 

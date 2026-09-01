@@ -10,7 +10,7 @@ import team.heather.hardlands.module.enchantment.HardlandsEnchantment;
 import team.heather.hardlands.module.scenario.Scenario;
 import team.heather.hardlands.module.scenario.ScenarioProcessor;
 import team.heather.hardlands.util.text.RomanNumerals;
-import team.heather.hardlands.util.HardlandsColor;
+import team.heather.hardlands.ui.HardlandsColor;
 import team.heather.hardlands.util.text.TextFormatter;
 
 public final class ScenarioItemFactory {
@@ -21,7 +21,7 @@ public final class ScenarioItemFactory {
         ScenarioProcessor processor = scenario.getProcessor();
 
         Component name = TextFormatter.tinyCaps(scenario.getLabel())
-                .color(enabled ? HardlandsColor.PRIMARY : NamedTextColor.DARK_GRAY);
+                .color(enabled ? HardlandsColor.HARDLANDS : NamedTextColor.DARK_GRAY);
 
         ItemBuilder builder = new ItemBuilder(scenario.getMaterial())
                 .name(name)

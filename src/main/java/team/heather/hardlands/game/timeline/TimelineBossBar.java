@@ -8,12 +8,10 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.entity.Player;
-import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.core.data.json.LocalTimeAdapter;
 import team.heather.hardlands.game.GameManager;
 import team.heather.hardlands.game.phase.Phase;
-import team.heather.hardlands.util.HardlandsColor;
-import team.heather.hardlands.util.text.TextFormatter;
+import team.heather.hardlands.ui.HardlandsColor;
 import team.heather.hardlands.util.text.TimeFormatter;
 import team.heather.hardlands.util.text.TinyCaps;
 
@@ -73,7 +71,7 @@ final class TimelineBossBar {
         }
 
         TextColor skullColor = this.isPvpEnabled(seconds)
-                ? HardlandsColor.PRIMARY
+                ? HardlandsColor.HARDLANDS
                 : HardlandsColor.LIGHT_GRAY;
         this.bossBar.name(
                 Component.text("☠ ", skullColor)
@@ -145,7 +143,7 @@ final class TimelineBossBar {
     private Component buildLabel(String label, String value, String target) {
         Component component = Component.text(TinyCaps.format(label))
                 .append(Component.text(" » ", NamedTextColor.WHITE))
-                .append(Component.text(value, HardlandsColor.PRIMARY));
+                .append(Component.text(value, HardlandsColor.HARDLANDS));
 
         if (target.isEmpty()) {
             return component;

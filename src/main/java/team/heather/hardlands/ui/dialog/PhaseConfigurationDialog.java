@@ -22,7 +22,7 @@ import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.core.config.Option;
 import team.heather.hardlands.core.data.json.LocalTimeAdapter;
 import team.heather.hardlands.game.GameManager;
-import team.heather.hardlands.util.HardlandsColor;
+import team.heather.hardlands.ui.HardlandsColor;
 import team.heather.hardlands.util.text.TextFormatter;
 
 @SuppressWarnings("UnstableApiUsage")
@@ -127,7 +127,7 @@ public final class PhaseConfigurationDialog {
     ) {
         return ActionButton.create(
                 TextFormatter.tinyCaps("Guardar")
-                        .color(HardlandsColor.PRIMARY),
+                        .color(HardlandsColor.HARDLANDS),
                 TextFormatter.tinyCaps("Guardar los cambios.")
                         .color(HardlandsColor.LIGHT_GRAY),
                 ACTION_WIDTH,

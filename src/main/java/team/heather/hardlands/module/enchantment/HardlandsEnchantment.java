@@ -22,7 +22,7 @@ import team.heather.hardlands.feature.item.ItemBuilder;
 import team.heather.hardlands.core.data.pdc.PersistentData;
 import team.heather.hardlands.module.enchantment.handler.*;
 import team.heather.hardlands.util.text.RomanNumerals;
-import team.heather.hardlands.util.HardlandsColor;
+import team.heather.hardlands.ui.HardlandsColor;
 
 public enum HardlandsEnchantment {
 

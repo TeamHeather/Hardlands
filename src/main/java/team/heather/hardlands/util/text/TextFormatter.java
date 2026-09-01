@@ -8,13 +8,22 @@ import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
-import team.heather.hardlands.util.HardlandsColor;
+import org.bukkit.entity.Player;
+import team.heather.hardlands.ui.HardlandsColor;
 
 public final class TextFormatter {
 
     private static final Pattern HIGHLIGHT_PATTERN = Pattern.compile("\\{([^{}]+)}|\\[([^\\[\\]]+)]");
 
     private TextFormatter() {}
+
+    public static String formatUsername(Player player) {
+        return "<white><head:%s></white> %s".formatted(player.getUniqueId(), player.getName());
+    }
+
+    public static String formatUsernameAtText(String text, Player player) {
+        return text.replace(player.getName(), formatUsername(player));
+    }
 
     public static Component parse(String text) {
         return MiniMessage.miniMessage().deserialize(text);
@@ -36,7 +45,7 @@ public final class TextFormatter {
             String highlighted = primary != null ? primary : matcher.group(2);
 
             result.append(Component.text(highlighted, primary != null
-                    ? HardlandsColor.PRIMARY
+                    ? HardlandsColor.HARDLANDS
                     : NamedTextColor.WHITE));
 
             position = matcher.end();
@@ -47,6 +56,6 @@ public final class TextFormatter {
     }
 
     public static Component tinyCaps(String text) {
-        return Component.text(TinyCaps.format(text), HardlandsColor.PRIMARY);
+        return Component.text(TinyCaps.format(text), HardlandsColor.HARDLANDS);
     }
 }

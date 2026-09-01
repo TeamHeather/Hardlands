@@ -37,10 +37,10 @@ public final class PlayerListener implements Listener {
 
         String text = TextFormatter.toPlainText(deathMessage);
         if (causingEntity instanceof Player killer) {
-            text = formatUsernameAtText(text, killer);
+            text = TextFormatter.formatUsernameAtText(text, killer);
         }
 
-        event.deathMessage(TextFormatter.parse("<#B22222>" + formatUsernameAtText(text, player)));
+        event.deathMessage(TextFormatter.parse("<#B22222>" + TextFormatter.formatUsernameAtText(text, player)));
     }
 
     private static void sendKillMessage(Player victim, Entity causingEntity) {
@@ -48,7 +48,7 @@ public final class PlayerListener implements Listener {
             return;
         }
 
-        killer.sendActionBar(TextFormatter.formatHighlighted(KILL_MESSAGE.formatted(formatUsername(victim))));
+        killer.sendActionBar(TextFormatter.formatHighlighted(KILL_MESSAGE.formatted(TextFormatter.formatUsername(victim))));
     }
 
     private static void playDeathSounds(Location location) {
@@ -72,13 +72,5 @@ public final class PlayerListener implements Listener {
         Skull skull = (Skull) skullBlock.getState();
         skull.setProfile(ResolvableProfile.resolvableProfile(player.getPlayerProfile()));
         skull.update(true, false);
-    }
-
-    public static String formatUsername(Player player) {
-        return "<white><head:%s></white> %s".formatted(player.getUniqueId(), player.getName());
-    }
-
-    private static String formatUsernameAtText(String text, Player player) {
-        return text.replace(player.getName(), formatUsername(player));
     }
 }
