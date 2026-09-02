@@ -6,6 +6,8 @@ import co.aikar.commands.BaseCommand;
 import co.aikar.commands.PaperCommandManager;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.event.Listener;
@@ -29,7 +31,7 @@ import team.heather.hardlands.common.ui.HardlandsColor;
 
 public final class Hardlands extends JavaPlugin {
 
-    public static final String LABEL = HardlandsColor.HARDLANDS + "ʜᴀʀᴅʟᴀɴᴅꜱ";
+    public static final Component LABEL = MiniMessage.miniMessage().deserialize("ʜᴀʀᴅʟᴀɴᴅꜱ").color(HardlandsColor.HARDLANDS);
     public static final Gson GSON = new GsonBuilder()
             .registerTypeAdapter(LocalTime.class, new LocalTimeAdapter().nullSafe())
             .setPrettyPrinting()

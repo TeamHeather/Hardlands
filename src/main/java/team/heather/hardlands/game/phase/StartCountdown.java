@@ -1,9 +1,7 @@
 package team.heather.hardlands.game.phase;
 
 import java.time.Duration;
-
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
@@ -19,38 +17,42 @@ public final class StartCountdown implements AutoCloseable {
 
     private static final int START_SECONDS = 10;
 
+    // Timing (ticks)
     private static final long INITIAL_DELAY_TICKS = 0L;
     private static final long COUNTDOWN_PERIOD_TICKS = 20L;
     private static final long TYPEWRITER_PERIOD_TICKS = 2L;
 
-    private static final float MIN_SOUND_VOLUME = 0.20F;
-    private static final float MAX_SOUND_VOLUME = 0.85F;
+    // Sound - Countdown
+    private static final float COUNTDOWN_MIN_VOLUME = 0.20F;
+    private static final float COUNTDOWN_MAX_VOLUME = 0.85F;
+    private static final float COUNTDOWN_MIN_PITCH = 1.00F;
+    private static final float COUNTDOWN_MAX_PITCH = 1.08F;
+    private static final float COUNTDOWN_ACCENT_VOLUME = 0.25F;
+    private static final float COUNTDOWN_ACCENT_PITCH = 0.05F;
 
-    private static final float MIN_SOUND_PITCH = 1.00F;
-    private static final float MAX_SOUND_PITCH = 1.08F;
-
-    private static final float ACCENT_VOLUME_MULTIPLIER = 0.25F;
-    private static final float ACCENT_PITCH_OFFSET = 0.05F;
-
+    // Sound - Typewriter
     private static final float TYPEWRITER_VOLUME = 0.12F;
     private static final float TYPEWRITER_PITCH = 1.45F;
 
+    // Sound - Start
+    private static final float START_SOUND_VOLUME = 0.75F;
+    private static final float START_SOUND_PITCH = 1.12F;
+
+    // Text
     private static final String HOST_LABEL = "Hosteado por:";
+    private static final Component GAME_TITLE = Hardlands.LABEL;
 
-    private static final Component GAME_TITLE = MiniMessage.miniMessage().deserialize(Hardlands.LABEL);
-
+    // Title timing
     private static final Title.Times COUNTDOWN_TIMES = Title.Times.times(
             Duration.ZERO,
             Duration.ofMillis(900),
             Duration.ofMillis(100)
     );
-
     private static final Title.Times TYPEWRITER_TIMES = Title.Times.times(
             Duration.ZERO,
             Duration.ofMillis(250),
             Duration.ZERO
     );
-
     private static final Title.Times START_TIMES = Title.Times.times(
             Duration.ZERO,
             Duration.ofSeconds(2),
@@ -72,26 +74,17 @@ public final class StartCountdown implements AutoCloseable {
     private int remainingSeconds;
     private int typedCharacters;
 
-    public StartCountdown(
-            Hardlands plugin,
-            ScatterManager scatterManager
-    ) {
+    public StartCountdown(Hardlands plugin, ScatterManager scatterManager) {
         this.plugin = plugin;
         this.scatterManager = scatterManager;
     }
 
     public void start() {
         if (this.countdownTask != null) {
-            throw new IllegalStateException(
-                    "Scatter countdown is already running"
-            );
+            throw new IllegalStateException("Scatter countdown is already running");
         }
 
-        this.host = Bukkit.getOnlinePlayers()
-                .stream()
-                .findFirst()
-                .orElse(null);
-
+        this.host = Bukkit.getOnlinePlayers().stream().findFirst().orElse(null);
         this.remainingSeconds = START_SECONDS;
 
         this.countdownTask = Bukkit.getScheduler().runTaskTimer(
@@ -112,6 +105,8 @@ public final class StartCountdown implements AutoCloseable {
         return this.countdownTask != null;
     }
 
+    // Countdown loop
+
     private void tickCountdown() {
         if (this.plugin.getGameManager().getPhase() != Phase.SCATTER) {
             this.stopCountdown();
@@ -131,33 +126,31 @@ public final class StartCountdown implements AutoCloseable {
         this.remainingSeconds--;
     }
 
-    private void finish() {
-        this.stopCountdown();
-
-        this.plugin.getGameManager().transitionTo(Phase.SURVIVAL);
-        this.startTypewriter();
-    }
-
     private void showCountdown() {
+        float progress = (START_SECONDS - this.remainingSeconds) / (float) (START_SECONDS - 1);
+        float volume = COUNTDOWN_MIN_VOLUME + (COUNTDOWN_MAX_VOLUME - COUNTDOWN_MIN_VOLUME) * progress;
+        float pitch = COUNTDOWN_MIN_PITCH + (COUNTDOWN_MAX_PITCH - COUNTDOWN_MIN_PITCH) * progress;
+
         Title title = Title.title(
-                Component.text(
-                        this.remainingSeconds,
-                        HardlandsColor.HARDLANDS
-                ),
+                Component.text(this.remainingSeconds, HardlandsColor.HARDLANDS),
                 TextFormatters.TINY_CAPS.formatColored("La partida comienza en")
                         .color(HardlandsColor.LIGHT_GRAY),
                 COUNTDOWN_TIMES
         );
 
-        float progress = this.computeProgress();
-        float volume = this.computeSoundVolume(progress);
-        float pitch = this.computeSoundPitch(progress);
-
         for (Player player : Bukkit.getOnlinePlayers()) {
             player.showTitle(title);
-            this.playCountdownSounds(player, volume, pitch);
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, volume, pitch);
+            player.playSound(
+                    player.getLocation(),
+                    Sound.BLOCK_NOTE_BLOCK_HAT,
+                    volume * COUNTDOWN_ACCENT_VOLUME,
+                    pitch + COUNTDOWN_ACCENT_PITCH
+            );
         }
     }
+
+    // Typewriter loop
 
     private void startTypewriter() {
         this.stopTypewriter();
@@ -175,23 +168,17 @@ public final class StartCountdown implements AutoCloseable {
         if (this.typedCharacters < HOST_LABEL.length()) {
             this.typedCharacters++;
 
-            String visibleText = HOST_LABEL.substring(
-                    0,
-                    this.typedCharacters
-            );
+            String visibleText = HOST_LABEL.substring(0, this.typedCharacters);
+            Component subtitle = TextFormatters.TINY_CAPS.formatColored(visibleText)
+                    .color(HardlandsColor.LIGHT_GRAY);
 
-            this.showStartTitle(
-                    TextFormatters.TINY_CAPS.formatColored(visibleText)
-                            .color(HardlandsColor.LIGHT_GRAY),
-                    TYPEWRITER_TIMES
-            );
-
-            this.playTypewriterSound();
+            this.showTitle(subtitle, TYPEWRITER_TIMES);
+            this.playSound(Sound.UI_BUTTON_CLICK, TYPEWRITER_VOLUME, TYPEWRITER_PITCH);
             return;
         }
 
         this.showFinalStartTitle();
-        this.playStartSound();
+        this.playSound(Sound.ENTITY_PLAYER_LEVELUP, START_SOUND_VOLUME, START_SOUND_PITCH);
         this.stopTypewriter();
     }
 
@@ -200,103 +187,48 @@ public final class StartCountdown implements AutoCloseable {
                 .color(HardlandsColor.LIGHT_GRAY);
 
         if (this.host != null) {
-            Component formattedHost = TextFormatters.MINI_MESSAGE.format(TextFormatters.USERNAME.format(this.host))
-                    .color(HardlandsColor.LIGHT_GRAY);
+            Component formattedHost = TextFormatters.MINI_MESSAGE.format(
+                    TextFormatters.USERNAME.format(this.host)
+            ).color(HardlandsColor.LIGHT_GRAY);
 
-            subtitle = subtitle
-                    .append(Component.space())
-                    .append(formattedHost);
+            subtitle = subtitle.append(Component.space()).append(formattedHost);
         }
 
-        this.showStartTitle(subtitle, START_TIMES);
+        this.showTitle(subtitle, START_TIMES);
     }
 
-    private void showStartTitle(
-            Component subtitle,
-            Title.Times times
-    ) {
-        Title title = Title.title(
-                GAME_TITLE,
-                subtitle,
-                times
-        );
+    // Transition
 
-        Bukkit.getOnlinePlayers()
-                .forEach(player -> player.showTitle(title));
+    private void finish() {
+        this.stopCountdown();
+        this.plugin.getGameManager().transitionTo(Phase.SURVIVAL);
+        this.startTypewriter();
     }
 
-    private void playCountdownSounds(
-            Player player,
-            float volume,
-            float pitch
-    ) {
-        player.playSound(
-                player.getLocation(),
-                Sound.UI_BUTTON_CLICK,
-                volume,
-                pitch
-        );
+    // Utility methods
 
-        player.playSound(
-                player.getLocation(),
-                Sound.BLOCK_NOTE_BLOCK_HAT,
-                volume * ACCENT_VOLUME_MULTIPLIER,
-                pitch + ACCENT_PITCH_OFFSET
-        );
+    private void showTitle(Component subtitle, Title.Times times) {
+        Title title = Title.title(GAME_TITLE, subtitle, times);
+        Bukkit.getOnlinePlayers().forEach(player -> player.showTitle(title));
     }
 
-    private void playTypewriterSound() {
+    private void playSound(Sound sound, float volume, float pitch) {
         for (Player player : Bukkit.getOnlinePlayers()) {
-            player.playSound(
-                    player.getLocation(),
-                    Sound.UI_BUTTON_CLICK,
-                    TYPEWRITER_VOLUME,
-                    TYPEWRITER_PITCH
-            );
-        }
-    }
-
-    private void playStartSound() {
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            player.playSound(
-                    player.getLocation(),
-                    Sound.ENTITY_PLAYER_LEVELUP,
-                    0.75F,
-                    1.12F
-            );
+            player.playSound(player.getLocation(), sound, volume, pitch);
         }
     }
 
     private void stopCountdown() {
-        if (this.countdownTask == null) {
-            return;
+        if (this.countdownTask != null) {
+            this.countdownTask.cancel();
+            this.countdownTask = null;
         }
-
-        this.countdownTask.cancel();
-        this.countdownTask = null;
     }
 
     private void stopTypewriter() {
-        if (this.typewriterTask == null) {
-            return;
+        if (this.typewriterTask != null) {
+            this.typewriterTask.cancel();
+            this.typewriterTask = null;
         }
-
-        this.typewriterTask.cancel();
-        this.typewriterTask = null;
-    }
-
-    private float computeProgress() {
-        return (START_SECONDS - this.remainingSeconds)
-                / (float) (START_SECONDS - 1);
-    }
-
-    private float computeSoundVolume(float progress) {
-        return MIN_SOUND_VOLUME
-                + (MAX_SOUND_VOLUME - MIN_SOUND_VOLUME) * progress;
-    }
-
-    private float computeSoundPitch(float progress) {
-        return MIN_SOUND_PITCH
-                + (MAX_SOUND_PITCH - MIN_SOUND_PITCH) * progress;
     }
 }

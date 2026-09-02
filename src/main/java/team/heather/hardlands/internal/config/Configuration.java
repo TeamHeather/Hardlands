@@ -117,7 +117,7 @@ public abstract class Configuration implements JsonConvertible {
             String key,
             Class<K> keyType,
             Class<V> valueType,
-            Predicate<Map<K, V>> validator
+            @NotNull Predicate<Map<K, V>> validator
     ) {
         Option<Map<K, V>> option = new Option<>(
                 key,
@@ -131,7 +131,7 @@ public abstract class Configuration implements JsonConvertible {
     }
 
     protected final <K, V> Option<Map<K, V>> registerMap(String key, Class<K> keyType, Class<V> valueType) {
-        return this.registerMap(key, keyType, valueType, null);
+        return this.registerMap(key, keyType, valueType, _ -> true);
     }
 
     @Override

@@ -441,7 +441,7 @@ public final class PresetInventoryHandler implements InventoryHandler {
 
     private static ItemStack createPresetItem(PresetInfo preset) {
         ItemBuilder builder = new ItemBuilder(preset.icon())
-                .name(TextFormatter.tinyCaps(preset.name()));
+                .name(TextFormatters.TINY_CAPS.format(preset.name()));
 
         if (!preset.description().isBlank()) {
             builder.addLore(Component.text(
