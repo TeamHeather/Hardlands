@@ -22,7 +22,7 @@ public final class PhaseCommand extends BaseCommand {
 
     @Subcommand("next")
     public void next() {
-        this.gameManager.completePhase();
+        this.gameManager.getTimeline().completeCurrentPhase();
     }
 
     @Subcommand("previous")

@@ -2,6 +2,7 @@ package team.heather.hardlands.common.ui.chat;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
@@ -22,7 +23,7 @@ public final class ChatMessenger {
                 .append(Component.newline())
                 .append(frame(icon, colors))
                 .append(Component.newline())
-                .append(MINI_MESSAGE.deserialize("<white>" + message))
+                .append(MINI_MESSAGE.deserialize("<white>" + indentLines(message)))
                 .append(Component.newline())
                 .append(bottomFrame(colors));
 
@@ -36,6 +37,10 @@ public final class ChatMessenger {
 
     public static void send(Player player, String message) {
         player.sendMessage(MINI_MESSAGE.deserialize(FORMAT.formatted(Hardlands.LABEL, message)));
+    }
+
+    private static String indentLines(String message) {
+        return "   " + message.stripIndent().strip().replace("\n", "\n   ");
     }
 
     private static Component frame(String icon, HardlandsColor colors) {
@@ -59,7 +64,7 @@ public final class ChatMessenger {
                 .append(Component.text("♢", colors.primary()));
     }
 
-    private static TextComponent line(int length, net.kyori.adventure.text.format.TextColor color) {
+    private static TextComponent line(int length, TextColor color) {
         return Component.text(" ".repeat(length), color).decorate(TextDecoration.STRIKETHROUGH);
     }
 }

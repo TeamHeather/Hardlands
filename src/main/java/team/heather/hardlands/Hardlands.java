@@ -7,7 +7,6 @@ import co.aikar.commands.PaperCommandManager;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.event.Listener;
@@ -28,10 +27,11 @@ import team.heather.hardlands.module.enchantment.EnchantmentManager;
 import team.heather.hardlands.module.scenario.ScenarioManager;
 import team.heather.hardlands.common.ui.inventory.InventoryListener;
 import team.heather.hardlands.common.ui.HardlandsColor;
+import team.heather.hardlands.util.TextFormatters;
 
 public final class Hardlands extends JavaPlugin {
 
-    public static final Component LABEL = MiniMessage.miniMessage().deserialize("ʜᴀʀᴅʟᴀɴᴅꜱ").color(HardlandsColor.HARDLANDS);
+    public static final Component LABEL = TextFormatters.MINI_MESSAGE.format("ʜᴀʀᴅʟᴀɴᴅꜱ").color(HardlandsColor.HARDLANDS);
     public static final Gson GSON = new GsonBuilder()
             .registerTypeAdapter(LocalTime.class, new LocalTimeAdapter().nullSafe())
             .setPrettyPrinting()
@@ -53,11 +53,12 @@ public final class Hardlands extends JavaPlugin {
         this.internalDefinitions = new InternalDefinitions(this, "internal");
         this.enchantmentManager = new EnchantmentManager(this);
         this.scenarioManager = new ScenarioManager(this);
-        this.worldManager = new WorldManager();
+        this.worldManager = new WorldManager(this);
         this.gameManager = new GameManager(this);
         this.presetRepository = new PresetRepository(this, "presets");
 
-        this.gameManager.start();
+        this.gameManager.getTask().start();
+
         this.internalDefinitions.load();
         this.presetRepository.load("default");
 
@@ -73,13 +74,21 @@ public final class Hardlands extends JavaPlugin {
                 new GameListener()
         );
 
+        super.getLogger().info(System.lineSeparator() + """
+             _    _          _____  _____  _               _   _ _____   _____
+            | |  | |   /\\   |  __ \\|  __ \\| |        /\\   | \\ | |  __ \\ / ____|
+            | |__| |  /  \\  | |__) | |  | | |       /  \\  |  \\| | |  | | (___
+            |  __  | / /\\ \\ |  _  /| |  | | |      / /\\ \\ | . ` | |  | |\\___ \\
+            | |  | |/ ____ \\| | \\ \\| |__| | |____ / ____ \\| |\\  | |__| |____) |
+            |_|  |_/_/    \\_\\_|  \\_\\_____/|______/_/    \\_\\_| \\_|_____/|_____/
+            """);
         super.getLogger().info("Hardlands successfully enabled.");
     }
 
     @Override
     public void onDisable() {
         if (this.gameManager != null) {
-            this.gameManager.stop();
+            this.gameManager.getTask().close();
         }
 
         this.threadScheduler.close();
@@ -95,7 +104,7 @@ public final class Hardlands extends JavaPlugin {
         return JavaPlugin.getPlugin(Hardlands.class);
     }
 
-    public ThreadScheduler<Hardlands> getSingleThreadScheduler() {
+    public ThreadScheduler<Hardlands> getThreadScheduler() {
         return this.threadScheduler;
     }
 

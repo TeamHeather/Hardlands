@@ -4,107 +4,85 @@ import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.WorldBorder;
-import org.bukkit.block.Biome;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitTask;
+import org.jetbrains.annotations.Nullable;
 import team.heather.hardlands.Hardlands;
+import team.heather.hardlands.common.ui.HardlandsColor;
+import team.heather.hardlands.internal.data.InternalDefinitions;
+import team.heather.hardlands.util.TextFormatters;
 
 public final class ScatterManager {
 
-		private static final Material SAFETY_BLOCK = Material.REINFORCED_DEEPSLATE;
-		private static final int MAX_SCATTER_ATTEMPTS = 100;
+		private static final Duration TICK_DURATION = Duration.ofMillis(50);
+		private static final Duration TELEPORT_DELAY = Duration.ofSeconds(3);
 
-		private static final long NANOS_PER_TICK = Duration.ofMillis(50).toNanos();
-		private static final long MIN_SCATTER_DELAY_TICKS = 1L;
-		private static final long MAX_SCATTER_DELAY_TICKS = 20L;
-
-		private static final Map<PotionEffectType, Integer> SAFETY_EFFECTS = Map.of(
-						PotionEffectType.RESISTANCE, 5,
-						PotionEffectType.SLOWNESS, 4,
-						PotionEffectType.MINING_FATIGUE, 3,
-						PotionEffectType.WEAKNESS, 1,
-						PotionEffectType.SLOW_FALLING, 0,
-						PotionEffectType.BLINDNESS, 0
-		);
-
-		private static final Set<Material> BLACKLISTED_BLOCKS = Set.of(
-						Material.WATER,
-						Material.LAVA,
-						Material.FIRE,
-						Material.SOUL_FIRE,
-						Material.MAGMA_BLOCK,
-						Material.CACTUS,
-						Material.POWDER_SNOW,
-						Material.CAMPFIRE,
-						Material.SOUL_CAMPFIRE,
-						Material.SWEET_BERRY_BUSH,
-						Material.WITHER_ROSE,
-						Material.POINTED_DRIPSTONE
-		);
-
-		private static final Set<Biome> BLACKLISTED_BIOMES = Set.of(
-						Biome.OCEAN,
-						Biome.DEEP_OCEAN,
-						Biome.COLD_OCEAN,
-						Biome.DEEP_COLD_OCEAN,
-						Biome.LUKEWARM_OCEAN,
-						Biome.DEEP_LUKEWARM_OCEAN,
-						Biome.WARM_OCEAN,
-						Biome.FROZEN_OCEAN,
-						Biome.DEEP_FROZEN_OCEAN
-		);
-
-		private final Deque<UUID> scatterQueue;
+		private final Hardlands plugin;
 		private final World world;
+		private final Deque<UUID> scatterQueue;
 
 		private boolean progressUpdatesEnabled;
-		private boolean scatterAllMode;
+		private boolean scatterAllPlayers;
 		private int completedScatters;
-		private long scatterGeneration;
 
-		private UUID activePlayerId;
-		private CompletableFuture<Void> activeScatterFuture;
-		private BukkitTask continuationTask;
+		@Nullable private CompletableFuture<Void> activeFuture;
 
-		public ScatterManager(World world) {
-				this.scatterQueue = new ArrayDeque<>();
+		public ScatterManager(Hardlands plugin, World world) {
+				if (plugin == null) {
+						throw new IllegalArgumentException("Plugin cannot be null");
+				}
+
+				if (world == null) {
+						throw new IllegalArgumentException("World cannot be null");
+				}
+
+				this.plugin = plugin;
 				this.world = world;
+				this.scatterQueue = new ArrayDeque<>();
 		}
 
 		public void enqueue(Player player) {
-				UUID uuid = player.getUniqueId();
-				if (this.scatterQueue.contains(uuid)) return;
+				UUID playerId = player.getUniqueId();
 
-				if (!this.isScattering() && this.scatterQueue.isEmpty()) this.completedScatters = 0;
+				if (this.scatterQueue.contains(playerId)) {
+						return;
+				}
 
-				this.scatterQueue.addLast(uuid);
+				if (!this.isScattering() && this.scatterQueue.isEmpty()) {
+						this.completedScatters = 0;
+				}
+
+				this.scatterQueue.addLast(playerId);
 				this.updateGameProgress();
 		}
 
 		public void remove(Player player) {
-				UUID uuid = player.getUniqueId();
-				if (uuid.equals(this.activePlayerId) || !this.scatterQueue.remove(uuid)) return;
+				UUID playerId = player.getUniqueId();
 
-				this.updateGameProgress();
+				if (!this.isActivePlayer(playerId) && this.scatterQueue.remove(playerId)) {
+						this.updateGameProgress();
+				}
 		}
 
 		public void scatterNext() {
-				if (this.scatterQueue.isEmpty() || this.isScattering()) return;
-				this.startScatter(false);
+				if (!this.scatterQueue.isEmpty() && !this.isScattering()) {
+						this.startScatter(false);
+				}
 		}
 
 		public void scatterAll() {
@@ -116,33 +94,31 @@ public final class ScatterManager {
 		}
 
 		public void cancelScatter() {
-				this.scatterGeneration++;
+				CompletableFuture<Void> future = this.activeFuture;
 
-				if (this.continuationTask != null) {
-						this.continuationTask.cancel();
-						this.continuationTask = null;
+				if (future != null && !future.isDone()) {
+						future.cancel(false);
 				}
 
-				if (this.activeScatterFuture != null && !this.activeScatterFuture.isDone()) {
-						this.activeScatterFuture.cancel(false);
-				}
-
-				this.activeScatterFuture = null;
-				this.activePlayerId = null;
-				this.scatterAllMode = false;
+				this.clearActiveScatter();
 		}
 
 		public void setProgressUpdatesEnabled(boolean enabled) {
 				this.progressUpdatesEnabled = enabled;
-				if (enabled) this.updateGameProgress();
+
+				if (enabled) {
+						this.updateGameProgress();
+				}
 		}
 
 		public float getScatterPercentage() {
 				int totalScatters = this.completedScatters + this.scatterQueue.size();
-				if (totalScatters == 0) return 100.0F;
 
-				float progress = this.completedScatters * 100.0F / totalScatters;
-				return Math.clamp(progress, 0.0F, 100.0F);
+				if (totalScatters == 0) {
+						return 100.0F;
+				}
+
+				return Math.clamp(this.completedScatters * 100.0F / totalScatters, 0.0F, 100.0F);
 		}
 
 		public boolean isCompleted() {
@@ -150,239 +126,337 @@ public final class ScatterManager {
 		}
 
 		public boolean isScattering() {
-				return this.activeScatterFuture != null && !this.activeScatterFuture.isDone();
+				return this.activeFuture != null && !this.activeFuture.isDone();
 		}
 
-		private CompletableFuture<Void> startScatter(boolean scatterAll) {
+		public void clearSafetyEffects(Player player) {
+				this.definitions().getScatterSafetyEffects().keySet().forEach(player::removePotionEffect);
+		}
+
+		private CompletableFuture<Void> startScatter(boolean scatterAllPlayers) {
 				if (this.isScattering()) {
-						if (scatterAll) this.scatterAllMode = true;
-						return this.activeScatterFuture;
+						this.scatterAllPlayers |= scatterAllPlayers;
+						return this.activeFuture;
 				}
 
 				CompletableFuture<Void> future = new CompletableFuture<>();
 
-				this.activeScatterFuture = future;
-				this.scatterAllMode = scatterAll;
-
-				long generation = ++this.scatterGeneration;
-				this.processNext(generation, future);
+				this.activeFuture = future;
+				this.scatterAllPlayers = scatterAllPlayers;
+				this.processNext(future);
 
 				return future;
 		}
 
-		private void processNext(long generation, CompletableFuture<Void> future) {
-				if (!this.isCurrentScatter(generation, future)) return;
-
-				UUID uuid = this.scatterQueue.peekFirst();
-
-				if (uuid == null) {
-						this.finishScatter(generation, future);
+		private void processNext(CompletableFuture<Void> future) {
+				if (!this.isCurrentScatter(future)) {
 						return;
 				}
 
-				Player player = Bukkit.getPlayer(uuid);
+				UUID playerId = this.scatterQueue.peekFirst();
+
+				if (playerId == null) {
+						this.finishScatter(future);
+						return;
+				}
+
+				Player player = Bukkit.getPlayer(playerId);
 
 				if (player == null) {
-						this.scatterQueue.removeFirst();
-						this.updateGameProgress();
-						this.continueScatter(generation, future, MIN_SCATTER_DELAY_TICKS);
+						this.skipPlayer(future, playerId);
 						return;
 				}
 
-				this.activePlayerId = uuid;
-				long startedAt = System.nanoTime();
+				this.showTeleportNotice(player);
 
-				this.findLocationAsync(0)
-								.thenCompose(location -> {
-										if (!this.isCurrentScatter(generation, future) || !player.isOnline()) {
-												return CompletableFuture.completedFuture(false);
-										}
+				CompletableFuture<Location> locationFuture = this.findLocationAsync(0);
 
-										return teleportPlayerSafelyAsync(player, location);
-								})
-								.whenComplete((success, exception) -> {
-										if (!this.isCurrentScatter(generation, future)) return;
-
-										this.activePlayerId = null;
-
-										if (exception != null) {
-												this.failScatter(generation, future, exception);
-												return;
-										}
-
-										if (!Boolean.TRUE.equals(success)) {
-												if (!player.isOnline()) {
-														this.scatterQueue.removeFirstOccurrence(uuid);
-														this.updateGameProgress();
-														this.continueScatter(
-																		generation,
-																		future,
-																		MIN_SCATTER_DELAY_TICKS
-														);
-														return;
-												}
-
-												this.failScatter(
-																generation,
-																future,
-																new IllegalStateException(
-																				"Unable to teleport player during scatter: "
-																								+ player.getName()
-																)
-												);
-												return;
-										}
-
-										this.scatterQueue.removeFirstOccurrence(uuid);
-										this.completedScatters++;
-										this.updateGameProgress();
-
-										long elapsedNanos = System.nanoTime() - startedAt;
-										long delayTicks = calculateScatterDelayTicks(elapsedNanos);
-
-										this.continueScatter(generation, future, delayTicks);
-								});
-		}
-
-		private void continueScatter(
-						long generation,
-						CompletableFuture<Void> future,
-						long delayTicks
-		) {
-				this.continuationTask = Bukkit.getScheduler().runTaskLater(
-								Hardlands.getInstance(),
-								() -> {
-										this.continuationTask = null;
-										if (!this.isCurrentScatter(generation, future)) return;
-
-										if (!this.scatterAllMode) {
-												this.finishScatter(generation, future);
-												return;
-										}
-
-										this.processNext(generation, future);
-								},
-								delayTicks
+				this.plugin.getThreadScheduler().schedule(
+								() -> locationFuture.whenComplete((location, exception) -> Bukkit.getScheduler().runTask(
+												this.plugin,
+												() -> this.beginTeleport(future, player, playerId, location, exception)
+								)),
+								TELEPORT_DELAY
 				);
 		}
 
-		private void finishScatter(long generation, CompletableFuture<Void> future) {
-				if (!this.isCurrentScatter(generation, future)) return;
+		private void beginTeleport(
+						CompletableFuture<Void> future,
+						Player player,
+						UUID playerId,
+						@Nullable Location location,
+						@Nullable Throwable exception
+		) {
+				if (!this.isCurrentScatter(future)) {
+						return;
+				}
 
-				this.activeScatterFuture = null;
-				this.activePlayerId = null;
-				this.scatterAllMode = false;
+				if (exception != null) {
+						this.failScatter(future, exception);
+						return;
+				}
 
+				if (location == null || !this.canTeleport(future, player)) {
+						this.handleFailedTeleport(future, player, playerId);
+						return;
+				}
+
+				this.teleportAsync(player, location).whenComplete((result, teleportException) -> Bukkit.getScheduler().runTask(
+								this.plugin,
+								() -> this.completeTeleport(future, player, playerId, result, teleportException)
+				));
+		}
+
+		private CompletableFuture<TeleportResult> teleportAsync(Player player, Location location) {
+				this.applySafetyEffects(player);
+				this.prepareDestination(location);
+
+				long startedAt = System.nanoTime();
+
+				return player.teleportAsync(location).thenApply(success ->
+								new TeleportResult(Boolean.TRUE.equals(success), System.nanoTime() - startedAt));
+		}
+
+		private void completeTeleport(
+						CompletableFuture<Void> future,
+						Player player,
+						UUID playerId,
+						@Nullable TeleportResult result,
+						@Nullable Throwable exception
+		) {
+				if (!this.isCurrentScatter(future)) {
+						return;
+				}
+
+				if (exception != null) {
+						this.failScatter(future, exception);
+						return;
+				}
+
+				if (result == null || !result.success()) {
+						this.handleFailedTeleport(future, player, playerId);
+						return;
+				}
+
+				this.scatterQueue.removeFirstOccurrence(playerId);
+				this.completedScatters++;
+
+				this.updateGameProgress();
+				this.continueScatter(future, this.calculateScatterDelay(result.elapsedNanos()));
+		}
+
+		private void handleFailedTeleport(CompletableFuture<Void> future, Player player, UUID playerId) {
+				if (!player.isOnline()) {
+						this.skipPlayer(future, playerId);
+						return;
+				}
+
+				this.failScatter(
+								future,
+								new IllegalStateException("Unable to teleport player during scatter: " + player.getName())
+				);
+		}
+
+		private void skipPlayer(CompletableFuture<Void> future, UUID playerId) {
+				this.scatterQueue.removeFirstOccurrence(playerId);
+				this.updateGameProgress();
+				this.continueScatter(future, this.definitions().getScatterMinDelayTicks());
+		}
+
+		private void continueScatter(CompletableFuture<Void> future, long delayTicks) {
+				this.plugin.getThreadScheduler().schedule(
+								() -> Bukkit.getScheduler().runTask(this.plugin, () -> {
+										if (!this.isCurrentScatter(future)) {
+												return;
+										}
+
+										if (this.scatterAllPlayers) {
+												this.processNext(future);
+										} else {
+												this.finishScatter(future);
+										}
+								}),
+								ticks(delayTicks)
+				);
+		}
+
+		private void finishScatter(CompletableFuture<Void> future) {
+				if (!this.isCurrentScatter(future)) {
+						return;
+				}
+
+				this.clearActiveScatter();
 				this.updateGameProgress();
 				future.complete(null);
 		}
 
-		private void failScatter(
-						long generation,
-						CompletableFuture<Void> future,
-						Throwable exception
-		) {
-				if (!this.isCurrentScatter(generation, future)) return;
+		private void scheduleBlindnessRemoval() {
+				Bukkit.getScheduler().runTaskLater(
+								this.plugin,
+								() -> Bukkit.getOnlinePlayers().forEach(player -> player.removePotionEffect(PotionEffectType.BLINDNESS)),
+								60L
+				);
+		}
 
-				this.activeScatterFuture = null;
-				this.activePlayerId = null;
-				this.scatterAllMode = false;
+		private void failScatter(CompletableFuture<Void> future, Throwable exception) {
+				if (!this.isCurrentScatter(future)) {
+						return;
+				}
 
-				Hardlands.getInstance().getLogger().log(Level.SEVERE, "Player scatter failed", exception);
+				this.clearActiveScatter();
+				this.plugin.getLogger().log(Level.SEVERE, "Player scatter failed", exception);
 				future.completeExceptionally(exception);
 		}
 
-		private boolean isCurrentScatter(long generation, CompletableFuture<Void> future) {
-				return this.scatterGeneration == generation
-								&& this.activeScatterFuture == future
-								&& !future.isDone();
+		private void clearActiveScatter() {
+				this.activeFuture = null;
+				this.scatterAllPlayers = false;
+		}
+
+		private boolean isCurrentScatter(CompletableFuture<Void> future) {
+				return this.activeFuture == future && !future.isDone();
+		}
+
+		private boolean isActivePlayer(UUID playerId) {
+				return this.isScattering() && playerId.equals(this.scatterQueue.peekFirst());
+		}
+
+		private boolean canTeleport(CompletableFuture<Void> future, Player player) {
+				return this.isCurrentScatter(future) && player.isOnline();
 		}
 
 		private void updateGameProgress() {
-				if (!this.progressUpdatesEnabled) return;
-				Hardlands.getInstance().getGameManager().setScatterProgress(this.getScatterPercentage());
+				if (this.progressUpdatesEnabled) {
+						this.plugin.getGameManager().setScatterProgress(this.getScatterPercentage());
+				}
 		}
 
 		private CompletableFuture<Location> findLocationAsync(int attempt) {
-				if (attempt >= MAX_SCATTER_ATTEMPTS) {
-						return CompletableFuture.failedFuture(
-										new IllegalStateException("Unable to find a valid scatter location")
-						);
+				if (attempt >= this.definitions().getScatterMaxAttempts()) {
+						return CompletableFuture.failedFuture(new IllegalStateException("Unable to find a valid scatter location"));
 				}
 
-				Location candidate = this.randomHorizontalLocation();
-				int blockX = candidate.getBlockX();
-				int blockZ = candidate.getBlockZ();
+				return this.supplyMainThread(this::randomHorizontalLocation).thenCompose(candidate -> {
+						int blockX = candidate.getBlockX();
+						int blockZ = candidate.getBlockZ();
 
-				return this.world.getChunkAtAsync(blockX >> 4, blockZ >> 4, true, false)
-								.thenCompose(ignored -> {
-										int blockY = this.world.getHighestBlockYAt(blockX, blockZ) + 1;
+						return this.world.getChunkAtAsync(blockX >> 4, blockZ >> 4, true, false).thenCompose(ignored ->
+										this.supplyMainThread(() -> {
+												Location location = this.createLocation(blockX, blockZ);
+												return this.isValidLocation(location) ? location : null;
+										})
+						);
+				}).thenCompose(location ->
+								location != null ? CompletableFuture.completedFuture(location) : this.findLocationAsync(attempt + 1));
+		}
 
-										Location location = new Location(
-														this.world,
-														blockX + 0.5D,
-														blockY,
-														blockZ + 0.5D
-										);
-
-										return validateLocation(location)
-														? CompletableFuture.completedFuture(location)
-														: this.findLocationAsync(attempt + 1);
-								});
+		private Location createLocation(int blockX, int blockZ) {
+				int blockY = this.world.getHighestBlockYAt(blockX, blockZ) + 1;
+				return new Location(this.world, blockX + 0.5D, blockY, blockZ + 0.5D);
 		}
 
 		private Location randomHorizontalLocation() {
 				WorldBorder border = this.world.getWorldBorder();
 				Location center = border.getCenter();
-
 				double radius = border.getSize() / 2.0D - 1.0D;
+
 				int minX = (int) Math.ceil(center.getX() - radius);
 				int maxX = (int) Math.floor(center.getX() + radius);
 				int minZ = (int) Math.ceil(center.getZ() - radius);
 				int maxZ = (int) Math.floor(center.getZ() + radius);
 
 				ThreadLocalRandom random = ThreadLocalRandom.current();
-				int x = random.nextInt(minX, maxX + 1);
-				int z = random.nextInt(minZ, maxZ + 1);
 
-				return new Location(this.world, x + 0.5D, 0.0D, z + 0.5D);
+				return new Location(
+								this.world,
+								random.nextInt(minX, maxX + 1) + 0.5D,
+								0.0D,
+								random.nextInt(minZ, maxZ + 1) + 0.5D
+				);
 		}
 
-		private static boolean validateLocation(Location location) {
+		private boolean isValidLocation(Location location) {
 				Block feet = location.getBlock();
 				Block head = feet.getRelative(0, 1, 0);
 				Block ground = feet.getRelative(0, -1, 0);
+				InternalDefinitions definitions = this.definitions();
 
-				if (BLACKLISTED_BIOMES.contains(ground.getBiome())
-								|| BLACKLISTED_BLOCKS.contains(ground.getType())) {
-						return false;
-				}
-
-				return ground.getType().isSolid() && feet.isPassable() && head.isPassable();
+				return ground.getType().isSolid()
+								&& feet.isPassable()
+								&& head.isPassable()
+								&& !definitions.isScatterBlacklistedBiome(ground.getBiome())
+								&& !definitions.isScatterBlacklistedBlock(ground.getType());
 		}
 
-		private static CompletableFuture<Boolean> teleportPlayerSafelyAsync(
-						Player player,
-						Location location
-		) {
-				location.getBlock().getRelative(0, -1, 0).setType(SAFETY_BLOCK);
+		private void showTeleportNotice(Player player) {
+				Component title = Component.text("◆ ", HardlandsColor.RED.secondary())
+								.append(TextFormatters.TINY_CAPS.formatColored("Teleport").color(HardlandsColor.HARDLANDS))
+								.append(Component.text(" ◆", HardlandsColor.RED.secondary()));
 
-				SAFETY_EFFECTS.forEach((type, amplifier) -> player.addPotionEffect(
-								new PotionEffect(
-												type,
-												PotionEffect.INFINITE_DURATION,
-												amplifier,
-												false,
-												false,
-												false
+				Component subtitle = TextFormatters.TINY_CAPS.formatColored("serás teletransportado en unos segundos...")
+								.color(HardlandsColor.LIGHT_GRAY);
+
+				player.showTitle(
+								Title.title(
+												title,
+												subtitle,
+												Title.Times.times(Duration.ofMillis(150), Duration.ofSeconds(3), Duration.ofMillis(350))
 								)
-				));
+				);
 
-				return player.teleportAsync(location);
+				player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ILLUSIONER_MIRROR_MOVE, 0.8F, 1.0F);
 		}
 
-		private static long calculateScatterDelayTicks(long elapsedNanos) {
-				long elapsedTicks = Math.ceilDiv(elapsedNanos, NANOS_PER_TICK);
-				return Math.clamp(elapsedTicks, MIN_SCATTER_DELAY_TICKS, MAX_SCATTER_DELAY_TICKS);
+		private void applySafetyEffects(Player player) {
+				for (Map.Entry<PotionEffectType, Integer> effect : this.definitions().getScatterSafetyEffects().entrySet()) {
+						player.addPotionEffect(
+										new PotionEffect(
+														effect.getKey(),
+														PotionEffect.INFINITE_DURATION,
+														effect.getValue(),
+														false,
+														false,
+														false
+										)
+						);
+				}
 		}
+
+		private void prepareDestination(Location location) {
+				location.getBlock().getRelative(0, -1, 0).setType(this.definitions().getScatterSafetyBlock());
+		}
+
+		private long calculateScatterDelay(long elapsedNanos) {
+				long elapsedTicks = Math.ceilDiv(elapsedNanos, TICK_DURATION.toNanos());
+
+				return Math.clamp(
+								elapsedTicks,
+								this.definitions().getScatterMinDelayTicks(),
+								this.definitions().getScatterMaxDelayTicks()
+				);
+		}
+
+		private <T> CompletableFuture<T> supplyMainThread(Supplier<T> supplier) {
+				CompletableFuture<T> future = new CompletableFuture<>();
+
+				Bukkit.getScheduler().runTask(this.plugin, () -> {
+						try {
+								future.complete(supplier.get());
+						} catch (RuntimeException exception) {
+								future.completeExceptionally(exception);
+						}
+				});
+
+				return future;
+		}
+
+		private InternalDefinitions definitions() {
+				return this.plugin.getInternalDefinitions();
+		}
+
+		private static Duration ticks(long ticks) {
+				return TICK_DURATION.multipliedBy(ticks);
+		}
+
+		private record TeleportResult(boolean success, long elapsedNanos) {}
 }

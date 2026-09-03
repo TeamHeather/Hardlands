@@ -11,17 +11,14 @@ import org.bukkit.plugin.Plugin;
 
 public final class ThreadScheduler<P extends Plugin> implements AutoCloseable {
 
-    private final P plugin;
     private final ScheduledThreadPoolExecutor executor;
+    private final P plugin;
 
     public ThreadScheduler(P plugin) {
+        this.executor = new ScheduledThreadPoolExecutor(1, Thread.ofPlatform()
+                .name(plugin.getName() + "-Scheduler")
+                .factory());
         this.plugin = plugin;
-        this.executor = new ScheduledThreadPoolExecutor(
-                1,
-                Thread.ofPlatform()
-                        .name(plugin.getName() + "-Scheduler")
-                        .factory()
-        );
 
         this.executor.setRemoveOnCancelPolicy(true);
         this.executor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
@@ -34,9 +31,13 @@ public final class ThreadScheduler<P extends Plugin> implements AutoCloseable {
     }
 
     public ScheduledFuture<?> loop(Consumer<P> task, Duration interval) {
+        return this.loop(task, Duration.ZERO, interval);
+    }
+
+    public ScheduledFuture<?> loop(Consumer<P> task, Duration initialDelay, Duration interval) {
         return this.executor.scheduleAtFixedRate(
                 safe(() -> task.accept(this.plugin)),
-                0L,
+                nonNegativeNanos(initialDelay),
                 positiveNanos(interval),
                 TimeUnit.NANOSECONDS
         );

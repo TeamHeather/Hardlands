@@ -2,7 +2,7 @@ package team.heather.hardlands.game;
 
 import java.time.LocalTime;
 
-import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.config.ConfigBuilder;
 import team.heather.hardlands.config.MinuteOptionDef;
@@ -27,42 +27,19 @@ public final class GameManager extends GameManagerConfiguration {
 
     private final Hardlands plugin;
     private final GameTimeline timeline;
-    private final GameLoopTask loopTask;
+    private final GameTask task;
+    private final GameData data;
 
     private Phase phase = Phase.OFF_GAME;
-    private boolean running;
 
-    public GameManager(Hardlands plugin) {
+    public GameManager(final Hardlands plugin) {
         this.plugin = plugin;
         this.timeline = new GameTimeline(this);
-        this.loopTask = new GameLoopTask(plugin, this.timeline);
+        this.task = new GameTask(plugin, this.timeline);
+        this.data = new GameData();
     }
 
-    public void start() {
-        if (this.running) {
-            throw new IllegalStateException("Game manager is already running");
-        }
-
-        this.timeline.syncPhase();
-        this.loopTask.start();
-
-        this.running = true;
-    }
-
-    public void stop() {
-        if (!this.running) {
-            return;
-        }
-
-        this.loopTask.close();
-        this.running = false;
-    }
-
-    public void transitionTo(Phase nextPhase) {
-        if (nextPhase == null) {
-            throw new IllegalArgumentException("Phase cannot be null");
-        }
-
+    public void transitionTo(@NotNull Phase nextPhase) {
         if (this.phase == nextPhase) {
             return;
         }
@@ -72,14 +49,6 @@ public final class GameManager extends GameManagerConfiguration {
 
         this.timeline.syncPhase();
         this.phase.onStart(this.plugin);
-    }
-
-    public void completePhase() {
-        this.timeline.completeCurrentPhase();
-    }
-
-    public void refreshTimelineStartTime() {
-        this.timeline.refreshStartTime();
     }
 
     public void setElapsedSeconds(int seconds) {
@@ -104,24 +73,20 @@ public final class GameManager extends GameManagerConfiguration {
         );
     }
 
-    public void addTimelineViewer(Player player) {
-        this.timeline.addViewer(player);
-    }
-
-    public void removeTimelineViewer(Player player) {
-        this.timeline.removeViewer(player);
-    }
-
     public Phase getPhase() {
         return this.phase;
     }
 
-    public GameTimeline getTimeline() {
-        return this.timeline;
+    public GameData getData() {
+        return this.data;
     }
 
-    public boolean isRunning() {
-        return this.running;
+    public GameTask getTask() {
+        return this.task;
+    }
+
+    public GameTimeline getTimeline() {
+        return this.timeline;
     }
 
     @Override

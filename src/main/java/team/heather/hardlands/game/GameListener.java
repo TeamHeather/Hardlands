@@ -7,11 +7,12 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import team.heather.hardlands.Hardlands;
+import team.heather.hardlands.game.timeline.GameTimeline;
 import team.heather.hardlands.internal.event.ConfigChangeEvent;
 import team.heather.hardlands.game.phase.Phase;
 import team.heather.hardlands.game.world.ScatterManager;
 
-public final class GameListener implements Listener {
+public class GameListener implements Listener {
 
 		@EventHandler
 		private void onPlayerJoin(PlayerJoinEvent event) {
@@ -22,7 +23,7 @@ public final class GameListener implements Listener {
 				Player player = event.getPlayer();
 				Phase phase = gameManager.getPhase();
 
-				gameManager.addTimelineViewer(player);
+				gameManager.getTimeline().addViewer(player);
 
 				if (!phase.isScatterQueueEnabled()) return;
 
@@ -38,7 +39,7 @@ public final class GameListener implements Listener {
 
 				Player player = event.getPlayer();
 
-				gameManager.removeTimelineViewer(player);
+				gameManager.getTimeline().removeViewer(player);
 				if (gameManager.getPhase().isScatterQueueEnabled()) scatterManager.remove(player);
 		}
 
@@ -46,6 +47,7 @@ public final class GameListener implements Listener {
 		private void onConfigurationChange(ConfigChangeEvent event) {
 				Hardlands plugin = Hardlands.getInstance();
 				GameManager gameManager = plugin.getGameManager();
+				GameTimeline timeline = gameManager.getTimeline();
 
 				if (event.getConfiguration() != gameManager
 								|| !event.getOptionKey().equals(gameManager.getStartTimeOption().getKey())) {
@@ -53,10 +55,11 @@ public final class GameListener implements Listener {
 				}
 
 				if (Bukkit.isPrimaryThread()) {
-						gameManager.refreshTimelineStartTime();
+						timeline.refreshStartTime();
 						return;
 				}
 
-				Bukkit.getScheduler().runTask(plugin, gameManager::refreshTimelineStartTime);
+				//TODO CHECK IF THIS IS NECESARY
+				Bukkit.getScheduler().runTask(plugin, timeline::refreshStartTime);
 		}
 }

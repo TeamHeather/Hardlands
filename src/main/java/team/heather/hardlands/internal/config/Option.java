@@ -15,7 +15,7 @@ public class Option<T> {
     private final Predicate<T> predicate;
 
     @NotNull private BiConsumer<T, T> changeListener;
-    @Nullable private T value;
+    private T value;
 
     public Option(String key, Type dataType) {
         this(key, dataType, _ -> true);
@@ -57,7 +57,7 @@ public class Option<T> {
         return this.predicate;
     }
 
-    public @Nullable T getValue() {
+    public T getValue() {
         return this.value;
     }
 

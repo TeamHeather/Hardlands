@@ -7,6 +7,7 @@ import java.util.function.Consumer;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.WorldBorder;
+import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.config.ConfigBuilder;
 import team.heather.hardlands.internal.config.Option;
 import team.heather.hardlands.config.OptionDef;
@@ -25,8 +26,13 @@ import org.popcraft.chunky.api.ChunkyAPI;
 })
 public final class WorldManager extends WorldManagerConfiguration {
 
-    private final PregenerationManager pregenerationManager = new PregenerationManager(requireChunkyService());
-    private final ScatterManager scatterManager = new ScatterManager(requireOverworld());
+    private final PregenerationManager pregenerationManager;
+    private final ScatterManager scatterManager;
+
+    public WorldManager(final Hardlands plugin) {
+        this.pregenerationManager = new PregenerationManager(requireChunkyService());
+        this.scatterManager = new ScatterManager(plugin, requireOverworld());
+    }
 
     public void applyConfiguration() {
         this.forEachEnabledWorld((world, centerX, centerZ, survivalSize) -> {

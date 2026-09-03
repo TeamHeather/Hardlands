@@ -15,7 +15,7 @@ public enum HardlandsItem {
                     TextColor.color(0xCDB4FF),
                     "Abre tu {cofre de Ender} al usarlo."
             )
-            .footerLore("hardlands:ender_bag")
+            .addFooterLore("hardlands:ender_bag")
     ),
 
     GOLDEN_HEAD(new ItemBuilder(Material.PLAYER_HEAD)
@@ -26,7 +26,7 @@ public enum HardlandsItem {
                     "Se consume rápidamente y te otorga los efectos de una",
                     "{manzana dorada}, amplificados en un {nivel}."
             )
-            .footerLore("hardlands:golden_head")
+            .addFooterLore("hardlands:golden_head")
     ),
 
     VOID_BAG(new ItemBuilder(Material.CARROT_ON_A_STICK)
@@ -35,7 +35,7 @@ public enum HardlandsItem {
                     TextColor.color(0x90E0EF),
                     "Abre el {inventario compartido} de tu equipo al usarlo."
             )
-            .footerLore("hardlands:void_bag")
+            .addFooterLore("hardlands:void_bag")
     ),
 
     BLEAK_DUALITY_SPEAR(new ItemBuilder(Material.IRON_SPEAR)
@@ -45,7 +45,7 @@ public enum HardlandsItem {
                     "Al atacar, entra en {enfriamiento} y despierta a su {opuesto}.",
                     "Puede blandirse {al instante}."
             )
-            .footerLore("epiphany:duality_spear_bleak")
+            .addFooterLore("epiphany:duality_spear_bleak")
             .instantAttack()
             .enchant(Enchantment.LUNGE, 2)
     ),
@@ -57,7 +57,7 @@ public enum HardlandsItem {
                     "Al atacar, entra en {enfriamiento} y despierta a su {opuesto}.",
                     "Puede blandirse {al instante}."
             )
-            .footerLore("epiphany:duality_spear_gleam")
+            .addFooterLore("epiphany:duality_spear_gleam")
             .instantAttack()
             .enchant(Enchantment.LUNGE, 2)
     )
