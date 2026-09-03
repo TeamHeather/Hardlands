@@ -6,23 +6,13 @@ import java.lang.annotation.Target;
 
 @Target({})
 @Retention(RetentionPolicy.SOURCE)
-public @interface OptionDef {
-
-    String NO_DEFAULT_VALUE = "\u0000";
+public @interface DefaultedOptionDef {
 
     String name();
 
     String key() default "";
 
     Class<?> type();
-
-    Class<?> elementType() default Void.class;
-
-    Class<?> keyType() default Void.class;
-
-    Class<?> valueType() default Void.class;
-
-    String value() default NO_DEFAULT_VALUE;
 
     String[] validators() default {};
 }

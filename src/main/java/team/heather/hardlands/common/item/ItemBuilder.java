@@ -30,7 +30,7 @@ import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
-import team.heather.hardlands.internal.data.pdc.PersistentDataAccess;
+import team.heather.hardlands.internal.PersistentDataAccess;
 import team.heather.hardlands.util.TextFormatters;
 
 /**

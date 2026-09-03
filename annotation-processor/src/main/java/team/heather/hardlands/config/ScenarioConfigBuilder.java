@@ -11,5 +11,7 @@ public @interface ScenarioConfigBuilder {
 
     OptionDef[] options() default {};
 
+    DefaultedOptionDef[] defaultedOptions() default {};
+
     MinuteOptionDef[] minuteOptions() default {};
 }

@@ -1,6 +1,12 @@
 package team.heather.hardlands.config;
 
-import com.google.auto.service.AutoService;
+import java.io.IOException;
+import java.io.Writer;
+import java.time.LocalTime;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Set;
+import java.util.UUID;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Processor;
@@ -15,11 +21,8 @@ import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
-import java.io.IOException;
-import java.io.Writer;
-import java.util.HashSet;
-import java.util.Locale;
-import java.util.Set;
+
+import com.google.auto.service.AutoService;
 
 @AutoService(Processor.class)
 @SupportedSourceVersion(SourceVersion.RELEASE_25)
@@ -34,8 +37,8 @@ public final class ConfigurationProcessor extends AbstractProcessor {
     private static final String SCENARIO_TYPE = "team.heather.hardlands.module.scenario.ScenarioProcessor";
 
     private static final String LIST_TYPE = "java.util.List";
-    private static final String SET_TYPE = "java.util.Set";
     private static final String MAP_TYPE = "java.util.Map";
+    private static final String SET_TYPE = "java.util.Set";
     private static final String JAVA_LANG_PREFIX = "java.lang.";
 
     private final ValidatorFormatter validatorFormatter = new ValidatorFormatter();
@@ -52,35 +55,35 @@ public final class ConfigurationProcessor extends AbstractProcessor {
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnvironment) {
         for (Element element : roundEnvironment.getElementsAnnotatedWith(ConfigBuilder.class)) {
             if (!(element instanceof TypeElement type)) {
-                reportError("@ConfigBuilder can only be applied to classes.", element);
+                this.reportError("@ConfigBuilder can only be applied to classes.", element);
                 continue;
             }
 
             ConfigBuilder annotation = type.getAnnotation(ConfigBuilder.class);
 
             try {
-                generate(
+                this.generate(
                         type,
                         annotation.identifier(),
-                        resolveSuperclass(annotation),
+                        this.resolveSuperclass(annotation),
                         annotation.options(),
                         annotation.minuteOptions()
                 );
             } catch (IOException | IllegalArgumentException | IllegalStateException exception) {
-                reportError("Failed to generate configuration: " + exception.getMessage(), element);
+                this.reportError("Failed to generate configuration: " + exception.getMessage(), element);
             }
         }
 
         for (Element element : roundEnvironment.getElementsAnnotatedWith(ScenarioConfigBuilder.class)) {
             if (!(element instanceof TypeElement type)) {
-                reportError("@ScenarioConfigBuilder can only be applied to classes.", element);
+                this.reportError("@ScenarioConfigBuilder can only be applied to classes.", element);
                 continue;
             }
 
             ScenarioConfigBuilder annotation = type.getAnnotation(ScenarioConfigBuilder.class);
 
             try {
-                generate(
+                this.generate(
                         type,
                         "",
                         SCENARIO_TYPE,
@@ -88,7 +91,7 @@ public final class ConfigurationProcessor extends AbstractProcessor {
                         annotation.minuteOptions()
                 );
             } catch (IOException | IllegalArgumentException | IllegalStateException exception) {
-                reportError("Failed to generate scenario configuration: " + exception.getMessage(), element);
+                this.reportError("Failed to generate scenario configuration: " + exception.getMessage(), element);
             }
         }
 
@@ -102,7 +105,7 @@ public final class ConfigurationProcessor extends AbstractProcessor {
             OptionDef[] options,
             MinuteOptionDef[] minuteOptions
     ) throws IOException {
-        String packageName = processingEnv.getElementUtils()
+        String packageName = this.processingEnv.getElementUtils()
                 .getPackageOf(annotated)
                 .getQualifiedName()
                 .toString();
@@ -113,29 +116,33 @@ public final class ConfigurationProcessor extends AbstractProcessor {
         Set<String> fieldNames = new HashSet<>();
         Set<String> keys = new HashSet<>();
 
-        try (Writer writer = processingEnv.getFiler()
+        try (Writer writer = this.processingEnv.getFiler()
                 .createSourceFile(qualifiedName, annotated)
                 .openWriter()) {
-
-            writeHeader(writer, packageName, className, superclass);
-            writeOptions(writer, annotated, options, fieldNames, keys);
-            writeMinuteOptions(writer, annotated, minuteOptions, fieldNames, keys);
-            writeConstructor(writer, className, identifier);
+            this.writeHeader(writer, packageName, className, superclass);
+            this.writeOptions(writer, annotated, options, fieldNames, keys);
+            this.writeMinuteOptions(writer, annotated, minuteOptions, fieldNames, keys);
+            this.writeConstructor(writer, className, identifier);
 
             writer.write("}\n");
         }
     }
 
-    private void writeHeader(Writer writer, String packageName, String className, String superclass) throws IOException {
+    private void writeHeader(
+            Writer writer,
+            String packageName,
+            String className,
+            String superclass
+    ) throws IOException {
         writer.write("""
-            package %s;
+                package %s;
 
-            import %s;
-            import %s;
+                import %s;
+                import %s;
 
-            public abstract class %s extends %s {
+                public abstract class %s extends %s {
 
-            """.formatted(
+                """.formatted(
                 packageName,
                 OPTION_TYPE,
                 VALIDATOR_TYPE,
@@ -155,7 +162,9 @@ public final class ConfigurationProcessor extends AbstractProcessor {
             String fieldName = option.name();
             String key = toKebabCase(option.key().isBlank() ? fieldName : option.key());
 
-            if (!this.validateOption(annotated, fieldNames, keys, fieldName, key)) continue;
+            if (!this.validateOption(annotated, fieldNames, keys, fieldName, key)) {
+                continue;
+            }
 
             try {
                 this.writeOption(writer, option, fieldName, key);
@@ -179,21 +188,55 @@ public final class ConfigurationProcessor extends AbstractProcessor {
             String fieldName = option.name();
             String key = toKebabCase(fieldName);
 
-            if (!this.validateOption(annotated, fieldNames, keys, fieldName, key)) continue;
+            if (!this.validateOption(annotated, fieldNames, keys, fieldName, key)) {
+                continue;
+            }
 
-            String optionType = "Option<Integer>";
-            String validators = this.validatorFormatter.format(
-                    "Integer",
-                    new String[]{"non-negative"}
-            );
-
-            writer.write(
-                    "    public final %s %s = super.registerOption(\"%s\", Integer.class%s);\n\n"
-                            .formatted(optionType, fieldName, key, validators)
-            );
-
-            this.writeGetter(writer, fieldName, optionType);
+            try {
+                this.writeMinuteOption(writer, option, fieldName, key);
+            } catch (IllegalArgumentException exception) {
+                this.reportError(
+                        "Invalid minute option '" + fieldName + "': " + exception.getMessage(),
+                        annotated
+                );
+            }
         }
+    }
+
+    private void writeMinuteOption(
+            Writer writer,
+            MinuteOptionDef option,
+            String fieldName,
+            String key
+    ) throws IOException {
+        String optionType = "Option<Integer>";
+        String validators = this.validatorFormatter.format(
+                "Integer",
+                new String[]{"non-negative"}
+        );
+
+        String defaultValue = "";
+
+        if (option.defaultValue() != MinuteOptionDef.NO_DEFAULT_VALUE) {
+            if (option.defaultValue() < 0) {
+                throw new IllegalArgumentException("Default minute cannot be negative");
+            }
+
+            defaultValue = ", " + option.defaultValue();
+        }
+
+        writer.write(
+                "    public final %s %s = super.registerOption(\"%s\", Integer.class%s%s);\n\n"
+                        .formatted(
+                                optionType,
+                                fieldName,
+                                key,
+                                defaultValue,
+                                validators
+                        )
+        );
+
+        this.writeGetter(writer, fieldName, optionType);
     }
 
     private void writeOption(
@@ -205,6 +248,8 @@ public final class ConfigurationProcessor extends AbstractProcessor {
         TypeMirror type = this.resolveType(option);
 
         if (this.isType(type, LIST_TYPE)) {
+            this.requireNoDefaultValue(option, "List");
+
             this.writeCollectionOption(
                     writer,
                     option,
@@ -213,10 +258,13 @@ public final class ConfigurationProcessor extends AbstractProcessor {
                     LIST_TYPE,
                     "registerList"
             );
+
             return;
         }
 
         if (this.isType(type, SET_TYPE)) {
+            this.requireNoDefaultValue(option, "Set");
+
             this.writeCollectionOption(
                     writer,
                     option,
@@ -225,21 +273,32 @@ public final class ConfigurationProcessor extends AbstractProcessor {
                     SET_TYPE,
                     "registerSet"
             );
+
             return;
         }
 
         if (this.isType(type, MAP_TYPE)) {
+            this.requireNoDefaultValue(option, "Map");
             this.writeMapOption(writer, option, fieldName, key);
+
             return;
         }
 
         String typeName = this.referenceTypeName(type);
         String optionType = "Option<" + typeName + ">";
+        String defaultValue = this.formatDefaultValue(type, option.value());
         String validators = this.validatorFormatter.format(typeName, option.validators());
 
         writer.write(
-                "    public final %s %s = super.registerOption(\"%s\", %s.class%s);\n\n"
-                        .formatted(optionType, fieldName, key, typeName, validators)
+                "    public final %s %s = super.registerOption(\"%s\", %s.class%s%s);\n\n"
+                        .formatted(
+                                optionType,
+                                fieldName,
+                                key,
+                                typeName,
+                                defaultValue,
+                                validators
+                        )
         );
 
         this.writeGetter(writer, fieldName, optionType);
@@ -299,8 +358,10 @@ public final class ConfigurationProcessor extends AbstractProcessor {
 
         String keyTypeName = this.referenceTypeName(keyType);
         String valueTypeName = this.referenceTypeName(valueType);
+
         String optionType = "Option<java.util.Map<%s, %s>>"
                 .formatted(keyTypeName, valueTypeName);
+
         String validators = this.validatorFormatter.format(MAP_TYPE, option.validators());
 
         writer.write(
@@ -340,7 +401,9 @@ public final class ConfigurationProcessor extends AbstractProcessor {
             String className,
             String identifier
     ) throws IOException {
-        if (identifier.isBlank()) return;
+        if (identifier.isBlank()) {
+            return;
+        }
 
         writer.write("""
                     protected %s() {
@@ -375,13 +438,129 @@ public final class ConfigurationProcessor extends AbstractProcessor {
         return true;
     }
 
+    private void requireNoDefaultValue(OptionDef option, String typeName) {
+        if (!OptionDef.NO_DEFAULT_VALUE.equals(option.value())) {
+            throw new IllegalArgumentException(typeName + " options do not support annotation default values");
+        }
+    }
+
+    private String formatDefaultValue(TypeMirror type, String value) {
+        if (OptionDef.NO_DEFAULT_VALUE.equals(value)) {
+            return "";
+        }
+
+        String typeName = this.referenceTypeName(type);
+
+        return ", " + switch (typeName) {
+            case "String" -> quote(value);
+            case "Byte" -> "(byte) " + Byte.parseByte(value.trim());
+            case "Short" -> "(short) " + Short.parseShort(value.trim());
+            case "Integer" -> Integer.toString(Integer.parseInt(value.trim()));
+            case "Long" -> Long.parseLong(value.trim()) + "L";
+            case "Float" -> this.formatFloat(value);
+            case "Double" -> this.formatDouble(value);
+            case "Boolean" -> this.formatBoolean(value);
+            case "Character" -> this.formatCharacter(value);
+            case "java.util.UUID" -> this.formatUuid(value);
+            case "java.time.LocalTime" -> this.formatLocalTime(value);
+            default -> this.formatEnum(type, value);
+        };
+    }
+
+    private String formatFloat(String value) {
+        float parsed = Float.parseFloat(value.trim());
+
+        if (!Float.isFinite(parsed)) {
+            throw new IllegalArgumentException("Float default value must be finite");
+        }
+
+        return Float.toString(parsed) + "F";
+    }
+
+    private String formatDouble(String value) {
+        double parsed = Double.parseDouble(value.trim());
+
+        if (!Double.isFinite(parsed)) {
+            throw new IllegalArgumentException("Double default value must be finite");
+        }
+
+        return Double.toString(parsed);
+    }
+
+    private String formatBoolean(String value) {
+        String normalized = value.trim();
+
+        if (!normalized.equalsIgnoreCase("true") && !normalized.equalsIgnoreCase("false")) {
+            throw new IllegalArgumentException("Boolean default value must be true or false");
+        }
+
+        return Boolean.toString(Boolean.parseBoolean(normalized));
+    }
+
+    private String formatCharacter(String value) {
+        if (value.length() != 1) {
+            throw new IllegalArgumentException("Character default value must contain exactly one character");
+        }
+
+        char character = value.charAt(0);
+
+        return switch (character) {
+            case '\\' -> "'\\\\'";
+            case '\'' -> "'\\''";
+            case '\n' -> "'\\n'";
+            case '\r' -> "'\\r'";
+            case '\t' -> "'\\t'";
+            default -> "'" + character + "'";
+        };
+    }
+
+    private String formatUuid(String value) {
+        UUID.fromString(value);
+        return "java.util.UUID.fromString(" + quote(value) + ")";
+    }
+
+    private String formatLocalTime(String value) {
+        LocalTime.parse(value);
+        return "java.time.LocalTime.parse(" + quote(value) + ")";
+    }
+
+    private String formatEnum(TypeMirror type, String value) {
+        Element element = this.processingEnv.getTypeUtils().asElement(type);
+
+        if (!(element instanceof TypeElement enumType) || enumType.getKind() != ElementKind.ENUM) {
+            throw new IllegalArgumentException(
+                    "Default values are not supported for type " + this.referenceTypeName(type)
+            );
+        }
+
+        boolean exists = enumType.getEnclosedElements()
+                .stream()
+                .anyMatch(member ->
+                        member.getKind() == ElementKind.ENUM_CONSTANT
+                                && member.getSimpleName().contentEquals(value));
+
+        if (!exists) {
+            throw new IllegalArgumentException(
+                    "Unknown " + enumType.getSimpleName() + " enum constant: " + value
+            );
+        }
+
+        return this.referenceTypeName(type) + "." + value;
+    }
+
     private String resolveSuperclass(ConfigBuilder annotation) {
         try {
             Class<?> type = annotation.superclass();
-            return type == Void.class ? DEFAULT_SUPERCLASS : type.getCanonicalName();
+
+            return type == Void.class
+                    ? DEFAULT_SUPERCLASS
+                    : type.getCanonicalName();
         } catch (MirroredTypeException exception) {
             TypeMirror type = exception.getTypeMirror();
-            return this.isVoidType(type) ? DEFAULT_SUPERCLASS : type.toString();
+
+            return this.isVoidType(type)
+                    ? DEFAULT_SUPERCLASS
+                    : type.toString();
         }
     }
 
@@ -441,7 +620,10 @@ public final class ConfigurationProcessor extends AbstractProcessor {
 
     private String referenceTypeName(TypeMirror type) {
         String typeName = type.getKind().isPrimitive()
-                ? this.processingEnv.getTypeUtils().boxedClass((PrimitiveType) type).getQualifiedName().toString()
+                ? this.processingEnv.getTypeUtils()
+                .boxedClass((PrimitiveType) type)
+                .getQualifiedName()
+                .toString()
                 : type.toString();
 
         return typeName.startsWith(JAVA_LANG_PREFIX)
@@ -451,7 +633,10 @@ public final class ConfigurationProcessor extends AbstractProcessor {
 
     private String simpleTypeName(String typeName) {
         int separator = typeName.lastIndexOf('.');
-        return separator < 0 ? typeName : typeName.substring(separator + 1);
+
+        return separator < 0
+                ? typeName
+                : typeName.substring(separator + 1);
     }
 
     private void reportError(String message, Element element) {

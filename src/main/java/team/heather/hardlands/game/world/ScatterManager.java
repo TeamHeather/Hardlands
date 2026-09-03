@@ -24,7 +24,7 @@ import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.Nullable;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.common.ui.HardlandsColor;
-import team.heather.hardlands.internal.data.InternalDefinitions;
+import team.heather.hardlands.internal.InternalDefinitions;
 import team.heather.hardlands.util.TextFormatters;
 
 public final class ScatterManager {

@@ -15,5 +15,7 @@ public @interface ConfigBuilder {
 
     OptionDef[] options() default {};
 
+    DefaultedOptionDef[] defaultedOptions() default {};
+
     MinuteOptionDef[] minuteOptions() default {};
 }

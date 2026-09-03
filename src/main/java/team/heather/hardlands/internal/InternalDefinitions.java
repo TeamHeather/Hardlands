@@ -1,4 +1,4 @@
-package team.heather.hardlands.internal.data;
+package team.heather.hardlands.internal;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -17,7 +17,7 @@ import team.heather.hardlands.config.ConfigBuilder;
 import team.heather.hardlands.config.OptionDef;
 import team.heather.hardlands.internal.config.Option;
 import team.heather.hardlands.internal.config.Validator;
-import team.heather.hardlands.internal.data.json.JsonDataManager;
+import team.heather.hardlands.internal.json.JsonDataManager;
 
 @ConfigBuilder(
 				identifier = "internal",

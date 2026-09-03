@@ -5,7 +5,7 @@ import java.util.*;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import team.heather.hardlands.Hardlands;
-import team.heather.hardlands.internal.data.json.JsonConvertible;
+import team.heather.hardlands.internal.json.JsonConvertible;
 
 public final class ScenarioManager implements JsonConvertible {
 

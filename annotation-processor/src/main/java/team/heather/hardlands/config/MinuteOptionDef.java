@@ -8,5 +8,9 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.SOURCE)
 public @interface MinuteOptionDef {
 
+    int NO_DEFAULT_VALUE = Integer.MIN_VALUE;
+
     String name();
+
+    int defaultValue() default NO_DEFAULT_VALUE;
 }

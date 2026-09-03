@@ -9,7 +9,7 @@ import org.jetbrains.annotations.Nullable;
 import java.time.Instant;
 import java.util.*;
 
-public class GameData {
+public class HardlandsGame {
 
 		private final LinkedHashMap<UUID, FirstDamage> firstDamageByPlayer = new LinkedHashMap<>();
 		private final HashMap<UUID, Integer> killCountByPlayer = new HashMap<>();

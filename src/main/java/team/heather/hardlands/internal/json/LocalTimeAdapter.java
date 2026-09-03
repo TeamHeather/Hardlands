@@ -1,4 +1,4 @@
-package team.heather.hardlands.internal.data.json;
+package team.heather.hardlands.internal.json;
 
 import java.io.IOException;
 import java.time.LocalTime;
@@ -8,7 +8,7 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import team.heather.hardlands.util.TextFormatters;
 
-public final class LocalTimeAdapter extends TypeAdapter<LocalTime> {
+public class LocalTimeAdapter extends TypeAdapter<LocalTime> {
 
     @Override
     public LocalTime read(JsonReader reader) throws IOException {

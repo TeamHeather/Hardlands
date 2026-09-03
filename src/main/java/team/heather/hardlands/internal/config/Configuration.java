@@ -1,15 +1,5 @@
 package team.heather.hardlands.internal.config;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.reflect.TypeToken;
-import org.bukkit.Bukkit;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import team.heather.hardlands.Hardlands;
-import team.heather.hardlands.internal.data.json.JsonConvertible;
-import team.heather.hardlands.internal.event.ConfigChangeEvent;
-
 import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -18,11 +8,22 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
+import org.bukkit.Bukkit;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import team.heather.hardlands.Hardlands;
+import team.heather.hardlands.internal.json.JsonConvertible;
+import team.heather.hardlands.internal.event.ConfigChangeEvent;
+
 public abstract class Configuration implements JsonConvertible {
 
     private final Map<String, Option<?>> options;
 
-    @Nullable private String name;
+    @Nullable
+    private String name;
 
     protected Configuration(@Nullable String name) {
         this.options = new LinkedHashMap<>();
@@ -49,11 +50,13 @@ public abstract class Configuration implements JsonConvertible {
     }
 
     // Abstraction
+
     protected boolean onConfigValidation() {
         return true;
     }
 
     // Registry
+
     protected final <T> Option<T> registerOption(Option<T> option) {
         if (this.options.putIfAbsent(option.getKey(), option) != null) {
             throw new IllegalArgumentException("Option already registered: " + option.getKey());
@@ -78,6 +81,14 @@ public abstract class Configuration implements JsonConvertible {
         return this.registerOption(new Option<>(key, type, validator));
     }
 
+    protected final <T> Option<T> registerOption(String key, Type type, T defaultValue) {
+        return this.registerOption(new Option<>(key, type, defaultValue, _ -> true));
+    }
+
+    protected final <T> Option<T> registerOption(String key, Type type, T defaultValue, Predicate<T> validator) {
+        return this.registerOption(new Option<>(key, type, defaultValue, validator));
+    }
+
     protected final <T> Option<T> registerOption(String key, Class<T> type) {
         return this.registerOption(new Option<>(key, type));
     }
@@ -86,16 +97,35 @@ public abstract class Configuration implements JsonConvertible {
         return this.registerOption(new Option<>(key, type, validator));
     }
 
+    protected final <T> Option<T> registerOption(String key, Class<T> type, T defaultValue) {
+        return this.registerOption(new Option<>(key, type, defaultValue, _ -> true));
+    }
+
+    protected final <T> Option<T> registerOption(
+            String key,
+            Class<T> type,
+            T defaultValue,
+            Predicate<T> validator
+    ) {
+        return this.registerOption(new Option<>(key, type, defaultValue, validator));
+    }
+
     // Sets
+
     protected final <T> Option<Set<T>> registerSet(String key, Class<T> elementType) {
         return this.registerOption(key, parameterizedType(Set.class, elementType));
     }
 
-    protected final <T> Option<Set<T>> registerSet(String key, Class<T> elementType, Predicate<Set<T>> validator) {
+    protected final <T> Option<Set<T>> registerSet(
+            String key,
+            Class<T> elementType,
+            Predicate<Set<T>> validator
+    ) {
         return this.registerOption(key, parameterizedType(Set.class, elementType), validator);
     }
 
     // Lists
+
     protected final <T> Option<List<T>> registerList(
             String key,
             Class<T> elementType,
@@ -113,6 +143,7 @@ public abstract class Configuration implements JsonConvertible {
     }
 
     // Maps
+
     protected final <K, V> Option<Map<K, V>> registerMap(
             String key,
             Class<K> keyType,
@@ -130,7 +161,11 @@ public abstract class Configuration implements JsonConvertible {
         return this.registerOption(option);
     }
 
-    protected final <K, V> Option<Map<K, V>> registerMap(String key, Class<K> keyType, Class<V> valueType) {
+    protected final <K, V> Option<Map<K, V>> registerMap(
+            String key,
+            Class<K> keyType,
+            Class<V> valueType
+    ) {
         return this.registerMap(key, keyType, valueType, _ -> true);
     }
 
@@ -156,6 +191,7 @@ public abstract class Configuration implements JsonConvertible {
     }
 
     // Internals
+
     private static <T> void deserializeOption(Option<T> option, JsonElement json) {
         option.changeValue(Hardlands.GSON.fromJson(json, option.getDataType()));
     }
