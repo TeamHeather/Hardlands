@@ -19,21 +19,18 @@ public final class PlayerManager {
 				this.playersById = new HashMap<>();
 		}
 
-		/**
-		 * Loads every persisted player into memory.
-		 */
 		public void load() {
 				this.playersById.clear();
-				this.repository.players().forEach(info ->
-								this.repository.load(info.uuid()).ifPresent(player ->
-												this.playersById.put(info.uuid(), player)));
+
+				for (PlayerRepository.PlayerInfo info : this.repository.players()) {
+						this.repository.load(info.uuid()).ifPresent(player -> this.playersById.put(info.uuid(), player));
+				}
 		}
 
-		/**
-		 * Saves every cached player.
-		 */
 		public void save() {
-				this.playersById.values().forEach(this.repository::save);
+				for (HardlandsPlayer player : this.playersById.values()) {
+						this.repository.save(player);
+				}
 		}
 
 		public @Nullable HardlandsPlayer get(Player player) {
@@ -45,19 +42,26 @@ public final class PlayerManager {
 		}
 
 		public void register(Player player) {
-				UUID uuid = player.getUniqueId();
+				this.register(player.getName(), player.getUniqueId());
+		}
+
+		public void register(String name, UUID uuid) {
 				if (this.playersById.containsKey(uuid)) {
-						throw new IllegalStateException("Player is already registered: " + player.getName());
+						throw new IllegalStateException("Player is already registered: " + name);
 				}
-				this.playersById.put(uuid, this.repository.loadOrCreate(player));
+
+				HardlandsPlayer player = this.repository.load(uuid).orElseGet(() -> this.repository.create(name, uuid));
+
+				this.playersById.put(uuid, player);
 		}
 
 		public void unregister(Player player) {
-				UUID uuid = player.getUniqueId();
-				HardlandsPlayer hardlandsPlayer = this.playersById.remove(uuid);
+				HardlandsPlayer hardlandsPlayer = this.playersById.remove(player.getUniqueId());
+
 				if (hardlandsPlayer == null) {
 						throw new IllegalStateException("Player is not registered: " + player.getName());
 				}
+
 				this.repository.save(hardlandsPlayer);
 		}
 }

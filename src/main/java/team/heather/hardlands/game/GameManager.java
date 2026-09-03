@@ -8,6 +8,7 @@ import team.heather.hardlands.config.ConfigBuilder;
 import team.heather.hardlands.config.MinuteOptionDef;
 import team.heather.hardlands.config.OptionDef;
 import team.heather.hardlands.game.phase.Phase;
+import team.heather.hardlands.game.team.TeamManager;
 import team.heather.hardlands.game.timeline.GameTimeline;
 
 @ConfigBuilder(
@@ -29,6 +30,7 @@ public final class GameManager extends GameManagerConfiguration {
     private final GameTimeline timeline;
     private final GameTask task;
     private final HardlandsGame data;
+    private final TeamManager teamManager;
 
     private Phase phase = Phase.OFF_GAME;
 
@@ -37,6 +39,11 @@ public final class GameManager extends GameManagerConfiguration {
         this.timeline = new GameTimeline(this);
         this.task = new GameTask(plugin, this.timeline);
         this.data = new HardlandsGame();
+        this.teamManager = new TeamManager();
+    }
+
+    public TeamManager getTeamManager() {
+        return this.teamManager;
     }
 
     public void transitionTo(@NotNull Phase nextPhase) {

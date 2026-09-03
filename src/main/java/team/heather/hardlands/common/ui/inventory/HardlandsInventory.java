@@ -14,35 +14,64 @@ import team.heather.hardlands.common.item.InventoryItem;
 import team.heather.hardlands.common.item.ItemBuilder;
 import team.heather.hardlands.common.ui.inventory.handler.EnchantiaInventoryHandler;
 import team.heather.hardlands.common.ui.inventory.handler.InventoryHandler;
+import team.heather.hardlands.common.ui.inventory.handler.PlayerInventoryHandler;
 import team.heather.hardlands.common.ui.inventory.handler.PresetInventoryHandler;
 import team.heather.hardlands.common.ui.inventory.handler.ScenarioInventoryHandler;
 
 public enum HardlandsInventory {
 
-    MAIN("Hardlands", Material.RED_STAINED_GLASS_PANE, """
+    MAIN(
+            "Hardlands",
+            Material.RED_STAINED_GLASS_PANE,
+            """
             -------
             -NIGER-
             ---K---
             -------
-            """, Map.of(
-            'N', InventoryItem.SCENARIOS,
-            'I', InventoryItem.PLAYERS,
-            'G', InventoryItem.GENERAL,
-            'E', InventoryItem.TIMELINE,
-            'R', InventoryItem.WORLD,
-            'K', InventoryItem.PRESETS)),
+            """,
+            Map.of(
+                    'N', InventoryItem.SCENARIOS,
+                    'I', InventoryItem.PLAYERS,
+                    'G', InventoryItem.GENERAL,
+                    'E', InventoryItem.TIMELINE,
+                    'R', InventoryItem.WORLD,
+                    'K', InventoryItem.PRESETS
+            )
+    ),
 
     SCENARIOS("Escenarios", Material.PINK_STAINED_GLASS_PANE, ScenarioInventoryHandler::new),
-    PLAYERS("Jugadores", Material.YELLOW_STAINED_GLASS_PANE),
+    PLAYERS("Jugadores", Material.YELLOW_STAINED_GLASS_PANE, PlayerInventoryHandler::new),
     GENERAL("General", Material.PURPLE_STAINED_GLASS_PANE),
     PRESETS("Plantillas", Material.PURPLE_STAINED_GLASS_PANE, PresetInventoryHandler::new),
 
-    ENCHANTIA("Enchantia", Material.LIGHT_BLUE_STAINED_GLASS_PANE, EnchantiaInventoryHandler::new),
+    PLAYER_PROFILE(
+            "Perfil de jugador",
+            Material.RED_STAINED_GLASS_PANE,
+            """
+						-------
+						-------
+						-------
+						""",
+            Map.of(),
+            false
+    ),
 
-    ;
+    COLORS(
+            "Seleccionar color",
+            Material.GRAY_STAINED_GLASS_PANE,
+            """
+						-------
+						-------
+						-------
+						""",
+            Map.of(),
+            false
+    ),
+
+    ENCHANTIA("Enchantia", Material.LIGHT_BLUE_STAINED_GLASS_PANE, EnchantiaInventoryHandler::new);
 
     private static final int COLUMNS = 9;
-    private static final int CONTENT_COLUMNS = COLUMNS - 2;
+    private static final int CONTENT_COLUMNS = 7;
 
     private static final String EMPTY_LAYOUT = """
             -------
@@ -56,13 +85,42 @@ public enum HardlandsInventory {
     private final List<String> layout;
     private final Map<Character, InventoryItem> items;
     private final Supplier<InventoryHandler> handlerFactory;
+    private final boolean footer;
 
-    HardlandsInventory(String title, Material outline, String layout, Map<Character, InventoryItem> items, Supplier<InventoryHandler> handlerFactory) {
+    HardlandsInventory(
+            String title,
+            Material outline,
+            String layout,
+            Map<Character, InventoryItem> items,
+            Supplier<InventoryHandler> handlerFactory,
+            boolean footer
+    ) {
         this.title = title;
         this.outline = new ItemBuilder(outline).name("").build();
         this.layout = layout.strip().lines().toList();
         this.items = items;
         this.handlerFactory = handlerFactory;
+        this.footer = footer;
+    }
+
+    HardlandsInventory(
+            String title,
+            Material outline,
+            String layout,
+            Map<Character, InventoryItem> items,
+            boolean footer
+    ) {
+        this(title, outline, layout, items, () -> InventoryHandler.EMPTY, footer);
+    }
+
+    HardlandsInventory(
+            String title,
+            Material outline,
+            String layout,
+            Map<Character, InventoryItem> items,
+            Supplier<InventoryHandler> handlerFactory
+    ) {
+        this(title, outline, layout, items, handlerFactory, true);
     }
 
     HardlandsInventory(String title, Material outline, String layout, Map<Character, InventoryItem> items) {
@@ -77,8 +135,13 @@ public enum HardlandsInventory {
         this(title, outline, EMPTY_LAYOUT, Map.of());
     }
 
+
+
     public void openInventory(Player player) {
-        InventoryHandler handler = this.handlerFactory.get();
+        this.openInventory(player, this.handlerFactory.get());
+    }
+
+    public void openInventory(Player player, InventoryHandler handler) {
         Inventory inventory = this.createInventory(handler);
 
         player.openInventory(inventory);
@@ -92,19 +155,17 @@ public enum HardlandsInventory {
             for (int column = 0; column < CONTENT_COLUMNS; column++) {
                 char symbol = line.charAt(column);
 
-                if (symbol == '-') continue;
+                if (symbol == '-') {
+                    continue;
+                }
 
                 InventoryItem item = this.items.get(symbol);
 
                 if (item == null) {
-                    throw new IllegalStateException(
-                            "No InventoryItem defined for layout symbol '%s'."
-                                    .formatted(symbol));
+                    throw new IllegalStateException("No InventoryItem defined for layout symbol '%s'.".formatted(symbol));
                 }
 
-                inventory.setItem(
-                        slot(row + 2, column + 2),
-                        item.build());
+                inventory.setItem(slot(row + 2, column + 2), item.build());
             }
         }
     }
@@ -114,50 +175,48 @@ public enum HardlandsInventory {
     }
 
     public static int getContentIndex(Inventory inventory, int slot) {
-        if (slot < 0 || slot >= inventory.getSize()) return -1;
+        if (slot < 0 || slot >= inventory.getSize()) {
+            return -1;
+        }
 
         int row = slot / COLUMNS + 1;
         int column = slot % COLUMNS + 1;
 
-        if (row < 2 || row >= getBottomRow(inventory)) return -1;
-        if (column < 2 || column >= COLUMNS) return -1;
+        if (row < 2 || row >= getBottomRow(inventory) || column < 2 || column >= COLUMNS) {
+            return -1;
+        }
 
         return (row - 2) * CONTENT_COLUMNS + column - 2;
     }
 
     public static int contentSlot(int index) {
-        return slot(
-                index / CONTENT_COLUMNS + 2,
-                index % CONTENT_COLUMNS + 2);
+        return slot(index / CONTENT_COLUMNS + 2, index % CONTENT_COLUMNS + 2);
     }
 
     public static void refreshPreparationItems() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             Inventory inventory = player.getOpenInventory().getTopInventory();
 
-            if (!(inventory.getHolder() instanceof HardlandsInventoryHolder)) {
-                continue;
+            if (inventory.getHolder() instanceof HardlandsInventoryHolder) {
+                inventory.setItem(slot(getBottomRow(inventory), 5), InventoryItem.PREPARATION.build());
             }
-
-            inventory.setItem(
-                    slot(getBottomRow(inventory), 5),
-                    InventoryItem.PREPARATION.build());
         }
     }
 
     private Inventory createInventory(InventoryHandler handler) {
         HardlandsInventoryHolder holder = new HardlandsInventoryHolder(handler);
-
-        Inventory inventory = Bukkit.createInventory(
-                holder,
-                (this.layout.size() + 2) * COLUMNS,
-                Component.text(this.title));
+        Inventory inventory = Bukkit.createInventory(holder, (this.layout.size() + 2) * COLUMNS, Component.text(this.title));
 
         holder.setInventory(inventory);
 
         this.renderFrame(inventory);
         this.renderLayout(inventory);
-        this.renderFooter(inventory);
+
+        if (this.footer) {
+            this.renderFooter(inventory);
+        }
+
+        handler.render(inventory);
         handler.render(inventory);
 
         return inventory;

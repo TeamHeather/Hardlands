@@ -16,6 +16,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 import team.heather.hardlands.common.command.HardlandsCommand;
 import team.heather.hardlands.common.command.PhaseCommand;
+import team.heather.hardlands.common.command.StaffCommand;
 import team.heather.hardlands.common.item.ItemListener;
 import team.heather.hardlands.common.player.PlayerListener;
 import team.heather.hardlands.common.player.PlayerManager;
@@ -70,9 +71,9 @@ public final class Hardlands extends JavaPlugin {
         this.worldManager = new WorldManager(this);
 
         // 3. Dependency-bound systems
-        this.gameManager = initialize(GameManager::new, this.worldManager);
-        this.repositories = initialize(Repositories::new, this.gameManager, this.scenarioManager, this.worldManager);
-        this.playerManager = initialize(PlayerManager::new, this.repositories);
+        this.gameManager = this.initialize(GameManager::new, this.worldManager);
+        this.repositories = this.initialize(Repositories::new, this.gameManager, this.scenarioManager, this.worldManager);
+        this.playerManager = this.initialize(PlayerManager::new, this.repositories);
 
         // 4. Persistent runtime configuration
         this.getRepositories().preset().load("default");
@@ -80,6 +81,7 @@ public final class Hardlands extends JavaPlugin {
         // 5. External entry points
         this.registerCommands(
                 new HardlandsCommand(),
+                new StaffCommand(),
                 new PhaseCommand(this.getGameManager())
         );
 

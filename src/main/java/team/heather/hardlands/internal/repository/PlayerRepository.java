@@ -1,5 +1,6 @@
 package team.heather.hardlands.internal.repository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,16 +20,23 @@ public final class PlayerRepository extends JsonRepository<UUID> {
     }
 
     public HardlandsPlayer create(@NotNull Player player) {
-        UUID uuid = player.getUniqueId();
+        return this.create(player.getName(), player.getUniqueId());
+    }
+
+    public HardlandsPlayer create(@NotNull String name, @NotNull UUID uuid) {
+        if (name.isBlank()) {
+            throw new IllegalArgumentException("Player name cannot be blank");
+        }
 
         if (this.exists(uuid)) {
             throw new IllegalStateException("Player data already exists: " + uuid);
         }
 
-        HardlandsPlayer hardlandsPlayer = HardlandsPlayer.from(player);
-        this.save(hardlandsPlayer);
+        HardlandsPlayer player = HardlandsPlayer.from(name, uuid);
 
-        return hardlandsPlayer;
+        this.save(player);
+
+        return player;
     }
 
     public void save(@NotNull HardlandsPlayer player) {
@@ -36,13 +44,11 @@ public final class PlayerRepository extends JsonRepository<UUID> {
     }
 
     public Optional<HardlandsPlayer> load(@NotNull UUID uuid) {
-        return this.managerFor(uuid).read()
-                .map(data -> data.toPlayer(uuid));
+        return this.managerFor(uuid).read().map(data -> data.toPlayer(uuid));
     }
 
     public Optional<HardlandsPlayer> load(@NotNull Player player) {
-        return this.managerFor(player.getUniqueId()).read()
-                .map(data -> data.toPlayer(player));
+        return this.managerFor(player.getUniqueId()).read().map(data -> data.toPlayer(player));
     }
 
     public HardlandsPlayer loadOrCreate(@NotNull Player player) {
@@ -50,13 +56,21 @@ public final class PlayerRepository extends JsonRepository<UUID> {
     }
 
     public List<PlayerInfo> players() {
-        return this.entryNames().stream()
-                .map(PlayerRepository::parseUuid)
-                .flatMap(Optional::stream)
-                .sorted()
-                .flatMap(uuid -> this.managerFor(uuid).read().stream()
-                        .map(data -> data.toInfo(uuid)))
-                .toList();
+        List<PlayerInfo> players = new ArrayList<>();
+
+        for (String entry : this.entryNames()) {
+            Optional<UUID> uuid = parseUuid(entry);
+
+            if (uuid.isEmpty()) {
+                continue;
+            }
+
+            this.managerFor(uuid.get()).read().map(data -> data.toInfo(uuid.get())).ifPresent(players::add);
+        }
+
+        players.sort((first, second) -> first.uuid().compareTo(second.uuid()));
+
+        return players;
     }
 
     private JsonDataManager<PlayerData> managerFor(UUID uuid) {
@@ -64,7 +78,11 @@ public final class PlayerRepository extends JsonRepository<UUID> {
     }
 
     private static Optional<UUID> parseUuid(String value) {
-        return Optional.of(UUID.fromString(value));
+        try {
+            return Optional.of(UUID.fromString(value));
+        } catch (IllegalArgumentException exception) {
+            return Optional.empty();
+        }
     }
 
     public record PlayerInfo(String name, UUID uuid) {}
@@ -76,17 +94,14 @@ public final class PlayerRepository extends JsonRepository<UUID> {
     ) {
 
         private static PlayerData from(HardlandsPlayer player) {
-            return new PlayerData(
-                    player.getName(),
-                    player.getUniqueId(),
-                    player.toJson().getAsJsonObject()
-            );
+            return new PlayerData(player.getName(), player.getUniqueId(), player.toJson().getAsJsonObject());
         }
 
         private HardlandsPlayer toPlayer(UUID expectedUuid) {
             this.validate(expectedUuid);
 
             HardlandsPlayer player = HardlandsPlayer.from(this.name, this.uuid);
+
             player.fromJson(this.options);
 
             return player;
@@ -96,6 +111,7 @@ public final class PlayerRepository extends JsonRepository<UUID> {
             this.validate(player.getUniqueId());
 
             HardlandsPlayer hardlandsPlayer = HardlandsPlayer.from(player);
+
             hardlandsPlayer.fromJson(this.options);
 
             return hardlandsPlayer;
@@ -103,12 +119,13 @@ public final class PlayerRepository extends JsonRepository<UUID> {
 
         private PlayerInfo toInfo(UUID expectedUuid) {
             this.validate(expectedUuid);
+
             return new PlayerInfo(this.name, this.uuid);
         }
 
         private void validate(UUID expectedUuid) {
             if (this.name == null || this.name.isBlank()) {
-                throw new IllegalStateException("Stored player name cannot be null or blank");
+                throw new IllegalStateException("Stored player name cannot be null or blank: " + expectedUuid);
             }
 
             if (this.uuid == null || !this.uuid.equals(expectedUuid)) {

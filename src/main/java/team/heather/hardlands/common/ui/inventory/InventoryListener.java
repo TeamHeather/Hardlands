@@ -68,7 +68,7 @@ public final class InventoryListener implements Listener {
 
     private static void playFeedback(Player player, boolean succeeded) {
         player.playSound(player,
-                succeeded ? Sound.UI_BUTTON_CLICK : Sound.BLOCK_NOTE_BLOCK_BIT,
+                succeeded ? Sound.BLOCK_BAMBOO_WOOD_BUTTON_CLICK_ON : Sound.BLOCK_NOTE_BLOCK_BIT,
                 SoundCategory.UI,
                 0.5F,
                 succeeded ? 1.5F : 0.5F);

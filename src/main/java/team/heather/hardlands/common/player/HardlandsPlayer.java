@@ -3,6 +3,7 @@ package team.heather.hardlands.common.player;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
+import org.bukkit.DyeColor;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -12,6 +13,7 @@ import team.heather.hardlands.config.OptionDef;
 @ConfigBuilder(
 				identifier = "player",
 				options = {
+								@OptionDef(name = "profileColor", type = DyeColor.class, value = "RED"),
 								@OptionDef(name = "bestFriend", type = UUID.class),
 								@OptionDef(name = "mostPlayedHost", type = UUID.class),
 								@OptionDef(name = "primaryKiller", type = UUID.class),
