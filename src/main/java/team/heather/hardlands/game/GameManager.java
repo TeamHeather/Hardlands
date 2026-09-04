@@ -29,7 +29,7 @@ public final class GameManager extends GameManagerConfiguration {
     private final Hardlands plugin;
     private final GameTimeline timeline;
     private final GameTask task;
-    private final HardlandsGame data;
+    private final GameData data;
     private final TeamManager teamManager;
 
     private Phase phase = Phase.OFF_GAME;
@@ -38,7 +38,7 @@ public final class GameManager extends GameManagerConfiguration {
         this.plugin = plugin;
         this.timeline = new GameTimeline(this);
         this.task = new GameTask(plugin, this.timeline);
-        this.data = new HardlandsGame();
+        this.data = new GameData();
         this.teamManager = new TeamManager();
     }
 
@@ -84,7 +84,7 @@ public final class GameManager extends GameManagerConfiguration {
         return this.phase;
     }
 
-    public HardlandsGame getData() {
+    public GameData getData() {
         return this.data;
     }
 

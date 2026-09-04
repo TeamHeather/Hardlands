@@ -15,6 +15,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import team.heather.hardlands.common.ui.HardlandsColor;
 

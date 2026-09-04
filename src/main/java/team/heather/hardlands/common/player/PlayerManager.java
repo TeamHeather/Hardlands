@@ -12,7 +12,7 @@ import team.heather.hardlands.internal.repository.PlayerRepository;
 public final class PlayerManager {
 
 		private final PlayerRepository repository;
-		private final Map<UUID, HardlandsPlayer> playersById;
+		private final Map<UUID, PlayerData> playersById;
 
 		public PlayerManager(Hardlands hardlands) {
 				this.repository = hardlands.getRepositories().player();
@@ -28,16 +28,16 @@ public final class PlayerManager {
 		}
 
 		public void save() {
-				for (HardlandsPlayer player : this.playersById.values()) {
+				for (PlayerData player : this.playersById.values()) {
 						this.repository.save(player);
 				}
 		}
 
-		public @Nullable HardlandsPlayer get(Player player) {
+		public @Nullable PlayerData get(Player player) {
 				return this.get(player.getUniqueId());
 		}
 
-		public @Nullable HardlandsPlayer get(UUID uuid) {
+		public @Nullable PlayerData get(UUID uuid) {
 				return this.playersById.get(uuid);
 		}
 
@@ -50,18 +50,18 @@ public final class PlayerManager {
 						throw new IllegalStateException("Player is already registered: " + name);
 				}
 
-				HardlandsPlayer player = this.repository.load(uuid).orElseGet(() -> this.repository.create(name, uuid));
+				PlayerData player = this.repository.load(uuid).orElseGet(() -> this.repository.create(name, uuid));
 
 				this.playersById.put(uuid, player);
 		}
 
 		public void unregister(Player player) {
-				HardlandsPlayer hardlandsPlayer = this.playersById.remove(player.getUniqueId());
+				PlayerData playerData = this.playersById.remove(player.getUniqueId());
 
-				if (hardlandsPlayer == null) {
+				if (playerData == null) {
 						throw new IllegalStateException("Player is not registered: " + player.getName());
 				}
 
-				this.repository.save(hardlandsPlayer);
+				this.repository.save(playerData);
 		}
 }

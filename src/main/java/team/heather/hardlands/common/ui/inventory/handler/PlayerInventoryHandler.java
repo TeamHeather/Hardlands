@@ -8,18 +8,16 @@ import io.papermc.paper.registry.data.dialog.action.DialogAction;
 import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import io.papermc.paper.registry.data.dialog.input.DialogInput;
 import io.papermc.paper.registry.data.dialog.type.DialogType;
+
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickCallback;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.DyeColor;
 import org.bukkit.Material;
@@ -31,7 +29,7 @@ import org.jetbrains.annotations.Nullable;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.common.item.InventoryItem;
 import team.heather.hardlands.common.item.ItemBuilder;
-import team.heather.hardlands.common.player.HardlandsPlayer;
+import team.heather.hardlands.common.player.PlayerData;
 import team.heather.hardlands.common.ui.HardlandsColor;
 import team.heather.hardlands.common.ui.chat.ChatMessenger;
 import team.heather.hardlands.common.ui.inventory.HardlandsInventory;
@@ -68,10 +66,14 @@ public final class PlayerInventoryHandler implements InventoryHandler {
         int end = Math.min(start + capacity, this.players.size());
 
         for (int index = start; index < end; index++) {
-            inventory.setItem(
-                    HardlandsInventory.contentSlot(index - start),
-                    this.createPlayerItem(this.players.get(index))
-            );
+            PlayerData player = getPlayer(this.players.get(index).uuid());
+
+            if (player != null) {
+                inventory.setItem(
+                        HardlandsInventory.contentSlot(index - start),
+                        this.createPlayerItem(player)
+                );
+            }
         }
 
         inventory.setItem(controlSlot(inventory), this.createControlItem(maxPage + 1));
@@ -119,7 +121,7 @@ public final class PlayerInventoryHandler implements InventoryHandler {
             return Optional.of(false);
         }
 
-        HardlandsPlayer player = getPlayer(this.players.get(playerIndex).uuid());
+        PlayerData player = getPlayer(this.players.get(playerIndex).uuid());
 
         if (player == null) {
             return Optional.of(false);
@@ -131,7 +133,8 @@ public final class PlayerInventoryHandler implements InventoryHandler {
                     new PlayerProfileInventoryHandler(
                             player,
                             this.players,
-                            playerIndex
+                            playerIndex,
+                            target -> HardlandsInventory.PLAYERS.openInventory(target, this)
                     )
             );
 
@@ -170,18 +173,51 @@ public final class PlayerInventoryHandler implements InventoryHandler {
         return true;
     }
 
-    private ItemStack createPlayerItem(PlayerRepository.PlayerInfo player) {
-        String team = teamManager().get(player.uuid());
+    private ItemStack createPlayerItem(PlayerData player) {
+        DyeColor profileColor = player.getProfileColorOption().getValue();
+        TextColor color = HardlandsColor.profile(profileColor == null ? DyeColor.RED : profileColor);
+        String team = teamManager().get(player.getUniqueId());
 
-        return InventoryItem.createDisplayStack(
-                new ItemBuilder(Material.PLAYER_HEAD).skullOwner(player.name()),
-                player.name(),
-                "Estado: [%s]".formatted(isOnline(player) ? "Conectado" : "Desconectado"),
-                "Equipo: [%s]".formatted(team == null ? "Sin equipo" : team),
-                "",
-                "{Clic izquierdo} para abrir el perfil.",
-                "{Clic derecho} para administrar."
-        );
+        List<Component> lore = new ArrayList<>();
+
+        lore.add(property(
+                "Estado",
+                player.getPlayer() == null ? "Desconectado" : "Conectado",
+                color
+        ));
+
+        lore.add(property(
+                "Equipo",
+                team == null ? "Sin equipo" : team,
+                color
+        ));
+
+        Set<String> pinnedStatistics = player.getPinnedStatisticsOption().getValue();
+
+        if (pinnedStatistics != null && !pinnedStatistics.isEmpty()) {
+            lore.add(Component.empty());
+
+            for (PlayerStatistic statistic : PlayerStatistic.all()) {
+                if (pinnedStatistics.contains(statistic.key())) {
+                    lore.add(statistic.line(player, color, true));
+                }
+            }
+        }
+
+        lore.add(Component.empty());
+        lore.add(TextFormatters.HIGHLIGHT.format("{Clic izquierdo} para abrir el perfil.", color));
+        lore.add(TextFormatters.HIGHLIGHT.format("{Clic derecho} para administrar.", color));
+
+        return new ItemBuilder(Material.PLAYER_HEAD)
+                .skullOwner(player.getName())
+                .name(Component.text(TextFormatters.TINY_CAPS.format(player.getName()), color))
+                .addLore(lore.toArray(Component[]::new))
+                .build();
+    }
+
+    private static Component property(String name, Object value, TextColor color) {
+        return Component.text(name + ": ", color)
+                .append(Component.text(String.valueOf(value), NamedTextColor.WHITE));
     }
 
     private ItemStack createControlItem(int pages) {
@@ -199,7 +235,7 @@ public final class PlayerInventoryHandler implements InventoryHandler {
         );
     }
 
-    private void showEditor(Player viewer, Inventory inventory, HardlandsPlayer player) {
+    private void showEditor(Player viewer, Inventory inventory, PlayerData player) {
         List<PlayerRepository.PlayerInfo> knownPlayers = repository().players();
         List<OptionBinding> bindings = createBindings(player);
         List<DialogInput> inputs = createInputs(player, bindings, knownPlayers);
@@ -230,7 +266,7 @@ public final class PlayerInventoryHandler implements InventoryHandler {
                 ))));
     }
 
-    private static List<OptionBinding> createBindings(HardlandsPlayer player) {
+    private static List<OptionBinding> createBindings(PlayerData player) {
         List<OptionBinding> bindings = new ArrayList<>(player.getConfigOptions().size());
         int index = 0;
 
@@ -242,7 +278,7 @@ public final class PlayerInventoryHandler implements InventoryHandler {
     }
 
     private static List<DialogInput> createInputs(
-            HardlandsPlayer player,
+            PlayerData player,
             List<OptionBinding> bindings,
             List<PlayerRepository.PlayerInfo> knownPlayers
     ) {
@@ -278,7 +314,7 @@ public final class PlayerInventoryHandler implements InventoryHandler {
 
     private ActionButton createSaveButton(
             Inventory inventory,
-            HardlandsPlayer player,
+            PlayerData player,
             List<OptionBinding> bindings,
             List<PlayerRepository.PlayerInfo> knownPlayers
     ) {
@@ -312,7 +348,7 @@ public final class PlayerInventoryHandler implements InventoryHandler {
     private void save(
             Player viewer,
             Inventory inventory,
-            HardlandsPlayer player,
+            PlayerData player,
             List<OptionBinding> bindings,
             List<PlayerRepository.PlayerInfo> knownPlayers,
             DialogResponseView response
@@ -382,6 +418,22 @@ public final class PlayerInventoryHandler implements InventoryHandler {
         }
 
         try {
+            if (isStringSet(type)) {
+                Set<String> values = new LinkedHashSet<>();
+
+                if (input == null || input.isBlank()) {
+                    return values;
+                }
+
+                for (String entry : input.split(",")) {
+                    if (!entry.isBlank()) {
+                        values.add(entry.strip());
+                    }
+                }
+
+                return values;
+            }
+
             if (type == Integer.class) {
                 return Integer.valueOf(value);
             }
@@ -400,6 +452,16 @@ public final class PlayerInventoryHandler implements InventoryHandler {
         }
 
         throw new IllegalStateException("Unsupported player option type: " + type.getTypeName());
+    }
+
+    private static boolean isStringSet(Type type) {
+        if (!(type instanceof ParameterizedType parameterizedType) || parameterizedType.getRawType() != Set.class) {
+            return false;
+        }
+
+        Type[] arguments = parameterizedType.getActualTypeArguments();
+
+        return arguments.length == 1 && arguments[0] == String.class;
     }
 
     private static UUID resolvePlayerId(String value, List<PlayerRepository.PlayerInfo> players) {
@@ -476,8 +538,8 @@ public final class PlayerInventoryHandler implements InventoryHandler {
         return Bukkit.getPlayer(player.uuid()) != null;
     }
 
-    private static @Nullable HardlandsPlayer getPlayer(UUID playerId) {
-        HardlandsPlayer player = Hardlands.getInstance().getPlayerManager().get(playerId);
+    private static @Nullable PlayerData getPlayer(UUID playerId) {
+        PlayerData player = Hardlands.getInstance().getPlayerManager().get(playerId);
 
         return player != null ? player : repository().load(playerId).orElse(null);
     }

@@ -4,6 +4,8 @@ import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.DyeColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -12,6 +14,9 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import team.heather.hardlands.common.item.InventoryItem;
 import team.heather.hardlands.common.item.ItemBuilder;
+import team.heather.hardlands.common.ui.HardlandsColor;
+import team.heather.hardlands.common.ui.inventory.HardlandsInventory;
+import team.heather.hardlands.util.TextFormatters;
 
 public final class ColorSelectionInventoryHandler implements InventoryHandler {
 
@@ -33,13 +38,14 @@ public final class ColorSelectionInventoryHandler implements InventoryHandler {
 
     @Override
     public void render(Inventory inventory) {
+        HardlandsInventory.renderOutline(
+                inventory,
+                new ItemBuilder(Material.valueOf(this.selected.name() + "_STAINED_GLASS_PANE")).name("").build()
+        );
+
         for (int index = 0; index < COLORS.length; index++) {
             DyeColor color = COLORS[index];
-
-            inventory.setItem(
-                    colorSlot(index),
-                    createColorItem(color, color == this.selected)
-            );
+            inventory.setItem(colorSlot(index), createColorItem(color, color == this.selected));
         }
 
         inventory.setItem(inventory.getSize() - 5, InventoryItem.PREVIOUS.build());
@@ -65,15 +71,25 @@ public final class ColorSelectionInventoryHandler implements InventoryHandler {
     }
 
     private static ItemStack createColorItem(DyeColor color, boolean selected) {
-        ItemBuilder builder = new ItemBuilder(Material.valueOf(color.name() + "_DYE")).glint(selected);
+        TextColor textColor = HardlandsColor.profile(color);
+        ItemBuilder builder = new ItemBuilder(Material.valueOf(color.name() + "_DYE"))
+                .name(Component.text(TextFormatters.TINY_CAPS.format(colorName(color)), textColor))
+                .glint(selected)
+                .addLore(
+                        TextFormatters.HIGHLIGHT.format(
+                                "{HEX}: [%s]".formatted(HardlandsColor.profileHex(color)),
+                                textColor
+                        )
+                );
 
-        return InventoryItem.createDisplayStack(
-                builder,
-                colorName(color),
-                selected ? "[Seleccionado]" : "",
-                "",
-                "{Clic} para seleccionar."
-        );
+        if (selected) {
+            builder.addLore(TextFormatters.HIGHLIGHT.format("{Seleccionado}", textColor));
+        }
+
+        return builder
+                .addLore(Component.empty())
+                .addLore(TextFormatters.HIGHLIGHT.format("{Clic} para seleccionar.", textColor))
+                .build();
     }
 
     private static int colorSlot(int index) {

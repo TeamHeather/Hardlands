@@ -68,7 +68,18 @@ public enum HardlandsInventory {
             false
     ),
 
-    ENCHANTIA("Enchantia", Material.LIGHT_BLUE_STAINED_GLASS_PANE, EnchantiaInventoryHandler::new);
+    ENCHANTIA("Enchantia", Material.LIGHT_BLUE_STAINED_GLASS_PANE, EnchantiaInventoryHandler::new),
+
+    PLAYER_STATISTICS(
+        "Fijar estadísticas",
+        Material.GRAY_STAINED_GLASS_PANE,
+        """
+        -------
+        -------
+        -------
+        """,
+        Map.of(),
+        false);
 
     private static final int COLUMNS = 9;
     private static final int CONTENT_COLUMNS = 7;
@@ -135,7 +146,19 @@ public enum HardlandsInventory {
         this(title, outline, EMPTY_LAYOUT, Map.of());
     }
 
+    public static void renderOutline(Inventory inventory, ItemStack outline) {
+        int bottomRow = getBottomRow(inventory);
 
+        for (int column = 1; column <= COLUMNS; column++) {
+            inventory.setItem(slot(1, column), outline);
+            inventory.setItem(slot(bottomRow, column), outline);
+        }
+
+        for (int row = 2; row < bottomRow; row++) {
+            inventory.setItem(slot(row, 1), outline);
+            inventory.setItem(slot(row, COLUMNS), outline);
+        }
+    }
 
     public void openInventory(Player player) {
         this.openInventory(player, this.handlerFactory.get());
@@ -223,17 +246,7 @@ public enum HardlandsInventory {
     }
 
     private void renderFrame(Inventory inventory) {
-        int bottomRow = getBottomRow(inventory);
-
-        for (int column = 1; column <= COLUMNS; column++) {
-            inventory.setItem(slot(1, column), this.outline);
-            inventory.setItem(slot(bottomRow, column), this.outline);
-        }
-
-        for (int row = 2; row < bottomRow; row++) {
-            inventory.setItem(slot(row, 1), this.outline);
-            inventory.setItem(slot(row, COLUMNS), this.outline);
-        }
+        renderOutline(inventory, this.outline);
     }
 
     private void renderFooter(Inventory inventory) {

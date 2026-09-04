@@ -20,6 +20,7 @@ import team.heather.hardlands.common.command.StaffCommand;
 import team.heather.hardlands.common.item.ItemListener;
 import team.heather.hardlands.common.player.PlayerListener;
 import team.heather.hardlands.common.player.PlayerManager;
+import team.heather.hardlands.common.tablist.TabListListener;
 import team.heather.hardlands.common.ui.HardlandsColor;
 import team.heather.hardlands.common.ui.inventory.InventoryListener;
 import team.heather.hardlands.game.GameListener;
@@ -89,7 +90,8 @@ public final class Hardlands extends JavaPlugin {
                 new GameListener(),
                 new InventoryListener(),
                 new ItemListener(),
-                new PlayerListener()
+                new PlayerListener(),
+                new TabListListener()
         );
 
         // 6. Active processing starts only after full initialization

@@ -2,6 +2,7 @@ package team.heather.hardlands.common.player;
 
 import io.papermc.paper.datacomponent.item.ResolvableProfile;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -14,13 +15,38 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
 import team.heather.hardlands.Hardlands;
+import team.heather.hardlands.common.ui.HardlandsColor;
 import team.heather.hardlands.util.TextFormatters;
 
 public class PlayerListener implements Listener {
 
     private static final String KILL_MESSAGE = "☠ {¡Has eliminado a} %s{!} ☠";
+
+    @EventHandler
+    private void onJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+        PlayerManager playerManager = Hardlands.getInstance().getPlayerManager();
+
+        if (playerManager.get(player) != null) {
+            return;
+        }
+
+        if (player.isOp()) {
+            playerManager.register(player);
+            return;
+        }
+
+        player.kick(Component.text()
+                .append(Component.text(TextFormatters.TINY_CAPS.format("not whitelisted"), HardlandsColor.HARDLANDS))
+                .appendNewline()
+                .appendNewline()
+                .append(Component.text("Your player profile is not registered.", TextColor.color(0xFFFFFF)))
+                .appendNewline()
+                .append(Component.text("Contact an administrator to request access.", TextColor.color(0xA0A0A0)))
+                .build()
+        );
+    }
 
     @EventHandler
     private void onDeath(PlayerDeathEvent event) {
