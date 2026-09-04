@@ -22,7 +22,7 @@ public class ConfigChangeEvent extends Event {
         this.newValue = newValue;
     }
 
-    public Configuration getConfiguration() {
+    public Configuration getConfig() {
         return configuration;
     }
 

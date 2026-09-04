@@ -3,170 +3,302 @@ package team.heather.hardlands.game;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.SequencedMap;
 import java.util.Set;
 import java.util.UUID;
 
+import net.kyori.adventure.text.Component;
 import org.bukkit.damage.DamageSource;
 import org.bukkit.damage.DamageType;
 import org.bukkit.entity.Player;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import team.heather.hardlands.common.player.HardlandsPlayer;
+import team.heather.hardlands.common.player.PlayerManager;
 
 public class GameData {
 
-		private final LinkedHashMap<UUID, FirstDamage> firstDamageByPlayer = new LinkedHashMap<>();
-		private final HashMap<UUID, Integer> killCountByPlayer = new HashMap<>();
-		private final HashMap<UUID, Integer> assistCountByPlayer = new HashMap<>();
-		private final ArrayList<DeathContext> deathHistory = new ArrayList<>();
+		private final SequencedMap<UUID, DamageContext> firstDamageByPlayer;
+		private final Map<UUID, Integer> assistsByPlayer;
+		private final Map<UUID, Integer> killsByPlayer;
+		private final List<DamageContext> deathHistory;
+		private final PlayerManager playerManager;
 
-		private Set<UUID> winnerIds = Set.of();
-
+		@Nullable private Set<UUID> winners;
 		@Nullable private Instant startedAt;
 		@Nullable private Instant endedAt;
+		@Nullable private UUID paperMan;
+		@Nullable private UUID ironMan;
 		@Nullable private Host host;
 
-		public boolean recordFirstDamage(UUID playerId, DamageType damageType) {
-				return this.firstDamageByPlayer.putIfAbsent(
-								playerId,
-								new FirstDamage(Instant.now(), playerId, damageType)
-				) == null;
+		public GameData(PlayerManager playerManager) {
+				this.firstDamageByPlayer = new LinkedHashMap<>();
+				this.assistsByPlayer = new HashMap<>();
+				this.killsByPlayer = new HashMap<>();
+				this.deathHistory = new ArrayList<>();
+				this.playerManager = playerManager;
 		}
 
-		public int recordKill(UUID playerId) {
-				return this.killCountByPlayer.merge(playerId, 1, Integer::sum);
-		}
+		// Recorders
 
-		public int recordAssist(UUID playerId) {
-				return this.assistCountByPlayer.merge(playerId, 1, Integer::sum);
-		}
-
-		public void recordDeath(UUID playerId, String deathMessage, DamageSource damageSource) {
-				this.deathHistory.add(
-								new DeathContext(Instant.now(), playerId, deathMessage, damageSource)
+		public int recordAssist(Player player) {
+				return this.assistsByPlayer.merge(
+								player.getUniqueId(),
+								1,
+								Integer::sum
 				);
 		}
 
-		public void markStarted() {
-				this.startedAt = Instant.now();
-				this.endedAt = null;
+		public DamageContext recordDeath(PlayerDeathEvent event) {
+				DamageContext context = DamageContext.death(
+								event.getDamageSource(),
+								event.deathMessage()
+				);
+
+				this.deathHistory.add(context);
+
+				return context;
 		}
 
-		public void markEnded() {
-				if (this.startedAt == null) {
-						throw new IllegalStateException("The game has not started.");
+		public boolean recordFirstDamage(Player player, DamageSource source) {
+				UUID playerId = player.getUniqueId();
+				DamageContext context = DamageContext.damage(source);
+
+				if (this.firstDamageByPlayer.putIfAbsent(playerId, context) != null) {
+						return false;
+				}
+
+				if (this.paperMan == null) {
+						this.paperMan = playerId;
+				}
+
+				this.ironMan = playerId;
+
+				return true;
+		}
+
+		public int recordKill(Player player) {
+				return this.killsByPlayer.merge(
+								player.getUniqueId(),
+								1,
+								Integer::sum
+				);
+		}
+
+		// Lifecycle
+
+		public boolean markEnded() {
+				if (!this.running()) {
+						return false;
 				}
 
 				this.endedAt = Instant.now();
+				return true;
 		}
 
-		public void setWinners(@NotNull Set<UUID> winnerIds) {
-				this.winnerIds = Set.copyOf(winnerIds);
+		public boolean markStarted() {
+				if (this.startedAt != null) {
+						return false;
+				}
+
+				this.startedAt = Instant.now();
+				this.endedAt = null;
+
+				return true;
 		}
 
-		public void setHost(@NotNull Host host) {
+		// Mutators
+
+		public boolean host(@NotNull Host host) {
+				if (Objects.equals(this.host, host)) {
+						return false;
+				}
+
 				this.host = host;
+				return true;
 		}
 
-		public int getKillCount(UUID playerId) {
-				return this.killCountByPlayer.getOrDefault(playerId, 0);
+		public boolean ironMan(Player player) {
+				UUID playerId = player.getUniqueId();
+
+				if (Objects.equals(this.ironMan, playerId)) {
+						return false;
+				}
+
+				this.ironMan = playerId;
+				return true;
 		}
 
-		public int getAssistCount(UUID playerId) {
-				return this.assistCountByPlayer.getOrDefault(playerId, 0);
+		public boolean paperMan(Player player) {
+				UUID playerId = player.getUniqueId();
+
+				if (Objects.equals(this.paperMan, playerId)) {
+						return false;
+				}
+
+				this.paperMan = playerId;
+				return true;
 		}
 
-		public List<KillRanking> getKillLeaderboard() {
-				List<KillRanking> leaderboard = new ArrayList<>(this.killCountByPlayer.size());
+		public boolean winners(Player... players) {
+				Set<UUID> winnerIds = new HashSet<>();
 
-				this.killCountByPlayer.forEach((playerId, killCount) ->
-								leaderboard.add(new KillRanking(playerId, killCount)));
+				for (Player player : players) {
+						winnerIds.add(player.getUniqueId());
+				}
 
-				leaderboard.sort(null);
-				return leaderboard;
+				Set<UUID> updatedWinners = Set.copyOf(winnerIds);
+
+				if (Objects.equals(this.winners, updatedWinners)) {
+						return false;
+				}
+
+				this.winners = updatedWinners;
+				return true;
 		}
 
-		public List<FirstDamage> getFirstDamageHistory() {
-				return List.copyOf(this.firstDamageByPlayer.values());
+		// State
+
+		public boolean ended() {
+				return this.endedAt != null;
 		}
 
-		public List<DeathContext> getDeathHistory() {
+		public boolean running() {
+				return this.startedAt != null && this.endedAt == null;
+		}
+
+		public boolean started() {
+				return this.startedAt != null;
+		}
+
+		// Accessors
+
+		public int assistCount(Player player) {
+				return this.assistsByPlayer.getOrDefault(player.getUniqueId(), 0);
+		}
+
+		public List<DamageContext> deathHistory() {
 				return List.copyOf(this.deathHistory);
 		}
 
-		public Set<UUID> getWinners() {
-				return this.winnerIds;
-		}
-
-		public @Nullable FirstDamage getPaperMan() {
-				Map.Entry<UUID, FirstDamage> entry = this.firstDamageByPlayer.firstEntry();
-
-				return entry != null
-								? entry.getValue()
-								: null;
-		}
-
-		public @Nullable FirstDamage getIronMan() {
-				Map.Entry<UUID, FirstDamage> entry = this.firstDamageByPlayer.lastEntry();
-
-				return entry != null
-								? entry.getValue()
-								: null;
-		}
-
-		public @Nullable Instant getStartedAt() {
-				return this.startedAt;
-		}
-
-		public @Nullable Instant getEndedAt() {
+		public @Nullable Instant endedAt() {
 				return this.endedAt;
 		}
 
-		public @Nullable Host getHost() {
+		public Map<UUID, DamageContext> firstDamageHistory() {
+				return Map.copyOf(this.firstDamageByPlayer);
+		}
+
+		public @Nullable Host host() {
 				return this.host;
 		}
 
-		public record Host(
-						int hostNumber,
-						UUID playerId
-		) {}
-
-		public record FirstDamage(
-						Instant occurredAt,
-						UUID playerId,
-						DamageType damageType
-		) {}
-
-		public record DeathContext(
-						Instant occurredAt,
-						UUID playerId,
-						String deathMessage,
-						DamageSource damageSource
-		) {
-
-				public boolean isPvP() {
-						return this.damageSource.getCausingEntity() instanceof Player;
+		public @Nullable HardlandsPlayer ironMan() {
+				if (this.ironMan == null) {
+						return null;
 				}
 
-				public boolean isPvE() {
-						return !this.isPvP();
+				return this.playerManager.get(this.ironMan);
+		}
+
+		public int killCount(Player player) {
+				return this.killsByPlayer.getOrDefault(player.getUniqueId(), 0);
+		}
+
+		public List<KillRanking> killLeaderboard() {
+				List<KillRanking> leaderboard = new ArrayList<>();
+
+				this.killsByPlayer.forEach((playerId, kills) ->
+								leaderboard.add(new KillRanking(playerId, kills)));
+
+				leaderboard.sort(null);
+
+				return leaderboard;
+		}
+
+		public @Nullable HardlandsPlayer paperMan() {
+				if (this.paperMan == null) {
+						return null;
+				}
+
+				return this.playerManager.get(this.paperMan);
+		}
+
+		public @Nullable Instant startedAt() {
+				return this.startedAt;
+		}
+
+		public @Nullable Set<HardlandsPlayer> winners() {
+				if (this.winners == null) {
+						return null;
+				}
+
+				Set<HardlandsPlayer> players = new HashSet<>();
+
+				for (UUID playerId : this.winners) {
+						HardlandsPlayer player = this.playerManager.get(playerId);
+
+						if (player != null) {
+								players.add(player);
+						}
+				}
+
+				return Set.copyOf(players);
+		}
+
+		// Data Types
+
+		public record Host(int number, UUID hoster) {}
+
+		public record DamageContext(Instant occurredAt, DamageSource source, Fatal fatal) {
+
+				public static DamageContext damage(DamageSource source) {
+						return new DamageContext(Instant.now(), source, null);
+				}
+
+				public static DamageContext death(DamageSource damageSource, Component component) {
+				}
+
+				public DamageType damageType() {
+						return this.source.getDamageType();
+				}
+
+				public String deathMessage() {
+						return this.fatal == null ? "" : this.fatal.deathMessage();
+				}
+
+				public boolean isFatal() {
+						return this.fatal != null;
+				}
+
+				public boolean isFromPlayer() {
+						return this.source.getCausingEntity() instanceof Player;
+				}
+
+				public boolean isFromEnvironment() {
+						return !this.isFromPlayer();
+				}
+
+				public record Fatal(String string) {
+
+
 				}
 		}
 
-		public record KillRanking(
-						UUID playerId,
-						int killCount
-		) implements Comparable<KillRanking> {
+		public record KillRanking(UUID killer, int kills) implements Comparable<KillRanking> {
 
 				@Override
 				public int compareTo(KillRanking other) {
-						int result = Integer.compare(other.killCount, this.killCount);
-
+						int result = Integer.compare(other.kills, this.kills);
 						return result != 0
 										? result
-										: this.playerId.compareTo(other.playerId);
+										: this.killer.compareTo(other.killer);
 				}
 		}
 }

@@ -177,11 +177,11 @@ public final class TabListListener implements Listener {
     }
 
     private void updateHeaderFooter(GameData game, List<Player> players) {
-        GameData.Host host = game.getHost();
+        GameData.Host host = game.host();
 
         this.gameNumber = host == null
                 ? 0
-                : host.hostNumber();
+                : host.number();
 
         this.headerLayout = TabListFormatter.headerLayout(game);
         this.header = this.headerLayout.format(
@@ -226,8 +226,8 @@ public final class TabListListener implements Listener {
     }
 
     private void updateSpecialPlayers(GameData game) {
-        this.paperManId = playerId(game.getPaperMan());
-        this.ironManId = playerId(game.getIronMan());
+        this.paperManId = playerId(game.paperMan());
+        this.ironManId = playerId(game.ironMan());
     }
 
     private void updateChangedState(
@@ -254,7 +254,7 @@ public final class TabListListener implements Listener {
     private void updateOrder(List<Player> players, GameData game) {
         players.sort(
                 Comparator.comparingInt(
-                                (Player player) -> game.getKillCount(player.getUniqueId())
+                                (Player player) -> game.killCount(player.getUniqueId())
                         )
                         .reversed()
                         .thenComparing(

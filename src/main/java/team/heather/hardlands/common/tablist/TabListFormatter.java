@@ -67,9 +67,9 @@ public final class TabListFormatter {
     }
 
     public static HeaderLayout headerLayout(GameData game) {
-        Component host = game.getHost() == null
+        Component host = game.host() == null
                 ? host(DEFAULT_HOST)
-                : host(game.getHost());
+                : host(game.host());
 
         Component prefix = frame(HEADER_GAP_LENGTH)
                 .append(Component.newline())
@@ -148,7 +148,7 @@ public final class TabListFormatter {
                 .append(prefix)
                 .append(name)
                 .append(suffix)
-                .append(killCounter(game.getKillCount(player.getUniqueId())))
+                .append(killCounter(game.killCount(player.getUniqueId())))
                 .append(healthCounter(player));
     }
 
@@ -159,11 +159,11 @@ public final class TabListFormatter {
 
         UUID playerId = player.getUniqueId();
 
-        if (matches(game.getPaperMan(), playerId)) {
+        if (matches(game.paperMan(), playerId)) {
             return PlayerState.PAPER_MAN.component();
         }
 
-        if (matches(game.getIronMan(), playerId)) {
+        if (matches(game.ironMan(), playerId)) {
             return PlayerState.IRON_MAN.component();
         }
 
@@ -214,11 +214,11 @@ public final class TabListFormatter {
     }
 
     private static Component host(GameData.Host host) {
-        OfflinePlayer player = Bukkit.getOfflinePlayer(host.playerId());
+        OfflinePlayer player = Bukkit.getOfflinePlayer(host.hoster());
         String name = player.getName();
 
         return host(
-                ObjectContents.playerHead(host.playerId()),
+                ObjectContents.playerHead(host.hoster()),
                 name == null ? "Unknown" : name
         );
     }

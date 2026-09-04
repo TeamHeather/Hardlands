@@ -23,7 +23,7 @@ import org.bukkit.inventory.ItemStack;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.common.item.InventoryItem;
 import team.heather.hardlands.common.item.ItemBuilder;
-import team.heather.hardlands.common.player.PlayerData;
+import team.heather.hardlands.common.player.HardlandsPlayer;
 import team.heather.hardlands.common.ui.HardlandsColor;
 import team.heather.hardlands.common.ui.chat.ChatMessenger;
 import team.heather.hardlands.common.ui.inventory.HardlandsInventory;
@@ -41,11 +41,11 @@ public final class PlayerProfileInventoryHandler implements InventoryHandler {
 		private final int originIndex;
 		private final Consumer<Player> backHandler;
 
-		private PlayerData profile;
+		private HardlandsPlayer profile;
 		private int currentIndex;
 
 		public PlayerProfileInventoryHandler(
-						PlayerData profile,
+						HardlandsPlayer profile,
 						List<PlayerRepository.PlayerInfo> navigation,
 						int currentIndex,
 						Consumer<Player> backHandler
@@ -122,7 +122,7 @@ public final class PlayerProfileInventoryHandler implements InventoryHandler {
 						return false;
 				}
 
-				PlayerData target = Hardlands.getInstance().getPlayerManager().get(this.navigation.get(targetIndex).uuid());
+				HardlandsPlayer target = Hardlands.getInstance().getPlayerManager().get(this.navigation.get(targetIndex).uuid());
 
 				if (target == null) {
 						return false;

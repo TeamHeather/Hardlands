@@ -29,7 +29,7 @@ import org.jetbrains.annotations.Nullable;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.common.item.InventoryItem;
 import team.heather.hardlands.common.item.ItemBuilder;
-import team.heather.hardlands.common.player.PlayerData;
+import team.heather.hardlands.common.player.HardlandsPlayer;
 import team.heather.hardlands.common.ui.HardlandsColor;
 import team.heather.hardlands.common.ui.chat.ChatMessenger;
 import team.heather.hardlands.common.ui.inventory.HardlandsInventory;
@@ -66,7 +66,7 @@ public final class PlayerInventoryHandler implements InventoryHandler {
         int end = Math.min(start + capacity, this.players.size());
 
         for (int index = start; index < end; index++) {
-            PlayerData player = getPlayer(this.players.get(index).uuid());
+            HardlandsPlayer player = getPlayer(this.players.get(index).uuid());
 
             if (player != null) {
                 inventory.setItem(
@@ -121,7 +121,7 @@ public final class PlayerInventoryHandler implements InventoryHandler {
             return Optional.of(false);
         }
 
-        PlayerData player = getPlayer(this.players.get(playerIndex).uuid());
+        HardlandsPlayer player = getPlayer(this.players.get(playerIndex).uuid());
 
         if (player == null) {
             return Optional.of(false);
@@ -173,7 +173,7 @@ public final class PlayerInventoryHandler implements InventoryHandler {
         return true;
     }
 
-    private ItemStack createPlayerItem(PlayerData player) {
+    private ItemStack createPlayerItem(HardlandsPlayer player) {
         DyeColor profileColor = player.getProfileColorOption().getValue();
         TextColor color = HardlandsColor.profile(profileColor == null ? DyeColor.RED : profileColor);
         String team = teamManager().get(player.getUniqueId());
@@ -235,7 +235,7 @@ public final class PlayerInventoryHandler implements InventoryHandler {
         );
     }
 
-    private void showEditor(Player viewer, Inventory inventory, PlayerData player) {
+    private void showEditor(Player viewer, Inventory inventory, HardlandsPlayer player) {
         List<PlayerRepository.PlayerInfo> knownPlayers = repository().players();
         List<OptionBinding> bindings = createBindings(player);
         List<DialogInput> inputs = createInputs(player, bindings, knownPlayers);
@@ -266,7 +266,7 @@ public final class PlayerInventoryHandler implements InventoryHandler {
                 ))));
     }
 
-    private static List<OptionBinding> createBindings(PlayerData player) {
+    private static List<OptionBinding> createBindings(HardlandsPlayer player) {
         List<OptionBinding> bindings = new ArrayList<>(player.getConfigOptions().size());
         int index = 0;
 
@@ -278,7 +278,7 @@ public final class PlayerInventoryHandler implements InventoryHandler {
     }
 
     private static List<DialogInput> createInputs(
-            PlayerData player,
+            HardlandsPlayer player,
             List<OptionBinding> bindings,
             List<PlayerRepository.PlayerInfo> knownPlayers
     ) {
@@ -314,7 +314,7 @@ public final class PlayerInventoryHandler implements InventoryHandler {
 
     private ActionButton createSaveButton(
             Inventory inventory,
-            PlayerData player,
+            HardlandsPlayer player,
             List<OptionBinding> bindings,
             List<PlayerRepository.PlayerInfo> knownPlayers
     ) {
@@ -348,7 +348,7 @@ public final class PlayerInventoryHandler implements InventoryHandler {
     private void save(
             Player viewer,
             Inventory inventory,
-            PlayerData player,
+            HardlandsPlayer player,
             List<OptionBinding> bindings,
             List<PlayerRepository.PlayerInfo> knownPlayers,
             DialogResponseView response
@@ -538,8 +538,8 @@ public final class PlayerInventoryHandler implements InventoryHandler {
         return Bukkit.getPlayer(player.uuid()) != null;
     }
 
-    private static @Nullable PlayerData getPlayer(UUID playerId) {
-        PlayerData player = Hardlands.getInstance().getPlayerManager().get(playerId);
+    private static @Nullable HardlandsPlayer getPlayer(UUID playerId) {
+        HardlandsPlayer player = Hardlands.getInstance().getPlayerManager().get(playerId);
 
         return player != null ? player : repository().load(playerId).orElse(null);
     }

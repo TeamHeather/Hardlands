@@ -137,21 +137,21 @@ public enum InventoryItem {
         Option<Integer> survivalSize = worldManager.getSurvivalSizeOption();
 
         Integer size = survivalSize.getValue();
-        PregenerationManager.State state = pregenerationManager.getState();
-        float progress = pregenerationManager.getProgress();
+        PregenerationManager.State state = pregenerationManager.state();
+        float progress = pregenerationManager.progress();
 
         String border = survivalSize.isValid() && size != null
                 ? "[%1$d × %1$d]".formatted(size)
                 : "Sin configurar";
 
-        ItemBuilder builder = new ItemBuilder(state.getMaterial())
+        ItemBuilder builder = new ItemBuilder(state.material())
                 .name(TextFormatters.TINY_CAPS.format("Preparación"))
                 .formattedLore(
                         "Aplica los [World Borders] e inicia la [pregeneración].",
                         "",
                         "Borde: %s".formatted(border),
                         "Progreso: [%.1f%%]".formatted(progress),
-                        "Estado: [%s]".formatted(state.getName()));
+                        "Estado: [%s]".formatted(state.label()));
 
         switch (state) {
             case IDLE -> builder.addFormattedLore(
@@ -172,7 +172,7 @@ public enum InventoryItem {
         WorldManager worldManager = Hardlands.getInstance().getWorldManager();
         PregenerationManager pregenerationManager = worldManager.getPregenerationManager();
 
-        switch (pregenerationManager.getState()) {
+        switch (pregenerationManager.state()) {
             case IDLE -> {
                 if (!worldManager.isConfigValid()) return false;
 

@@ -14,19 +14,19 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import team.heather.hardlands.common.item.InventoryItem;
 import team.heather.hardlands.common.item.ItemBuilder;
-import team.heather.hardlands.common.player.PlayerData;
+import team.heather.hardlands.common.player.HardlandsPlayer;
 import team.heather.hardlands.common.ui.HardlandsColor;
 import team.heather.hardlands.common.ui.inventory.HardlandsInventory;
 
 public final class PlayerStatisticSelectionInventoryHandler implements InventoryHandler {
 
-    private final PlayerData profile;
+    private final HardlandsPlayer profile;
     private final Set<String> selected;
     private final BiConsumer<Player, Set<String>> selectionHandler;
     private final Consumer<Player> backHandler;
 
     public PlayerStatisticSelectionInventoryHandler(
-            PlayerData profile,
+            HardlandsPlayer profile,
             BiConsumer<Player, Set<String>> selectionHandler,
             Consumer<Player> backHandler
     ) {

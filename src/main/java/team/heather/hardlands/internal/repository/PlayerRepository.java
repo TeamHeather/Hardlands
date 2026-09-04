@@ -10,6 +10,7 @@ import com.google.gson.annotations.SerializedName;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import team.heather.hardlands.Hardlands;
+import team.heather.hardlands.common.player.HardlandsPlayer;
 import team.heather.hardlands.internal.json.JsonDataManager;
 
 public final class PlayerRepository extends JsonRepository<UUID> {
@@ -18,11 +19,11 @@ public final class PlayerRepository extends JsonRepository<UUID> {
         super(hardlands, "players");
     }
 
-    public team.heather.hardlands.common.player.PlayerData create(@NotNull Player player) {
+    public HardlandsPlayer create(@NotNull Player player) {
         return this.create(player.getName(), player.getUniqueId());
     }
 
-    public team.heather.hardlands.common.player.PlayerData create(@NotNull String name, @NotNull UUID uuid) {
+    public HardlandsPlayer create(@NotNull String name, @NotNull UUID uuid) {
         if (name.isBlank()) {
             throw new IllegalArgumentException("Player name cannot be blank");
         }
@@ -31,26 +32,26 @@ public final class PlayerRepository extends JsonRepository<UUID> {
             throw new IllegalStateException("Player data already exists: " + uuid);
         }
 
-        team.heather.hardlands.common.player.PlayerData player = team.heather.hardlands.common.player.PlayerData.from(name, uuid);
+        HardlandsPlayer player = HardlandsPlayer.from(name, uuid);
 
         this.save(player);
 
         return player;
     }
 
-    public void save(@NotNull team.heather.hardlands.common.player.PlayerData player) {
+    public void save(@NotNull HardlandsPlayer player) {
         this.managerFor(player.getUniqueId()).write(PlayerRepository.PlayerData.from(player));
     }
 
-    public Optional<team.heather.hardlands.common.player.PlayerData> load(@NotNull UUID uuid) {
+    public Optional<HardlandsPlayer> load(@NotNull UUID uuid) {
         return this.managerFor(uuid).read().map(data -> data.toPlayer(uuid));
     }
 
-    public Optional<team.heather.hardlands.common.player.PlayerData> load(@NotNull Player player) {
+    public Optional<HardlandsPlayer> load(@NotNull Player player) {
         return this.managerFor(player.getUniqueId()).read().map(data -> data.toPlayer(player));
     }
 
-    public team.heather.hardlands.common.player.PlayerData loadOrCreate(@NotNull Player player) {
+    public HardlandsPlayer loadOrCreate(@NotNull Player player) {
         return this.load(player).orElseGet(() -> this.create(player));
     }
 
@@ -88,32 +89,32 @@ public final class PlayerRepository extends JsonRepository<UUID> {
 
     private record PlayerData(
             @SerializedName("name") String name,
-            @SerializedName("uuid") UUID uuid,
+            @SerializedName("hoster") UUID uuid,
             @SerializedName("options") JsonObject options
     ) {
 
-        private static PlayerData from(team.heather.hardlands.common.player.PlayerData player) {
+        private static PlayerData from(HardlandsPlayer player) {
             return new PlayerData(player.getName(), player.getUniqueId(), player.toJson().getAsJsonObject());
         }
 
-        private team.heather.hardlands.common.player.PlayerData toPlayer(UUID expectedUuid) {
+        private HardlandsPlayer toPlayer(UUID expectedUuid) {
             this.validate(expectedUuid);
 
-            team.heather.hardlands.common.player.PlayerData player = team.heather.hardlands.common.player.PlayerData.from(this.name, this.uuid);
+            HardlandsPlayer player = HardlandsPlayer.from(this.name, this.uuid);
 
             player.fromJson(this.options);
 
             return player;
         }
 
-        private team.heather.hardlands.common.player.PlayerData toPlayer(Player player) {
+        private HardlandsPlayer toPlayer(Player player) {
             this.validate(player.getUniqueId());
 
-            team.heather.hardlands.common.player.PlayerData playerData = team.heather.hardlands.common.player.PlayerData.from(player);
+            HardlandsPlayer hardlandsPlayer = HardlandsPlayer.from(player);
 
-            playerData.fromJson(this.options);
+            hardlandsPlayer.fromJson(this.options);
 
-            return playerData;
+            return hardlandsPlayer;
         }
 
         private PlayerInfo toInfo(UUID expectedUuid) {

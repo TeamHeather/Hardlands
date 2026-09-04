@@ -50,19 +50,19 @@ final class PhaseBehavior {
             WorldManager worldManager = plugin.getWorldManager();
             PregenerationManager pregenerationManager = worldManager.getPregenerationManager();
 
-            pregenerationManager.setProgressUpdatesEnabled(true);
+            pregenerationManager.progressUpdatesEnabled(true);
             worldManager.applyConfiguration();
             worldManager.pregenerate();
 
-            plugin.getGameManager().setPreparationProgress(pregenerationManager.getProgress());
+            plugin.getGameManager().setPreparationProgress(pregenerationManager.progress());
         }
 
         @Override
         public void onStop(Hardlands plugin, Phase phase) {
             PregenerationManager pregenerationManager = plugin.getWorldManager().getPregenerationManager();
-            pregenerationManager.setProgressUpdatesEnabled(false);
+            pregenerationManager.progressUpdatesEnabled(false);
 
-            if (!pregenerationManager.isCompleted()) {
+            if (!pregenerationManager.completed()) {
                 pregenerationManager.pause();
             }
         }

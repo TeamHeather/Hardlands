@@ -12,7 +12,7 @@ import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import team.heather.hardlands.Hardlands;
 import team.heather.hardlands.common.item.ItemBuilder;
-import team.heather.hardlands.common.player.PlayerData;
+import team.heather.hardlands.common.player.HardlandsPlayer;
 import team.heather.hardlands.util.TextFormatters;
 
 public enum PlayerStatistic {
@@ -133,7 +133,7 @@ public enum PlayerStatistic {
     private final Group group;
     private final Material material;
     private final Component icon;
-    private final Function<PlayerData, Object> valueProvider;
+    private final Function<HardlandsPlayer, Object> valueProvider;
     private final boolean playerReference;
 
     PlayerStatistic(
@@ -142,7 +142,7 @@ public enum PlayerStatistic {
             Group group,
             Material material,
             String sprite,
-            Function<PlayerData, Object> valueProvider
+            Function<HardlandsPlayer, Object> valueProvider
     ) {
         this.key = key;
         this.label = label;
@@ -157,7 +157,7 @@ public enum PlayerStatistic {
             String key,
             String label,
             Group group,
-            Function<PlayerData, Object> valueProvider
+            Function<HardlandsPlayer, Object> valueProvider
     ) {
         this.key = key;
         this.label = label;
@@ -180,7 +180,7 @@ public enum PlayerStatistic {
         return ALL;
     }
 
-    public Component line(PlayerData player, TextColor color, boolean pinned) {
+    public Component line(HardlandsPlayer player, TextColor color, boolean pinned) {
         Object value = this.valueProvider.apply(player);
         Component statisticIcon = this.playerReference ? playerIcon(value) : this.icon;
 
@@ -192,12 +192,12 @@ public enum PlayerStatistic {
                 .append(Component.text(this.formatValue(value), NamedTextColor.WHITE));
     }
 
-    public ItemStack createSelectionItem(PlayerData player, TextColor color, boolean pinned) {
+    public ItemStack createSelectionItem(HardlandsPlayer player, TextColor color, boolean pinned) {
         Object value = this.valueProvider.apply(player);
         ItemBuilder builder = new ItemBuilder(this.material).glint(pinned);
 
         if (this.playerReference && value instanceof UUID uuid) {
-            PlayerData referencedPlayer = Hardlands.getInstance().getPlayerManager().get(uuid);
+            HardlandsPlayer referencedPlayer = Hardlands.getInstance().getPlayerManager().get(uuid);
 
             if (referencedPlayer != null) {
                 builder.skullOwner(referencedPlayer.getName());
@@ -221,7 +221,7 @@ public enum PlayerStatistic {
 
     private String formatValue(Object value) {
         if (value instanceof UUID uuid) {
-            PlayerData player = Hardlands.getInstance().getPlayerManager().get(uuid);
+            HardlandsPlayer player = Hardlands.getInstance().getPlayerManager().get(uuid);
             return player == null ? "Desconocido" : player.getName();
         }
 

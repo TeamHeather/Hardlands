@@ -2,7 +2,6 @@ package team.heather.hardlands;
 
 import java.time.LocalTime;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 import co.aikar.commands.BaseCommand;
 import co.aikar.commands.PaperCommandManager;
@@ -95,7 +94,7 @@ public final class Hardlands extends JavaPlugin {
         );
 
         // 6. Active processing starts only after full initialization
-        this.getGameManager().getTask().start();
+        this.getGameManager().run();
 
         super.getLogger().info(System.lineSeparator() + """
              _    _          _____  _____  _               _   _ _____   _____

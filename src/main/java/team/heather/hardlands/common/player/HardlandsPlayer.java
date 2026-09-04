@@ -35,13 +35,13 @@ import team.heather.hardlands.config.OptionDef;
 								@OptionDef(name = "totalWins", type = Integer.class, value = "0")
 				}
 )
-public class PlayerData extends PlayerDataConfiguration {
+public class HardlandsPlayer extends HardlandsPlayerConfiguration {
 
 		private static final DyeColor[] PROFILE_COLORS = DyeColor.values();
 		private final String name;
 		private final UUID uuid;
 
-		private PlayerData(String name, UUID uuid) {
+		private HardlandsPlayer(String name, UUID uuid) {
 				this.name = name;
 				this.uuid = uuid;
 
@@ -49,12 +49,12 @@ public class PlayerData extends PlayerDataConfiguration {
 				this.getPinnedStatisticsOption().changeValue(new LinkedHashSet<>());
 		}
 
-		public static PlayerData from(@NotNull Player player) {
-				return new PlayerData(player.getName(), player.getUniqueId());
+		public static HardlandsPlayer from(@NotNull Player player) {
+				return new HardlandsPlayer(player.getName(), player.getUniqueId());
 		}
 
-		public static PlayerData from(String name, UUID uuid) {
-				return new PlayerData(name, uuid);
+		public static HardlandsPlayer from(String name, UUID uuid) {
+				return new HardlandsPlayer(name, uuid);
 		}
 
 		public String getName() {
