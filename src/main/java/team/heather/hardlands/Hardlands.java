@@ -8,7 +8,9 @@ import co.aikar.commands.PaperCommandManager;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.DyeColor;
 import org.bukkit.NamespacedKey;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -19,9 +21,10 @@ import team.heather.hardlands.common.command.StaffCommand;
 import team.heather.hardlands.common.item.ItemListener;
 import team.heather.hardlands.common.player.PlayerListener;
 import team.heather.hardlands.common.player.PlayerManager;
-import team.heather.hardlands.common.tablist.TabListListener;
+import team.heather.hardlands.common.ui.tablist.TabListListener;
 import team.heather.hardlands.common.ui.HardlandsColor;
 import team.heather.hardlands.common.ui.inventory.InventoryListener;
+import team.heather.hardlands.common.ui.tablist.TabListRenderer;
 import team.heather.hardlands.game.GameListener;
 import team.heather.hardlands.game.GameManager;
 import team.heather.hardlands.game.world.WorldManager;
@@ -61,56 +64,62 @@ public final class Hardlands extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        // 1. Foundational internal data
+        // Core
         this.internalDefinitions = new InternalDefinitions(this, "internal");
         this.internalDefinitions.load();
 
-        // 2. Independent gameplay systems
+        // Independent systems
         this.enchantmentManager = new EnchantmentManager(this);
         this.scenarioManager = new ScenarioManager(this);
         this.worldManager = new WorldManager(this);
 
-        // 3. Dependency-bound systems
+        // Dependent systems
         this.gameManager = this.initialize(GameManager::new, this.worldManager);
-        this.repositories = this.initialize(Repositories::new, this.gameManager, this.scenarioManager, this.worldManager);
+        this.repositories = this.initialize(
+                Repositories::new,
+                this.gameManager,
+                this.scenarioManager,
+                this.worldManager
+        );
         this.playerManager = this.initialize(PlayerManager::new, this.repositories);
 
-        // 4. Persistent runtime configuration
-        this.getRepositories().preset().load("default");
+        // Persistent data
+        this.repositories.preset().load("default");
 
-        // 5. External entry points
+        // Commands
         this.registerCommands(
                 new HardlandsCommand(),
-                new StaffCommand(),
-                new PhaseCommand(this.getGameManager())
+                new PhaseCommand(this.gameManager),
+                new StaffCommand()
         );
 
+        // Listeners
         this.registerListeners(
                 new GameListener(),
                 new InventoryListener(),
                 new ItemListener(),
                 new PlayerListener(),
-                new TabListListener()
+                new TabListListener(this.gameManager, new TabListRenderer("MrPepe3012", HardlandsColor.profile(DyeColor.YELLOW)))
         );
 
-        // 6. Active processing starts only after full initialization
-        this.getGameManager().run();
+        // Runtime
+        this.gameManager.run();
 
         super.getLogger().info(System.lineSeparator() + """
-             _    _          _____  _____  _               _   _ _____   _____
-            | |  | |   /\\   |  __ \\|  __ \\| |        /\\   | \\ | |  __ \\ / ____|
-            | |__| |  /  \\  | |__) | |  | | |       /  \\  |  \\| | |  | | (___
-            |  __  | / /\\ \\ |  _  /| |  | | |      / /\\ \\ | . ` | |  | |\\___ \\
-            | |  | |/ ____ \\| | \\ \\| |__| | |____ / ____ \\| |\\  | |__| |____) |
-            |_|  |_/_/    \\_\\_|  \\_\\_____/|______/_/    \\_\\_| \\_|_____/|_____/
-            """);
+         _    _          _____  _____  _               _   _ _____   _____
+        | |  | |   /\\   |  __ \\|  __ \\| |        /\\   | \\ | |  __ \\ / ____|
+        | |__| |  /  \\  | |__) | |  | | |       /  \\  |  \\| | |  | | (___
+        |  __  | / /\\ \\ |  _  /| |  | | |      / /\\ \\ | . ` | |  | |\\___ \\
+        | |  | |/ ____ \\| | \\ \\| |__| | |____ / ____ \\| |\\  | |__| |____) |
+        |_|  |_/_/    \\_\\_|  \\_\\_____/|______/_/    \\_\\_| \\_|_____/|_____/
+        """);
         super.getLogger().info("Hardlands successfully enabled.");
     }
 
     @Override
     public void onDisable() {
         if (this.gameManager != null) {
-            this.gameManager.getTask().close();
+            this.gameManager.close();
         }
 
         this.threadScheduler.close();
@@ -122,32 +131,32 @@ public final class Hardlands extends JavaPlugin {
         return this.threadScheduler;
     }
 
-    public InternalDefinitions getInternalDefinitions() {
-        return requireInitialized(this.internalDefinitions, "InternalDefinitions");
+    public @Nullable InternalDefinitions getInternalDefinitions() {
+        return this.internalDefinitions;
     }
 
-    public EnchantmentManager getEnchantmentManager() {
-        return requireInitialized(this.enchantmentManager, "EnchantmentManager");
+    public @Nullable EnchantmentManager getEnchantmentManager() {
+        return this.enchantmentManager;
     }
 
-    public ScenarioManager getScenarioManager() {
-        return requireInitialized(this.scenarioManager, "ScenarioManager");
+    public @Nullable ScenarioManager getScenarioManager() {
+        return this.scenarioManager;
     }
 
-    public WorldManager getWorldManager() {
-        return requireInitialized(this.worldManager, "WorldManager");
+    public @Nullable WorldManager getWorldManager() {
+        return this.worldManager;
     }
 
-    public GameManager getGameManager() {
-        return requireInitialized(this.gameManager, "GameManager");
+    public @Nullable GameManager getGameManager() {
+        return this.gameManager;
     }
 
-    public Repositories getRepositories() {
-        return requireInitialized(this.repositories, "Repositories");
+    public @Nullable Repositories getRepositories() {
+        return this.repositories;
     }
 
-    public PlayerManager getPlayerManager() {
-        return requireInitialized(this.playerManager, "PlayerManager");
+    public @Nullable PlayerManager getPlayerManager() {
+        return this.playerManager;
     }
 
     /**
@@ -184,16 +193,5 @@ public final class Hardlands extends JavaPlugin {
 
     public static NamespacedKey createKey(String path) {
         return NamespacedKey.fromString(path, getInstance());
-    }
-
-    /**
-     * Returns an initialized component or fails when accessed too early.
-     */
-    private static <T> T requireInitialized(@Nullable T value, String name) {
-        if (value == null) {
-            throw new IllegalStateException(name + " has not been initialized yet");
-        }
-
-        return value;
     }
 }

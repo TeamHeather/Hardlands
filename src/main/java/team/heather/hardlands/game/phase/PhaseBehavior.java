@@ -108,7 +108,7 @@ final class PhaseBehavior {
             );
 
             Bukkit.getOnlinePlayers().forEach(scatterManager::enqueue);
-            scatterManager.setProgressUpdatesEnabled(true);
+            scatterManager.progressUpdatesEnabled(true);
 
             scatterManager.scatterAllAsync().thenRun(() ->
                     Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -138,7 +138,7 @@ final class PhaseBehavior {
 
             ScatterManager scatterManager = plugin.getWorldManager().getScatterManager();
             scatterManager.cancelScatter();
-            scatterManager.setProgressUpdatesEnabled(false);
+            scatterManager.progressUpdatesEnabled(false);
 
             Bukkit.getOnlinePlayers().forEach(LivingEntity::clearActivePotionEffects);
         }

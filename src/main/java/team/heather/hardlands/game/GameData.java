@@ -21,6 +21,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import team.heather.hardlands.common.player.HardlandsPlayer;
 import team.heather.hardlands.common.player.PlayerManager;
+import team.heather.hardlands.util.TextFormatters;
 
 public class GameData {
 
@@ -263,6 +264,7 @@ public class GameData {
 				}
 
 				public static DamageContext death(DamageSource damageSource, Component component) {
+						return new DamageContext(Instant.now(), damageSource, new Fatal(component));
 				}
 
 				public DamageType damageType() {
@@ -270,7 +272,7 @@ public class GameData {
 				}
 
 				public String deathMessage() {
-						return this.fatal == null ? "" : this.fatal.deathMessage();
+						return this.fatal == null ? "" : this.fatal.string;
 				}
 
 				public boolean isFatal() {
@@ -287,7 +289,9 @@ public class GameData {
 
 				public record Fatal(String string) {
 
-
+						public Fatal(Component component) {
+								this(TextFormatters.PLAIN_TEXT.format(component));
+						}
 				}
 		}
 
